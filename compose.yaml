@@ -1,3 +1,5 @@
+name: outliner-lab
+
 services:
   app:
     build:

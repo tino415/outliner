@@ -1,5 +1,14 @@
 # Working on this repository
 
+## Using the outline
+
+Martin's outline is reachable from a shell with `bin/outline` (see README,
+"CLI"). Prefer `--json` and item ids when acting on it; `bin/outline help`
+lists the commands. It changes the real outline on every device, so read
+before writing and do not delete without being asked.
+
+## Changing the code
+
 - Run every toolchain command through `dev-run` (see README). Bring the stack
   up with `podman compose up -d` first; without it `dev-run` falls back to the
   sandbox, which has no browsers.

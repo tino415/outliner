@@ -45,6 +45,45 @@ Cut: end-to-end encryption, accounts and several users, real-time push
 (polling instead), an MCP server (the CLI covers agents that have a shell),
 history on the server.
 
+### Part 2 report
+
+Built all six items of the scope, in about three hours of the six.
+
+- **Sync core** (`src/sync/`): hybrid clock, fractional positions, per-field
+  merge, diff from documents, deterministic rebuild. A convergence test runs
+  40 random seeds of concurrent edits on three devices; crossing moves,
+  edits under deleted items and same-text conflicts have their own tests.
+- **Server** (`server/`): Node with built-in SQLite, no dependencies, one
+  endpoint, token, CORS, input validation. Runs as the `sync` service in
+  compose.yaml (`node:24-alpine`, data on the `outliner-lab_sync_data`
+  volume), up on 127.0.0.1:8791 now and empty.
+- **App**: ⋯ → Sync…, a status dot next to the menu (green synced, pulsing
+  blue sending, grey offline, red token refused), pushes 0.4 s after an edit,
+  pulls every 5 s and on focus, keeps edits made offline across reloads.
+- **CLI** (`cli/`, `bin/outline`): show, find, add (also from stdin), edit,
+  note, done, undone, move, rm, export; `--json`, ids or text paths.
+- **Tests**: 75 unit (27 new: sync core, server, CLI), 133 browser (5 new:
+  two devices both ways, offline, CLI and app together, wrong token, a
+  server holding only deleted items).
+- One bug found while deploying and fixed test-first: connecting counted
+  deleted items as "the server has an outline" and would have replaced the
+  device's outline with an empty one.
+
+Not done, left to Martin: `tailscale serve --bg --https=10001
+http://127.0.0.1:8791` (he chose to run it himself).
+
+Known limits:
+
+- Remote changes reset undo history (ADR 0015).
+- Two devices editing the same item's text offline keep only the later edit.
+- Polling, not push: another device's edit shows within 5 seconds, or at
+  once when the tab regains focus.
+- The CLI needs the server; `bin/outline` needs the Compose stack up.
+- Podman restarts the `sync` container after a crash (`restart:
+  unless-stopped`), but after a reboot only if podman's restart service is
+  enabled for this user; otherwise `podman compose up -d sync`.
+- Not tested on a real phone or over the tailnet, only in containers.
+
 ## Report
 
 ### Where it is

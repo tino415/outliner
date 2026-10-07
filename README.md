@@ -31,6 +31,44 @@ dev-run npx playwright test         # desktop Chromium, phone, WebKit, Firefox
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.
 
+## Sync server
+
+The `sync` service keeps the outline for every device and the CLI
+(doc/adr/0011 to 0015). It runs the bundled server from `dist-node/` with its
+database on the `outliner-lab_sync_data` volume.
+
+```sh
+sh scripts/new-sync-token.sh        # once: writes .env.sync with a random token
+dev-run npm run build               # builds dist-node/server.mjs and outline.mjs
+podman compose up -d --build sync   # listens on 127.0.0.1:8791
+tailscale serve --bg --https=10001 http://127.0.0.1:8791
+```
+
+In the app: ⋯ → Sync…, server `https://dev.taile622dc.ts.net:10001`, and the
+token from `.env.sync`. The first device uploads its outline; every device
+after it switches to the server's outline.
+
+Back up the database by copying `/data/outline.db` out of the `sync`
+container.
+
+## CLI
+
+```sh
+bin/outline show                          # the whole outline
+bin/outline show "Projects/Garden" --ids
+bin/outline find "#ideas" --json
+bin/outline add "Buy seeds" --under Projects --note "before March"
+printf '%s\n' "- Week" "  - Monday" | bin/outline add - --under Plans
+bin/outline done <id>
+bin/outline move <id> --under Archive
+bin/outline export --opml > outline.opml
+bin/outline help
+```
+
+`bin/outline` runs the CLI in the `app` container, which has the token and
+the server address. Elsewhere, run `node dist-node/outline.mjs` with
+`OUTLINE_SERVER` and `OUTLINE_TOKEN` set.
+
 ## Publishing
 
 ```sh
