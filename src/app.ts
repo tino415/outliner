@@ -467,6 +467,7 @@ export const actions = {
   expand(c: EditorContext): void {
     if (c.isTitle) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
+    animateOpening(c.id);
   },
 
   zoomIn(c: EditorContext): void {
@@ -569,8 +570,13 @@ function pasteLines(id: ItemId, text: string): void {
 }
 
 function toggleFold(id: ItemId): void {
-  const caret = caretNow();
-  commitAndRender(setCollapsed(doc(), id, !doc().items[id].collapsed), caret);
+  const opening = doc().items[id].collapsed;
+  commitAndRender(setCollapsed(doc(), id, !opening), caretNow());
+  if (opening) animateOpening(id);
+}
+
+function animateOpening(id: ItemId): void {
+  ui.tree.querySelector(`.item[data-id="${CSS.escape(id)}"] > .children`)?.classList.add("opening");
 }
 
 function neighbourEditor(editor: HTMLElement, direction: -1 | 1): HTMLElement | null {
@@ -872,7 +878,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   li.innerHTML =
     `<div class="row">` +
     `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
-    `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in"><span class="dot"></span></button>` +
+    `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${id}">${renderInline(item.text)}</div>` +
     `<div class="note" contenteditable="plaintext-only" spellcheck="true" data-id="${id}"${note ? "" : " hidden"}>${renderInline(item.note)}</div>` +
@@ -965,6 +971,7 @@ function bindChrome(): void {
   });
 
   window.addEventListener("hashchange", showZoom);
+  window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
 
   ui.tree.addEventListener("click", (event) => {
     if ((event.target as HTMLElement).closest(".bullet")) event.preventDefault();
