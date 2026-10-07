@@ -57,6 +57,7 @@
         </div>
       </div>
       <div class="menu-section">
+        <button type="button" class="menu-item" data-action="jump"><span>Jump to…</span><kbd class="menu-kbd">Ctrl K</kbd></button>
         <button type="button" class="menu-item" data-action="toggle-completed">
           <span>Show completed</span><span class="switch" id="completed-switch" aria-hidden="true"></span>
         </button>
@@ -91,6 +92,15 @@
     <dialog class="help" id="help">
       <header><h2>Keyboard shortcuts</h2><button class="icon-button" id="help-close" aria-label="Close">✕</button></header>
       <div class="help-grid" id="help-grid"></div>
+    </dialog>
+
+    <dialog class="palette" id="palette">
+      <label class="palette-input">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" /></svg>
+        <input type="text" autocomplete="off" spellcheck="false" aria-label="Find an item" />
+      </label>
+      <ul class="palette-results" role="listbox"></ul>
+      <div class="palette-hint"></div>
     </dialog>
 
     <div class="toast" id="toast" role="status" hidden></div>

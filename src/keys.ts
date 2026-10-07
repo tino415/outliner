@@ -46,6 +46,7 @@ const bindings: Binding[] = [
   editor(["Alt+ArrowLeft", "Mod+["], "Zoom out", (c) => actions.zoomOut(c)),
   editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
   editor(["Alt+Shift+d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
+  editor(["Alt+Shift+m"], "Move item to…", (c) => actions.moveToPicker(c)),
   editor(["Mod+b"], "Bold", (c) => actions.bold(c)),
   editor(["Mod+i"], "Italic", (c) => actions.italic(c)),
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
@@ -59,6 +60,7 @@ const bindings: Binding[] = [
   editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
   editor(["ArrowRight"], "", (c) => actions.arrowRight(c), true),
 
+  global(["Mod+k"], "Jump to an item", "jump"),
   global(["/"], "Search", "search", true),
   global(["Mod+f"], "Search", "search"),
   global(["?"], "Show shortcuts", "help", true),
@@ -95,7 +97,7 @@ function baseKey(event: KeyboardEvent): string {
   return event.key;
 }
 
-const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 function pretty(keys: string): string {
   return keys

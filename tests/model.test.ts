@@ -23,7 +23,7 @@ import {
   visibleOrder,
 } from "../src/model";
 import { parseIndentedText, subtreesAsText } from "../src/transfer";
-import { search } from "../src/search";
+import { findItems, search } from "../src/search";
 
 const all = { showCompleted: true };
 
@@ -240,6 +240,13 @@ describe("reading order and search", () => {
     doc = setFlags(doc, idOf(doc, "c"), { completed: true });
     const order = visibleOrder(doc, ROOT, { showCompleted: false }).map((id) => doc.items[id].text);
     expect(order).toEqual(["a", "b", "b1"]);
+  });
+
+  it("ranks prefix matches, then word starts, then shallow items", () => {
+    const doc = outline("thread\n  reading list\nreading\nspread the word");
+    const found = findItems(doc, "rea", 10).map((candidate) => candidate.text);
+    expect(found).toEqual(["reading", "reading list", "thread", "spread the word"]);
+    expect(findItems(doc, "list", 10)[0].path).toEqual(["thread"]);
   });
 
   it("finds items containing every term and keeps their ancestors", () => {
