@@ -19,3 +19,4 @@ session report; the records here hold the choices behind them.
 7. [Import adds to the page instead of replacing the outline](0007-import-adds-instead-of-replacing.md)
 8. [Selecting items is a mode without a caret](0008-selecting-items-is-a-mode-without-a-caret.md)
 9. [Reuse rows between renders](0009-reuse-rows-between-renders.md) (supersedes part of 2)
+10. [Version the service worker by content](0010-version-the-service-worker-by-content.md) (supersedes part of 5)

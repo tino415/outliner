@@ -463,6 +463,12 @@ kbd {
   box-shadow: 0 0 0 4px var(--halo);
 }
 
+.bullet.pressed .dot {
+  transform: scale(1.8);
+  box-shadow: 0 0 0 5px var(--accent-soft);
+  background: var(--accent);
+}
+
 .folded > .row .bullet:hover .dot {
   box-shadow: 0 0 0 4px var(--faint);
 }
@@ -568,6 +574,10 @@ code {
 .completed .completed > .row,
 .completed .completed > .children {
   opacity: 1;
+}
+
+.searching .toggle {
+  visibility: hidden;
 }
 
 .searching .item:not(.match) > .row .text {

@@ -1,38 +1,37 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
 /**
- * Emits sw.js with the exact list of files in this build, so the service
- * worker can precache everything the app needs to start offline.
+ * Writes sw.js after the build, listing every built file and versioned by a
+ * hash of their contents, so any change at all, index.html and public files
+ * included, installs a new service worker.
  */
 function serviceWorker(): Plugin {
   return {
     name: "outliner-service-worker",
     apply: "build",
-    generateBundle(_options, bundle) {
-      const files = [".", ...Object.keys(bundle).filter((name) => !name.endsWith(".map"))];
-      const version = createHash("sha256").update(files.join("\n")).digest("hex").slice(0, 12);
+    writeBundle(options) {
+      const dir = options.dir!;
+      const files = filesUnder(dir).filter((file) => file !== "sw.js").sort();
+      const hash = createHash("sha256");
+      for (const file of files) hash.update(file).update(readFileSync(join(dir, file)));
       const template = readFileSync("src/sw.template.js", "utf8");
-      this.emitFile({
-        type: "asset",
-        fileName: "sw.js",
-        source: template
-          .replace("__VERSION__", version)
-          .replace("__PRECACHE__", JSON.stringify(files.concat(publicFiles))),
-      });
+      const precache = [".", ...files.filter((file) => file !== "index.html")];
+      writeFileSync(
+        join(dir, "sw.js"),
+        template.replace("__VERSION__", hash.digest("hex").slice(0, 12)).replace("__PRECACHE__", JSON.stringify(precache)),
+      );
     },
   };
 }
 
-const publicFiles = [
-  "manifest.webmanifest",
-  "icons/icon.svg",
-  "icons/icon-192.png",
-  "icons/icon-512.png",
-  "icons/maskable-512.png",
-  "icons/apple-touch-icon.png",
-];
+function filesUnder(dir: string, root = dir): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? filesUnder(join(dir, entry.name), root) : [relative(root, join(dir, entry.name))],
+  );
+}
 
 export default defineConfig({
   base: "./",

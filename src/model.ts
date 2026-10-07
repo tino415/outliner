@@ -390,13 +390,17 @@ export function outdentAll(doc: Doc, roots: ItemId[], top: ItemId): Doc {
 }
 
 export function moveAllUp(doc: Doc, roots: ItemId[], filter: ViewFilter): Doc {
-  if (roots.length === 0 || moveUp(doc, roots[0], filter) === doc) return doc;
+  if (!areSiblings(doc, roots) || moveUp(doc, roots[0], filter) === doc) return doc;
   return roots.reduce((current, id) => moveUp(current, id, filter), doc);
 }
 
 export function moveAllDown(doc: Doc, roots: ItemId[], filter: ViewFilter): Doc {
-  if (roots.length === 0 || moveDown(doc, roots.at(-1)!, filter) === doc) return doc;
+  if (!areSiblings(doc, roots) || moveDown(doc, roots.at(-1)!, filter) === doc) return doc;
   return [...roots].reverse().reduce((current, id) => moveDown(current, id, filter), doc);
+}
+
+function areSiblings(doc: Doc, ids: ItemId[]): boolean {
+  return ids.length > 0 && ids.every((id) => doc.items[id].parent === doc.items[ids[0]].parent);
 }
 
 export function completeAll(doc: Doc, roots: ItemId[]): Doc {
