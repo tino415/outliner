@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
+
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    npm_config_update_notifier=false
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

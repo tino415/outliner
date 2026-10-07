@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace:z
+      - node_modules:/workspace/node_modules
+    ports:
+      - "127.0.0.1:5188:5188"
+    init: true
+
+volumes:
+  node_modules:
