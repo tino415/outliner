@@ -46,6 +46,14 @@ export class History {
     this.lastTypingKey = null;
   }
 
+  /** Starts over from `next` with no undo history, so an undo can never revert what another device wrote. */
+  reset(next: Doc): void {
+    this.past = [];
+    this.future = [];
+    this.lastTypingKey = null;
+    this.doc = next;
+  }
+
   undo(caretNow: Caret | null): Caret | null | undefined {
     const previous = this.past.pop();
     if (!previous) return undefined;

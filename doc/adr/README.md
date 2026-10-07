@@ -24,3 +24,4 @@ session report; the records here hold the choices behind them.
 12. [Merge fields by hybrid clock, order by fractional position](0012-merge-fields-by-hybrid-clock-order-by-fractional-position.md)
 13. [A dependency-free Node server with SQLite](0013-a-dependency-free-node-server-with-sqlite.md)
 14. [A stateless CLI instead of an MCP server](0014-a-stateless-cli-instead-of-an-mcp-server.md)
+15. [Remote changes reset undo history](0015-remote-changes-reset-undo-history.md)
