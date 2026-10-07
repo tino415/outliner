@@ -8,7 +8,23 @@ services:
       - node_modules:/workspace/node_modules
     ports:
       - "127.0.0.1:5188:5188"
+    env_file: .env.sync
+    environment:
+      OUTLINE_SERVER: http://sync:8791
+    init: true
+
+  sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    env_file: .env.sync
+    volumes:
+      - sync_data:/data
+    ports:
+      - "127.0.0.1:8791:8791"
+    restart: unless-stopped
     init: true
 
 volumes:
   node_modules:
+  sync_data:

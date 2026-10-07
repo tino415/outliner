@@ -128,7 +128,7 @@ async function connect(endpoint: Endpoint): Promise<"joined" | "uploaded"> {
   const newClock = clockFor(fresh);
   for (const change of response.changes) newClock.observe(change.clock);
   merge(fresh.replica, response.changes);
-  const serverHasOutline = Object.keys(fresh.replica).some((id) => id !== ROOT);
+  const serverHasOutline = materialize(fresh.replica).items[ROOT].children.length > 0;
   if (!serverHasOutline) {
     const upload = diff(emptyDoc(), doc(), fresh.replica, () => newClock.tick());
     merge(fresh.replica, upload);
