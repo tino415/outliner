@@ -25,3 +25,4 @@ session report; the records here hold the choices behind them.
 13. [A dependency-free Node server with SQLite](0013-a-dependency-free-node-server-with-sqlite.md)
 14. [A stateless CLI instead of an MCP server](0014-a-stateless-cli-instead-of-an-mcp-server.md)
 15. [Remote changes reset undo history](0015-remote-changes-reset-undo-history.md)
+16. [Touch: a large fold target and swipes on rows](0016-touch-gestures-on-rows.md)
