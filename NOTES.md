@@ -64,14 +64,16 @@ made it in.
 ### How it was checked
 
 - 48 unit tests (tree operations, import and export, inline rendering, undo
-  history) and 127 browser tests run in the container on desktop Chromium,
+  history) and 128 browser tests run in the container on desktop Chromium,
   a Pixel 7 profile, desktop WebKit, an iPhone 15 profile and Firefox:
   keyboard flows, zoom, search, palette, selection, drag and drop, item menu,
   phone toolbar and virtual-keyboard input, offline start, persistence, cross-
   tab saves, a 5,000-item render budget.
-- Three review rounds by separate agents found 23 bugs; each fix came with a
-  test that failed first (`e2e/regressions.spec.ts`), plus a four-angle
-  simplification pass over the whole of `src/`.
+- Three review rounds by separate agents found 24 bugs (14, 9, then 1 after
+  the refactor), and running the phone tests on iPhone WebKit found one more
+  (toolbar taps ignored). Each fix came with a test shown failing first
+  (`e2e/regressions.spec.ts`). A four-angle simplification pass went over the
+  whole of `src/`.
 
 ### Known bugs and limits
 
