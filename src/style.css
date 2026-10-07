@@ -807,6 +807,137 @@ code {
   margin: 0 5px;
 }
 
+/* ---- properties and the column view ------------------------------------------ */
+
+.prop {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 1px 0;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--fg);
+  font-size: 0.95em;
+}
+
+.prop-key {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+:focus > .prop {
+  display: inline;
+  padding: 0;
+  background: none;
+}
+
+:focus > .prop .prop-key {
+  font-size: inherit;
+}
+
+.note:not(:focus):has(.prop) {
+  -webkit-line-clamp: unset;
+}
+
+:root {
+  --cell: 6.2em;
+}
+
+.tree.with-columns .row {
+  grid-template-columns: var(--toggle) var(--bullet-col) minmax(0, 1fr) auto;
+}
+
+.cells {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding-left: 10px;
+}
+
+.cell {
+  width: var(--cell);
+  min-height: calc(var(--line) * 1em + 6px);
+  padding: 3px 6px;
+  border-radius: 6px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  cursor: text;
+}
+
+.row .cell:not(.rolled):hover {
+  background: var(--hover);
+}
+
+.cell.rolled {
+  font-weight: 650;
+  cursor: default;
+}
+
+.completed > .row .cell {
+  color: var(--muted);
+}
+
+.tree.with-columns .note.as-columns:not(:focus) {
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cell-input {
+  width: 100%;
+  border: 0;
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  text-align: right;
+}
+
+.columns-head {
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top));
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.cell.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-height: 0;
+  cursor: default;
+}
+
+.column-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.column-total {
+  font-weight: 700;
+}
+
+.columns-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 /* ---- sync ----------------------------------------------------------------- */
 
 .sync-status {
@@ -1324,6 +1455,7 @@ body.dragging {
     --toggle: 24px;
     --bullet-col: 22px;
     --text-base: 17px;
+    --cell: 4.6em;
   }
 
   .topbar {

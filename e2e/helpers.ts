@@ -34,7 +34,8 @@ function docFrom(outline: string) {
       const indent = line.length - line.trimStart().length;
       while (stack.at(-1)!.indent >= indent) stack.pop();
       const parent = stack.at(-1)!.item;
-      const item = { ...root, id: `i${i}`, text: line.trim(), parent: parent.id, children: [] as string[] };
+      const [text, note = ""] = line.trim().split(" | ");
+      const item = { ...root, id: `i${i}`, text, note: note.replaceAll("; ", "\n"), parent: parent.id, children: [] as string[] };
       items[item.id] = item;
       parent.children.push(item.id);
       stack.push({ indent, item });

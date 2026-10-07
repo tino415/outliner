@@ -1,5 +1,6 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
-import { escape, itemLabel, renderInline, shortLabel } from "./inline";
+import { Cell, Column, columnCells, declaredColumns, inferredColumns, propertyLine } from "./properties";
+import { escape, itemLabel, renderInline, renderNote, shortLabel } from "./inline";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
@@ -16,8 +17,10 @@ export function render(request: FocusRequest): void {
   const candidates = request === null ? [] : [request].flat();
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
+  columns = columnView();
   renderCrumbs();
   renderHead();
+  renderColumnsHead();
   renderTree();
   renderSearchSummary();
   renderMenuState();
@@ -49,9 +52,85 @@ function renderHead(): void {
   ui.titleNote.dataset.id = item.id;
   if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderInline(item.text);
   ui.title.classList.toggle("empty", item.text === "");
-  if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderInline(item.note);
+  if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
   document.title = titleFor(item.id);
+}
+
+// ---- the column view (doc/adr/0017) --------------------------------------------------------
+
+interface ColumnView {
+  columns: Column[];
+  cells: Map<ItemId, Map<string, Cell>>;
+}
+
+let columns: ColumnView | null = null;
+
+export function columnViewShown(): boolean {
+  const declared = declaredColumns(doc(), state.zoom);
+  return state.prefs.columnPages[state.zoom] ?? declared !== null;
+}
+
+function columnView(): ColumnView | null {
+  if (!columnViewShown()) return null;
+  const chosen = declaredColumns(doc(), state.zoom) ?? inferredColumns(doc(), state.zoom);
+  return { columns: chosen, cells: columnCells(doc(), state.zoom, chosen) };
+}
+
+const SUMMARY_LABELS: Record<Column["summary"], string> = { sum: "total", min: "least", max: "most", mean: "average" };
+
+function renderColumnsHead(): void {
+  const head = ui.columnsHead;
+  head.hidden = !columns;
+  ui.tree.classList.toggle("with-columns", Boolean(columns?.columns.length));
+  if (!columns) return;
+  if (columns.columns.length === 0) {
+    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one to a note as <code>calories:: 350</code>.</p>`;
+    return;
+  }
+  hidePropertiesShownAsColumns(columns.columns);
+  const totals = columns.cells.get(state.zoom)!;
+  head.innerHTML =
+    `<div class="cells">` +
+    columns.columns
+      .map(
+        (column) =>
+          `<div class="cell head"><span class="column-name">${escape(column.key)}</span>` +
+          `<span class="column-total" title="${SUMMARY_LABELS[column.summary]}">${escape(totals.get(column.key)?.text ?? "")}</span></div>`,
+      )
+      .join("") +
+    `</div>`;
+}
+
+/** True when every line of the note is a property the column view already shows. */
+function noteShownAsColumns(note: string): boolean {
+  if (!columns || note === "") return false;
+  const keys = new Set(columns.columns.map((column) => column.key));
+  return note.split("\n").every((line) => keys.has(propertyLine(line)?.key ?? ""));
+}
+
+/** A property already shown in a cell is not repeated in the note, unless the note is being edited. */
+function hidePropertiesShownAsColumns(shown: Column[]): void {
+  const style = document.getElementById("column-properties") ?? document.head.appendChild(Object.assign(document.createElement("style"), { id: "column-properties" }));
+  style.textContent = shown
+    .map((column) => `.tree.with-columns .note:not(:focus) .prop-line[data-key="${CSS.escape(column.key)}"] { display: none; }`)
+    .join("\n");
+}
+
+function cellsOf(id: ItemId): string {
+  if (!columns?.columns.length) return "";
+  const row = columns.cells.get(id);
+  return (
+    `<div class="cells">` +
+    columns.columns
+      .map((column) => {
+        const cell = row?.get(column.key);
+        const title = cell?.rolled ? ` title="${SUMMARY_LABELS[column.summary]} of the items below"` : "";
+        return `<button type="button" tabindex="-1" class="cell${cell?.rolled ? " rolled" : ""}" data-key="${escape(column.key)}"${title}>${escape(cell?.text ?? "")}</button>`;
+      })
+      .join("") +
+    `</div>`
+  );
 }
 
 export function titleFor(id: ItemId): string {
@@ -107,13 +186,15 @@ function renderItem(id: ItemId): HTMLLIElement {
   const hasChildren = shown.length > 0;
   const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
   const noteOpen = item.note !== "" || state.openNotes.has(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen}`;
+  const cells = cellsOf(id);
+  const noteAsColumns = noteShownAsColumns(item.note);
+  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${noteAsColumns} ${cells}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(createRow(item, expanded, noteOpen));
+    li.prepend(createRow(item, expanded, noteOpen, cells, noteAsColumns));
     rendered = { item, state: displayState, li };
     renderedRows.set(id, rendered);
   }
@@ -149,7 +230,7 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, noteAsColumns: boolean): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
@@ -157,8 +238,9 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean): HTMLElemen
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderInline(item.text)}</div>` +
-    `<div class="note" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderInline(item.note)}</div>` +
-    `</div>`;
+    `<div class="note${noteAsColumns ? " as-columns" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
+    `</div>` +
+    cells;
   return row;
 }
 

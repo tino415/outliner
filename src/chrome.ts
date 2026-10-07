@@ -8,7 +8,8 @@ import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
 import { jumpToItem, setQuery, showZoom, zoomTo } from "./navigation";
-import { focusCaret, render, textEditorFor, treeEditors } from "./render";
+import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
+import { bindColumnCells, toggleColumnView } from "./columns";
 
 export function bindChrome(): void {
   bindSearchBox();
@@ -17,6 +18,7 @@ export function bindChrome(): void {
   bindItemMenu();
   bindGlobalKeys();
   endSelectionWhenSomethingTakesFocus();
+  bindColumnCells();
 
   window.addEventListener("hashchange", showZoom);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
@@ -44,6 +46,7 @@ export const globalActions = {
   },
   help: () => (ui.help.open ? ui.help.close() : ui.help.showModal()),
   toggleCompleted: () => menuActions["toggle-completed"](),
+  toggleColumns: () => toggleColumnView(),
   undo: () => undo(),
   redo: () => redo(),
   clearSearch: (): boolean | void => {
@@ -122,6 +125,7 @@ const menuActions: Record<string, () => void> = {
     ui.menu.hidePopover();
     jumpToItem();
   },
+  "toggle-columns": () => toggleColumnView(),
   "toggle-completed": () => {
     updatePrefs({ showCompleted: !state.prefs.showCompleted });
     render(caretNow());
@@ -290,6 +294,7 @@ export function renderMenuState(): void {
     }
   }
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
+  $("columns-switch").classList.toggle("on", columnViewShown());
 }
 
 export function applyAppearance(): void {

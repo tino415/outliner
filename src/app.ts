@@ -21,6 +21,7 @@ export const ui = {
   addItem: $<HTMLButtonElement>("add-item"),
   search: $<HTMLInputElement>("search"),
   searchSummary: $("search-summary"),
+  columnsHead: $("columns-head"),
   menu: $("menu"),
   completedSwitch: $("completed-switch"),
   importFile: $<HTMLInputElement>("import-file"),

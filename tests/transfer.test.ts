@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ROOT, setFlags } from "../src/model";
 import { exportMarkdown, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
-import { renderInline } from "../src/inline";
+import { renderInline, renderNote } from "../src/inline";
 
 describe("export", () => {
   const doc = (() => {
@@ -90,6 +90,14 @@ describe("renderInline", () => {
     expect(html).toContain("<code>");
     expect(html).toContain('data-tag="#t"');
     expect(html).toContain('href="https://a.b"');
+  });
+
+  it("keeps a note's raw text while showing properties as key and value", () => {
+    const note = "Bought at the *market*\ncalories::  350 kcal\n  effort:: 1h";
+    const html = renderNote(note);
+    expect(textOf(html)).toBe(note);
+    expect(html).toContain('<span class="prop-key">calories</span>');
+    expect(html).toContain("<em>");
   });
 
   it("does not treat multiplication as italic", () => {

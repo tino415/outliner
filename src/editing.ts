@@ -25,7 +25,7 @@ import {
 import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
 import { openPalette } from "./palette";
-import { itemLabel, renderInline, shortLabel } from "./inline";
+import { itemLabel, renderInline, renderNote, shortLabel } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -34,6 +34,7 @@ import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectW
 import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
+import { refreshAfterNoteEdit } from "./columns";
 
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
@@ -67,7 +68,8 @@ export function bindEditorEvents(): void {
     const editor = editorOf(event.target);
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item) return;
-    editor.innerHTML = renderInline(isNoteEditor(editor) ? item.note : item.text);
+    editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderInline(item.text);
+    if (isNoteEditor(editor)) refreshAfterNoteEdit();
     if (isNoteEditor(editor) && item.note === "") {
       state.openNotes.delete(item.id);
       editor.hidden = true;

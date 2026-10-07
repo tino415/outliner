@@ -43,6 +43,7 @@
         <div class="note title-note" id="title-note" contenteditable="plaintext-only" spellcheck="true" hidden></div>
       </div>
       <div class="search-summary" id="search-summary" hidden></div>
+      <div class="columns-head" id="columns-head" hidden></div>
       <ul class="tree" id="tree" role="tree"></ul>
       <button class="add-item" id="add-item" type="button">
         <span class="add-plus" aria-hidden="true">+</span><span class="add-label">Add an item</span>
@@ -68,6 +69,9 @@
         <button type="button" class="menu-item" data-action="jump"><span>Jump to…</span><kbd class="menu-kbd">Ctrl K</kbd></button>
         <button type="button" class="menu-item" data-action="toggle-completed">
           <span>Show completed</span><span class="switch" id="completed-switch" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="menu-item" data-action="toggle-columns">
+          <span>Columns</span><span class="switch" id="columns-switch" aria-hidden="true"></span>
         </button>
         <button type="button" class="menu-item" data-action="expand-all"><span>Expand all</span></button>
         <button type="button" class="menu-item" data-action="collapse-all"><span>Collapse all</span></button>
