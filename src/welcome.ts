@@ -1,5 +1,6 @@
 import { Doc, ROOT, setFlags, setText } from "./model";
 import { parseIndentedText } from "./transfer";
+import { keyNames } from "./platform";
 
 const WELCOME = `
 Welcome to your outline
@@ -12,6 +13,7 @@ Welcome to your outline
   **Ctrl Enter** completes an item
   Backspace at the start of an item joins it with the one above
   Search with **/** or Ctrl F, or click a tag like #ideas
+  **Ctrl K** jumps to any item by name
   Press **?** for every shortcut
 Things to try
   Plan the week #planning
@@ -33,7 +35,7 @@ Install it
 `;
 
 export function welcomeDoc(): Doc {
-  let doc = parseIndentedText(WELCOME);
+  let doc = parseIndentedText(keyNames(WELCOME));
   doc = setText(doc, ROOT, "Home");
   const items = Object.values(doc.items);
   const byText = (text: string) => items.find((item) => item.text === text)!;
@@ -41,7 +43,7 @@ export function welcomeDoc(): Doc {
   doc = setFlags(doc, byText("Indented items can be folded away").id, { collapsed: true });
   doc = setFlags(doc, byText("Groceries").id, { collapsed: true });
   doc = setFlags(doc, byText("Plan the week #planning").id, {
-    note: "Notes sit under an item. Shift Enter opens one.",
+    note: keyNames("Notes sit under an item. Shift Enter opens one."),
   });
   return doc;
 }

@@ -27,6 +27,11 @@ for (const theme of ["light", "dark"] as const) {
     await page.waitForTimeout(300);
     await shot("zoomed");
 
+    await row(page, "Monday: write the draft").locator(".bullet").click();
+    await page.locator(".title", { hasText: "Monday" }).waitFor();
+    await page.waitForTimeout(300);
+    await shot("empty-page");
+
     await page.locator(".crumb.home").click();
     await page.locator("#search").fill("ideas");
     await page.waitForTimeout(150);

@@ -1,5 +1,6 @@
 import { EditorContext, actions } from "./app";
 import { escape } from "./inline";
+import { isMac } from "./platform";
 
 export interface Binding {
   keys: string[];
@@ -104,8 +105,6 @@ function baseKey(event: KeyboardEvent): string {
   if (event.code === "BracketRight") return "]";
   return event.key;
 }
-
-export const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 function pretty(keys: string): string {
   return keys
