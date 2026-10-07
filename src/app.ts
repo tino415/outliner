@@ -9,6 +9,7 @@ import { zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { startSync, syncedDoc } from "./syncing";
+import { enableRowSwipes } from "./gestures";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -58,6 +59,7 @@ export function start(): void {
     },
     openMenu: openItemMenu,
   });
+  enableRowSwipes(ui.tree);
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();
     state.history.replaceFromElsewhere(incoming);

@@ -357,7 +357,7 @@ kbd {
 .children::before {
   content: "";
   position: absolute;
-  left: calc(var(--toggle) / 2 - 1px);
+  left: calc(var(--toggle) - var(--bullet-col) / 2 - 0.5px);
   top: 2px;
   bottom: 6px;
   width: 1px;
@@ -1212,9 +1212,77 @@ body.dragging {
   }
 }
 
+.swipe-band {
+  position: absolute;
+  left: calc(var(--toggle) + 2px);
+  right: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+
+.swipe-band[data-side="right"] {
+  justify-content: flex-end;
+}
+
+.swipe-band.armed {
+  color: #fff;
+}
+
+.swipe-band.armed[data-action="complete"],
+.swipe-band.armed[data-action="reopen"] {
+  background: light-dark(#2f9e5b, #2b7a4b);
+}
+
+.swipe-band.armed[data-action="collapse"],
+.swipe-band.armed[data-action="expand"],
+.swipe-band.armed[data-action="menu"] {
+  background: var(--accent);
+}
+
+.item:has(> .swipe-band) {
+  position: relative;
+}
+
+.item:has(> .swipe-band) > .row {
+  position: relative;
+  z-index: 1;
+  background: var(--bg);
+}
+
 @media (pointer: coarse) {
   .toolbar.active {
     display: flex;
+  }
+
+  .row {
+    touch-action: pan-y;
+  }
+
+  .toggle {
+    position: relative;
+  }
+
+  .toggle::after {
+    content: "";
+    position: absolute;
+    inset: -6px 0 -6px -14px;
+  }
+
+  .toggle svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .has-children > .row .toggle {
+    opacity: 0.7;
   }
 
   .menu kbd,
@@ -1253,7 +1321,7 @@ body.dragging {
 
 @media (max-width: 640px) {
   :root {
-    --toggle: 18px;
+    --toggle: 24px;
     --bullet-col: 22px;
     --text-base: 17px;
   }
@@ -1281,7 +1349,7 @@ body.dragging {
   }
 
   .tree {
-    margin-left: calc(-1 * var(--toggle) + 4px);
+    margin-left: calc(-1 * var(--toggle) + 10px);
   }
 
   .page-head,

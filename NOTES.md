@@ -8,9 +8,11 @@ below; part 1's report follows it.
 
 ## Backlog (from Martin, 2026-10-08)
 
-1. **Phone usage.** The expand / collapse toggle is too small and unpleasant
-   on a phone. Research and implement improvements, gestures included; the
-   choice of gestures is open.
+1. ~~**Phone usage.**~~ Done (ADR 0016): a fold target the height of the row
+   and wider than the chevron, always visible on touch; swipe right to
+   complete or reopen, swipe left to fold or, without children, to open the
+   item menu; Collapse / Expand in the item menu. Tested with real touch
+   input on the Pixel profile.
 2. **Properties and column view, as in org mode.** Martin uses org's
    properties and column view for:
    - time planning: an effort on each subheading, summed on every parent;
@@ -93,7 +95,8 @@ Use 'sudo tailscale serve --bg --https=10001 http://127.0.0.1:8791'.
 To not require root, use 'sudo tailscale set --operator=$USER' once.
 ```
 
-Port 10001 was free at the time (10000, 443 and 8443 are taken).
+Port 10001 was free at the time (10000, 443 and 8443 are taken). Martin ran
+it with sudo; `https://dev.taile622dc.ts.net:10001/health` answers.
 
 Known limits:
 
