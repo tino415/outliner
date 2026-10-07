@@ -1013,6 +1013,40 @@ body.dragging {
   box-sizing: border-box;
 }
 
+.topbar {
+  box-shadow: 0 1px 0 transparent;
+  transition: box-shadow 0.2s;
+}
+
+.scrolled .topbar {
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.children.opening {
+  animation: open 0.2s ease-out;
+}
+
+@keyframes open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media print {
+  .topbar,
+  .toolbar,
+  .add-item,
+  .toast,
+  .toggle {
+    display: none !important;
+  }
+
+  .page {
+    padding: 0;
+  }
+}
+
 /* ---- touch and narrow screens ----------------------------------------------- */
 
 @media (hover: none) {
@@ -1024,6 +1058,12 @@ body.dragging {
 @media (pointer: coarse) {
   .toolbar.active {
     display: flex;
+  }
+
+  .menu kbd,
+  .search-hint,
+  [data-action="help"] {
+    display: none;
   }
 
   body:has(.toolbar.active) .toast {
