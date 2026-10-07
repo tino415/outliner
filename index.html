@@ -16,6 +16,7 @@
         try {
           const prefs = JSON.parse(localStorage.getItem("outliner-lab:prefs:v1") || "{}");
           if (prefs.theme === "light" || prefs.theme === "dark") document.documentElement.dataset.theme = prefs.theme;
+          if (prefs.textSize === "small" || prefs.textSize === "large") document.documentElement.dataset.size = prefs.textSize;
         } catch {}
       })();
     </script>
@@ -50,10 +51,16 @@
     <div class="menu" id="menu" popover>
       <div class="menu-section">
         <div class="menu-label">Theme</div>
-        <div class="segmented" id="theme-choice" role="radiogroup" aria-label="Theme">
-          <button type="button" data-theme="system" role="radio">Auto</button>
-          <button type="button" data-theme="light" role="radio">Light</button>
-          <button type="button" data-theme="dark" role="radio">Dark</button>
+        <div class="segmented" data-pref="theme" role="radiogroup" aria-label="Theme">
+          <button type="button" data-value="system" role="radio">Auto</button>
+          <button type="button" data-value="light" role="radio">Light</button>
+          <button type="button" data-value="dark" role="radio">Dark</button>
+        </div>
+        <div class="menu-label">Text size</div>
+        <div class="segmented" data-pref="textSize" role="radiogroup" aria-label="Text size">
+          <button type="button" data-value="small" role="radio" class="size-small">Aa</button>
+          <button type="button" data-value="medium" role="radio">Aa</button>
+          <button type="button" data-value="large" role="radio" class="size-large">Aa</button>
         </div>
       </div>
       <div class="menu-section">

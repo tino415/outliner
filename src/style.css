@@ -27,6 +27,16 @@
   --toggle: 20px;
   --bullet-col: 22px;
   --keyboard: 0px;
+  --text-base: 16px;
+  --text-scale: 1;
+}
+
+:root[data-size="small"] {
+  --text-scale: 0.9;
+}
+
+:root[data-size="large"] {
+  --text-scale: 1.15;
 }
 
 :root[data-theme="light"] {
@@ -264,6 +274,7 @@ kbd {
 /* ---- page ----------------------------------------------------------------- */
 
 .page {
+  font-size: calc(var(--text-base) * var(--text-scale));
   max-width: 760px;
   margin: 0 auto;
   padding: 36px max(28px, env(safe-area-inset-right)) 40vh max(28px, env(safe-area-inset-left));
@@ -277,7 +288,7 @@ kbd {
 
 .title {
   margin: 0;
-  font-size: 32px;
+  font-size: 2em;
   line-height: 1.25;
   font-weight: 680;
   letter-spacing: -0.022em;
@@ -478,7 +489,7 @@ kbd {
 }
 
 .note {
-  font-size: 14px;
+  font-size: 0.875em;
   line-height: 1.5;
   color: var(--muted);
   padding: 1px 0 3px;
@@ -492,7 +503,7 @@ kbd {
 }
 
 .title-note {
-  font-size: 15px;
+  font-size: 0.94em;
 }
 
 .md {
@@ -682,6 +693,14 @@ code {
   border-radius: 7px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.segmented .size-small {
+  font-size: 11px;
+}
+
+.segmented .size-large {
+  font-size: 16px;
 }
 
 .segmented button[aria-checked="true"] {
@@ -1122,10 +1141,7 @@ body.dragging {
   :root {
     --toggle: 18px;
     --bullet-col: 22px;
-  }
-
-  body {
-    font-size: 17px;
+    --text-base: 17px;
   }
 
   .topbar {
@@ -1161,7 +1177,7 @@ body.dragging {
   }
 
   .title {
-    font-size: 27px;
+    font-size: 1.6em;
   }
 }
 
