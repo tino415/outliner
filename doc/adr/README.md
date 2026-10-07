@@ -20,3 +20,7 @@ session report; the records here hold the choices behind them.
 8. [Selecting items is a mode without a caret](0008-selecting-items-is-a-mode-without-a-caret.md)
 9. [Reuse rows between renders](0009-reuse-rows-between-renders.md) (supersedes part of 2)
 10. [Version the service worker by content](0010-version-the-service-worker-by-content.md) (supersedes part of 5)
+11. [Sync through a server; every client keeps a full copy](0011-sync-through-a-server-every-client-keeps-a-copy.md)
+12. [Merge fields by hybrid clock, order by fractional position](0012-merge-fields-by-hybrid-clock-order-by-fractional-position.md)
+13. [A dependency-free Node server with SQLite](0013-a-dependency-free-node-server-with-sqlite.md)
+14. [A stateless CLI instead of an MCP server](0014-a-stateless-cli-instead-of-an-mcp-server.md)

@@ -3,6 +3,48 @@
 A WorkFlowy-style outliner as an installable, offline PWA. Everything stays in
 the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 
+Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
+below; part 1's report follows it.
+
+## Part 2: sync and a CLI
+
+Asked for: the same outline on several devices, plus a CLI for scripting and
+for AI agents (an MCP server would be the other option; a CLI was preferred).
+Decided with Martin: a server on `dev`, reachable over Tailscale only; no
+migration of existing outlines.
+
+Decisions are in doc/adr 0011 to 0014. In short: a small sync server on
+`dev`, every client keeps a full copy and merges, fields win by a hybrid
+clock, order is kept as fractional positions, the server is Node with its
+built-in SQLite and no dependencies, and the CLI is a stateless client of the
+same server.
+
+Scope:
+
+1. A shared sync core: per-field changes stamped with a hybrid logical
+   clock, diffing two documents into changes, merging changes into a
+   replica, and building a document back from a replica (deterministic, so
+   every replica shows the same tree, cycles from concurrent moves broken
+   the same way everywhere).
+2. A sync server: `POST /sync` takes a client's changes and returns
+   everything newer than what the client has seen. SQLite file, bearer
+   token, CORS for the app's origins.
+3. The app: a "Sync" panel in the menu (server URL and token), syncing on
+   every change, on focus and every few seconds, a status dot, offline edits
+   kept and sent later. Connecting adopts the server's outline if it has
+   one, otherwise uploads this device's.
+4. A CLI, `outline`, for people and agents: show, find, add, edit, done,
+   undone, move, delete, export, all with `--json`, items addressed by id or
+   by a text path.
+5. Deployment: a `sync` service in compose.yaml on 127.0.0.1:8791, put on
+   the tailnet with `tailscale serve` (asked before doing it).
+6. Tests: convergence of random concurrent edits, server and CLI against a
+   real server, two browsers syncing through it.
+
+Cut: end-to-end encryption, accounts and several users, real-time push
+(polling instead), an MCP server (the CLI covers agents that have a shell),
+history on the server.
+
 ## Report
 
 ### Where it is
