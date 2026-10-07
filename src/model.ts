@@ -21,7 +21,7 @@ export interface ViewFilter {
   showCompleted: boolean;
 }
 
-export function newId(): ItemId {
+function newId(): ItemId {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
 
@@ -104,26 +104,26 @@ export function indexInParent(doc: Doc, id: ItemId): number {
   return parent ? doc.items[parent].children.indexOf(id) : 0;
 }
 
-export function previousSibling(doc: Doc, id: ItemId): ItemId | null {
-  const parent = doc.items[id].parent;
-  if (!parent) return null;
-  return doc.items[parent].children[indexInParent(doc, id) - 1] ?? null;
+function previousShownSibling(doc: Doc, id: ItemId, filter: ViewFilter): ItemId | null {
+  const siblings = doc.items[doc.items[id].parent!].children;
+  const before = siblings.slice(0, siblings.indexOf(id)).reverse();
+  return before.find((sibling) => isShown(doc, sibling, filter)) ?? null;
 }
 
-export function nextSibling(doc: Doc, id: ItemId): ItemId | null {
-  const parent = doc.items[id].parent;
-  if (!parent) return null;
-  return doc.items[parent].children[indexInParent(doc, id) + 1] ?? null;
+function nextShownSibling(doc: Doc, id: ItemId, filter: ViewFilter): ItemId | null {
+  const siblings = doc.items[doc.items[id].parent!].children;
+  const after = siblings.slice(siblings.indexOf(id) + 1);
+  return after.find((sibling) => isShown(doc, sibling, filter)) ?? null;
+}
+
+export function isBlank(item: Item): boolean {
+  return item.text === "" && item.note === "" && item.children.length === 0;
 }
 
 export function ancestors(doc: Doc, id: ItemId): ItemId[] {
   const chain: ItemId[] = [];
-  let current = doc.items[id]?.parent ?? null;
-  while (current) {
-    chain.unshift(current);
-    current = doc.items[current].parent;
-  }
-  return chain;
+  for (let current = doc.items[id]?.parent ?? null; current; current = doc.items[current].parent) chain.push(current);
+  return chain.reverse();
 }
 
 export function isDescendant(doc: Doc, id: ItemId, ancestor: ItemId): boolean {
@@ -253,13 +253,7 @@ export function split(
 }
 
 export function indent(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
-  const parent = doc.items[id].parent!;
-  const siblings = doc.items[parent].children;
-  const index = siblings.indexOf(id);
-  const newParent = siblings
-    .slice(0, index)
-    .reverse()
-    .find((sibling) => isShown(doc, sibling, filter));
+  const newParent = previousShownSibling(doc, id, filter);
   if (!newParent) return doc;
   return edit(doc, (d) => {
     d.detach(id);
@@ -279,24 +273,15 @@ export function outdent(doc: Doc, id: ItemId, top: ItemId): Doc {
 }
 
 export function moveUp(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
-  const parent = doc.items[id].parent!;
-  const siblings = doc.items[parent].children;
-  const index = siblings.indexOf(id);
-  const target = siblings
-    .slice(0, index)
-    .reverse()
-    .find((sibling) => isShown(doc, sibling, filter));
+  const target = previousShownSibling(doc, id, filter);
   if (!target) return doc;
-  return moveTo(doc, id, parent, siblings.indexOf(target));
+  return moveTo(doc, id, doc.items[id].parent!, indexInParent(doc, target));
 }
 
 export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
-  const parent = doc.items[id].parent!;
-  const siblings = doc.items[parent].children;
-  const index = siblings.indexOf(id);
-  const target = siblings.slice(index + 1).find((sibling) => isShown(doc, sibling, filter));
+  const target = nextShownSibling(doc, id, filter);
   if (!target) return doc;
-  return moveTo(doc, id, parent, siblings.indexOf(target) + 1);
+  return moveTo(doc, id, doc.items[id].parent!, indexInParent(doc, target) + 1);
 }
 
 /** Move `id` so it sits at `index` among `parent`'s current children. */
@@ -405,11 +390,18 @@ function areSiblings(doc: Doc, ids: ItemId[]): boolean {
 
 export function completeAll(doc: Doc, roots: ItemId[]): Doc {
   const completed = !roots.every((id) => doc.items[id].completed);
-  return roots.reduce((current, id) => setFlags(current, id, { completed }), doc);
+  return edit(doc, (d) => {
+    for (const id of roots) d.write(id).completed = completed;
+  });
 }
 
 export function removeAll(doc: Doc, roots: ItemId[]): Doc {
-  return roots.reduce((current, id) => remove(current, id), doc);
+  return edit(doc, (d) => {
+    for (const id of roots) {
+      d.detach(id);
+      d.removeSubtree(id);
+    }
+  });
 }
 
 export function selectionRoots(doc: Doc, selected: ItemId[]): ItemId[] {
@@ -419,4 +411,8 @@ export function selectionRoots(doc: Doc, selected: ItemId[]): ItemId[] {
 
 export function descendantCount(doc: Doc, id: ItemId): number {
   return doc.items[id].children.reduce((sum, child) => sum + 1 + descendantCount(doc, child), 0);
+}
+
+export function subtreeSize(doc: Doc, roots: ItemId[]): number {
+  return roots.reduce((sum, id) => sum + 1 + descendantCount(doc, id), 0);
 }
