@@ -38,11 +38,12 @@ import { Caret, History } from "./store";
 import { Prefs, Theme, discardPendingSave, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
-import { renderInline } from "./inline";
+import { escape, plainText, renderInline } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText, subtreesAsText } from "./transfer";
 import { welcomeDoc } from "./welcome";
-import { Binding, bindingFor, describeKeys, isMac, keyString } from "./keys";
+import { Binding, bindingFor, describeKeys, keyString } from "./keys";
+import { isMac } from "./platform";
 import { enableDragAndDrop } from "./drag";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -459,7 +460,7 @@ export const actions = {
     const hidden = descendantCount(doc(), c.id);
     const next = remove(doc(), c.id);
     commitAndRender(next, focusAfterRemoving([c.id], next));
-    const label = item.text.trim() ? `“${truncate(item.text, 32)}”` : "Item";
+    const label = item.text.trim() ? `“${shortLabel(item.text, 32)}”` : "Item";
     toast(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`, { label: "Undo", run: undo });
   },
 
@@ -507,7 +508,7 @@ export const actions = {
     const around = rowsAround([id]);
     const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
     openPalette({
-      placeholder: `Move “${truncate(doc().items[id].text, 30) || "Untitled"}” to…`,
+      placeholder: `Move “${shortLabel(doc().items[id].text, 30) || "Untitled"}” to…`,
       hint: "It goes to the end of the item you choose",
       candidates: (query) => {
         const found = findItems(doc(), query, 40, (other) => other === id || isDescendant(doc(), other, id));
@@ -518,7 +519,7 @@ export const actions = {
         commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), null);
         const focus = [id, around.before, around.after].find((candidate) => candidate && textEditorFor(candidate));
         if (focus) focusCaret({ id: focus, offset: 0 });
-        toast(`Moved to “${truncate(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, { id, offset: 0 }) });
+        toast(`Moved to “${shortLabel(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, { id, offset: 0 }) });
       },
     });
   },
@@ -863,7 +864,7 @@ function renderCrumbs(): void {
   const parts = trail.map((id) =>
     id === ROOT
       ? `<a class="crumb home" href="#/" aria-label="Home"><svg viewBox="0 0 20 20"><path d="M3.5 9.5L10 4l6.5 5.5M5.5 8v7.5h9V8" /></svg></a>`
-      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escapeText(truncate(doc().items[id].text, 28)) || "Untitled"}</a>`,
+      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escape(shortLabel(doc().items[id].text, 28)) || "Untitled"}</a>`,
   );
   ui.crumbs.innerHTML = parts.join(`<span class="crumb-sep" aria-hidden="true">/</span>`);
   ui.crumbs.classList.toggle("at-home", trail.length === 0);
@@ -883,7 +884,7 @@ function renderHead(): void {
 
 function titleFor(id: ItemId): string {
   const text = doc().items[id].text.trim();
-  return text ? `${truncate(text, 40)} · Outliner` : "Outliner";
+  return text ? `${shortLabel(text, 40)} · Outliner` : "Outliner";
 }
 
 /*
@@ -999,7 +1000,7 @@ function renderSearchSummary(): void {
   if (!results) return;
   const count = results.matches.size;
   ui.searchSummary.innerHTML =
-    `<span>${count === 0 ? "No matches" : count === 1 ? "1 match" : `${count} matches`} for <strong>${escapeText(state.query.trim())}</strong></span>` +
+    `<span>${count === 0 ? "No matches" : count === 1 ? "1 match" : `${count} matches`} for <strong>${escape(state.query.trim())}</strong></span>` +
     `<button type="button" class="link-button" data-action="clear-search">Clear</button>`;
 }
 
@@ -1294,7 +1295,7 @@ let toastTimer: number | undefined;
 
 function toast(message: string, action?: { label: string; run: () => void }): void {
   window.clearTimeout(toastTimer);
-  ui.toast.innerHTML = `<span>${escapeText(message)}</span>`;
+  ui.toast.innerHTML = `<span>${escape(message)}</span>`;
   if (action) {
     const button = document.createElement("button");
     button.type = "button";
@@ -1309,8 +1310,9 @@ function toast(message: string, action?: { label: string; run: () => void }): vo
   toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 5000);
 }
 
-function truncate(text: string, length: number): string {
-  return text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text;
+function shortLabel(text: string, length: number): string {
+  const plain = plainText(text).trim();
+  return plain.length > length ? `${plain.slice(0, length - 1).trimEnd()}…` : plain;
 }
 
 function slug(text: string): string {
@@ -1319,8 +1321,4 @@ function slug(text: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40);
-}
-
-function escapeText(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }

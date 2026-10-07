@@ -1,5 +1,5 @@
 import { Candidate } from "./search";
-import { escape, renderInline } from "./inline";
+import { escape, plainText, renderInline } from "./inline";
 
 export interface PaletteRequest {
   placeholder: string;
@@ -59,7 +59,7 @@ function refresh(): void {
         (candidate, index) =>
           `<li role="option" data-index="${index}">` +
           `<span class="palette-text">${renderInline(candidate.text) || "<em>Untitled</em>"}</span>` +
-          (candidate.path.length ? `<span class="palette-path">${candidate.path.map(escape).join(" / ")}</span>` : "") +
+          (candidate.path.length ? `<span class="palette-path">${candidate.path.map((step) => escape(plainText(step))).join(" / ")}</span>` : "") +
           `</li>`,
       )
       .join("") || `<li class="palette-empty">Nothing found</li>`;

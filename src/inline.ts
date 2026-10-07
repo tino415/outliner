@@ -51,6 +51,14 @@ function marker(text: string): string {
   return `<span class="md">${escape(text)}</span>`;
 }
 
+/** The text as a reader sees it, without markdown markers: for breadcrumbs, titles and labels. */
+export function plainText(text: string): string {
+  const container = document.createElement("div");
+  container.innerHTML = renderInline(text);
+  container.querySelectorAll(".md").forEach((marker) => marker.remove());
+  return container.textContent ?? "";
+}
+
 export function escape(text: string): string {
   return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
