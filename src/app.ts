@@ -35,7 +35,7 @@ import {
   toggleCompleted,
 } from "./model";
 import { Caret, History } from "./store";
-import { Prefs, Theme, discardPendingSave, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
+import { Prefs, discardPendingSave, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
 import { escape, plainText, renderInline } from "./inline";
@@ -57,7 +57,6 @@ const ui = {
   search: $<HTMLInputElement>("search"),
   searchSummary: $("search-summary"),
   menu: $("menu"),
-  themeChoice: $("theme-choice"),
   completedSwitch: $("completed-switch"),
   importFile: $<HTMLInputElement>("import-file"),
   toolbar: $("toolbar"),
@@ -83,7 +82,7 @@ const filter = (): ViewFilter => ({ showCompleted: state.prefs.showCompleted });
 
 export function start(): void {
   state.zoom = zoomFromHash();
-  applyTheme();
+  applyAppearance();
   bindEditorEvents();
   bindChrome();
   bindGlobalKeys();
@@ -1092,11 +1091,12 @@ function bindChrome(): void {
     runMenuAction(button.dataset.action!);
   });
 
-  ui.themeChoice.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-theme]");
+  ui.menu.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-pref] [data-value]");
     if (!button) return;
-    updatePrefs({ theme: button.dataset.theme as Theme });
-    applyTheme();
+    const pref = button.closest<HTMLElement>("[data-pref]")!.dataset.pref as "theme" | "textSize";
+    updatePrefs({ [pref]: button.dataset.value });
+    applyAppearance();
   });
 
   ui.importFile.addEventListener("change", async () => {
@@ -1129,7 +1129,7 @@ function bindChrome(): void {
   $("build-info").textContent = `Stored only in this browser · build ${__BUILD_COMMIT__}`;
   document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyAppearance);
 }
 
 function runMenuAction(action: string): void {
@@ -1275,18 +1275,24 @@ function updatePrefs(change: Partial<Prefs>): void {
 }
 
 function renderMenuState(): void {
-  for (const button of ui.themeChoice.querySelectorAll<HTMLElement>("[data-theme]")) {
-    button.setAttribute("aria-checked", String(button.dataset.theme === state.prefs.theme));
+  for (const group of ui.menu.querySelectorAll<HTMLElement>("[data-pref]")) {
+    const current = state.prefs[group.dataset.pref as "theme" | "textSize"];
+    for (const button of group.querySelectorAll<HTMLElement>("[data-value]")) {
+      button.setAttribute("aria-checked", String(button.dataset.value === current));
+    }
   }
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
 }
 
-function applyTheme(): void {
-  const theme = state.prefs.theme;
-  if (theme === "system") delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
+function applyAppearance(): void {
+  const { theme, textSize } = state.prefs;
+  const root = document.documentElement;
+  if (theme === "system") delete root.dataset.theme;
+  else root.dataset.theme = theme;
+  if (textSize === "medium") delete root.dataset.size;
+  else root.dataset.size = textSize;
   const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelector('meta[name="theme-color"]')!.setAttribute("content", dark ? "#18191d" : "#f7f5f0");
+  document.querySelector('meta[name="theme-color"]')!.setAttribute("content", dark ? "#17181c" : "#f7f5f0");
 }
 
 function bindGlobalKeys(): void {

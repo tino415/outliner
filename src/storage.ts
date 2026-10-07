@@ -7,10 +7,13 @@ export type Theme = "system" | "light" | "dark";
 
 export interface Prefs {
   theme: Theme;
+  textSize: TextSize;
   showCompleted: boolean;
 }
 
-const defaultPrefs: Prefs = { theme: "system", showCompleted: true };
+export type TextSize = "small" | "medium" | "large";
+
+const defaultPrefs: Prefs = { theme: "system", textSize: "medium", showCompleted: true };
 
 export function loadDoc(): Doc | null {
   const raw = localStorage.getItem(DOC_KEY);

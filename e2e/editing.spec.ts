@@ -316,6 +316,22 @@ test.describe("zoom and search", () => {
   });
 });
 
+test.describe("appearance", () => {
+  test("theme and text size are chosen in the menu and survive a reload", async ({ page }) => {
+    await freshOutline(page, "a");
+    const size = () => editor(page, "a").evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+    const normal = await size();
+    await page.locator("#menu-button").click();
+    await page.locator('[data-pref="textSize"] [data-value="large"]').click();
+    await page.locator('[data-pref="theme"] [data-value="dark"]').click();
+    expect(await size()).toBeGreaterThan(normal);
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("html")).toHaveAttribute("data-size", "large");
+    expect(await size()).toBeGreaterThan(normal);
+  });
+});
+
 test.describe("item menu", () => {
   test("right-clicking a bullet offers actions on that item", async ({ page }) => {
     await freshOutline(page, "a\nb\n  b1\nc");
