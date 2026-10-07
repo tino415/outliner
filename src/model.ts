@@ -374,6 +374,45 @@ export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offse
   return { doc: next, offset };
 }
 
+/*
+ * Block operations act on the roots of a selection: selected items whose
+ * ancestors are not selected, in reading order. A block moves as one, so if
+ * its first (or, going down, last) item cannot move, nothing does.
+ */
+
+export function indentAll(doc: Doc, roots: ItemId[], filter: ViewFilter): Doc {
+  if (roots.length === 0 || indent(doc, roots[0], filter) === doc) return doc;
+  return roots.reduce((current, id) => indent(current, id, filter), doc);
+}
+
+export function outdentAll(doc: Doc, roots: ItemId[], top: ItemId): Doc {
+  return [...roots].reverse().reduce((current, id) => outdent(current, id, top), doc);
+}
+
+export function moveAllUp(doc: Doc, roots: ItemId[], filter: ViewFilter): Doc {
+  if (roots.length === 0 || moveUp(doc, roots[0], filter) === doc) return doc;
+  return roots.reduce((current, id) => moveUp(current, id, filter), doc);
+}
+
+export function moveAllDown(doc: Doc, roots: ItemId[], filter: ViewFilter): Doc {
+  if (roots.length === 0 || moveDown(doc, roots.at(-1)!, filter) === doc) return doc;
+  return [...roots].reverse().reduce((current, id) => moveDown(current, id, filter), doc);
+}
+
+export function completeAll(doc: Doc, roots: ItemId[]): Doc {
+  const completed = !roots.every((id) => doc.items[id].completed);
+  return roots.reduce((current, id) => setFlags(current, id, { completed }), doc);
+}
+
+export function removeAll(doc: Doc, roots: ItemId[]): Doc {
+  return roots.reduce((current, id) => remove(current, id), doc);
+}
+
+export function selectionRoots(doc: Doc, selected: ItemId[]): ItemId[] {
+  const set = new Set(selected);
+  return selected.filter((id) => !ancestors(doc, id).some((ancestor) => set.has(ancestor)));
+}
+
 export function descendantCount(doc: Doc, id: ItemId): number {
   return doc.items[id].children.reduce((sum, child) => sum + 1 + descendantCount(doc, child), 0);
 }

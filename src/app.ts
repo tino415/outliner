@@ -4,18 +4,25 @@ import {
   ROOT,
   ViewFilter,
   ancestors,
+  completeAll,
   descendantCount,
   duplicate,
   indent,
+  indentAll,
   insertChild,
   indexInParent,
   isShown,
   mergeInto,
   moveDown,
   moveUp,
+  moveAllDown,
+  moveAllUp,
   outdent,
+  outdentAll,
   remove,
+  removeAll,
   removeCompleted,
+  selectionRoots,
   setCollapsed,
   setCollapsedEverywhere,
   setNote,
@@ -29,9 +36,9 @@ import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, 
 import { SearchResult, search } from "./search";
 import { renderInline } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
-import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
+import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText, subtreesAsText } from "./transfer";
 import { welcomeDoc } from "./welcome";
-import { Binding, bindingFor, describeKeys } from "./keys";
+import { Binding, bindingFor, describeKeys, keyString } from "./keys";
 import { enableDragAndDrop } from "./drag";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -61,6 +68,7 @@ const state = {
   query: "",
   results: null as SearchResult | null,
   openNotes: new Set<ItemId>(),
+  selection: null as { anchor: ItemId; head: ItemId } | null,
 };
 
 const doc = (): Doc => state.history.doc;
@@ -184,6 +192,14 @@ function bindEditorEvents(): void {
   document.addEventListener("mousedown", (event) => {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
+    const focused = editorOf(document.activeElement);
+    const inTree = editor && ui.tree.contains(editor) && focused && ui.tree.contains(focused);
+    if (event.shiftKey && inTree && focused !== editor && !editor.classList.contains("note")) {
+      event.preventDefault();
+      startSelection(focused.dataset.id!, editor.dataset.id!);
+      return;
+    }
+    if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
     if (target.closest("a.link, .tag")) event.preventDefault();
   });
@@ -448,6 +464,18 @@ export const actions = {
     c.editor.blur();
   },
 
+  selectUp(c: EditorContext): boolean | void {
+    if (c.inNote || c.isTitle || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
+    const previous = neighbourEditor(c.editor, -1);
+    startSelection(c.id, previous && previous !== ui.title ? previous.dataset.id! : c.id);
+  },
+
+  selectDown(c: EditorContext): boolean | void {
+    const length = (c.editor.textContent ?? "").length;
+    if (c.inNote || c.isTitle || c.end !== length || !isCaretOnLastLine(c.editor)) return false;
+    startSelection(c.id, neighbourEditor(c.editor, 1)?.dataset.id ?? c.id);
+  },
+
   undo(): void {
     undo();
   },
@@ -510,6 +538,143 @@ function focusAtX(editor: HTMLElement, x: number, edge: "top" | "bottom"): void 
   editor.scrollIntoView({ block: "nearest" });
 }
 
+// ---- selecting several items ------------------------------------------------------
+
+function treeEditors(): HTMLElement[] {
+  return [...ui.tree.querySelectorAll<HTMLElement>(".text[data-id]")];
+}
+
+function selectedIds(): ItemId[] {
+  if (!state.selection) return [];
+  const ids = treeEditors().map((editor) => editor.dataset.id!);
+  const anchor = ids.indexOf(state.selection.anchor);
+  const head = ids.indexOf(state.selection.head);
+  if (anchor === -1 || head === -1) return [];
+  return ids.slice(Math.min(anchor, head), Math.max(anchor, head) + 1);
+}
+
+function startSelection(anchor: ItemId, head: ItemId): void {
+  editorOf(document.activeElement)?.blur();
+  state.selection = { anchor, head };
+  paintSelection();
+}
+
+function clearSelection(): void {
+  if (!state.selection) return;
+  state.selection = null;
+  paintSelection();
+}
+
+function paintSelection(): void {
+  const selected = new Set(selectedIds());
+  if (selected.size === 0) state.selection = null;
+  for (const item of ui.tree.querySelectorAll<HTMLElement>(".item")) {
+    item.classList.toggle("selected", selected.has(item.dataset.id!));
+  }
+  document.body.classList.toggle("selecting", selected.size > 0);
+}
+
+function extendSelection(direction: -1 | 1): void {
+  const editors = treeEditors();
+  const head = editors.findIndex((editor) => editor.dataset.id === state.selection!.head);
+  const next = editors[head + direction];
+  if (!next) return;
+  state.selection = { ...state.selection!, head: next.dataset.id! };
+  paintSelection();
+  next.scrollIntoView({ block: "nearest" });
+}
+
+/** Keys while items are selected. Returns false for keys that should behave as usual. */
+function handleSelectionKey(event: KeyboardEvent): boolean {
+  const roots = selectionRoots(doc(), selectedIds());
+  const keys = keyString(event);
+  const keep = (next: Doc) => commitAndRender(next, null);
+  switch (keys) {
+    case "Shift+ArrowUp":
+      extendSelection(-1);
+      return true;
+    case "Shift+ArrowDown":
+      extendSelection(1);
+      return true;
+    case "ArrowUp":
+    case "ArrowDown": {
+      const head = state.selection!.head;
+      clearSelection();
+      focusCaret({ id: head, offset: keys === "ArrowUp" ? 0 : doc().items[head].text.length });
+      return true;
+    }
+    case "Escape":
+      clearSelection();
+      return true;
+    case "Tab":
+      keep(indentAll(doc(), roots, filter()));
+      return true;
+    case "Shift+Tab":
+      keep(outdentAll(doc(), roots, state.zoom));
+      return true;
+    case "Alt+Shift+ArrowUp":
+    case "Mod+Shift+ArrowUp":
+      keep(moveAllUp(doc(), roots, filter()));
+      return true;
+    case "Alt+Shift+ArrowDown":
+    case "Mod+Shift+ArrowDown":
+      keep(moveAllDown(doc(), roots, filter()));
+      return true;
+    case "Mod+Enter":
+      keep(completeAll(doc(), roots));
+      return true;
+    case "Backspace":
+    case "Delete":
+    case "Mod+Shift+Backspace":
+      deleteSelection(roots);
+      return true;
+    case "Mod+c":
+      copyText(subtreesAsText(doc(), roots));
+      toast(`Copied ${roots.length} item${roots.length === 1 ? "" : "s"}`);
+      return true;
+    case "Mod+x":
+      copyText(subtreesAsText(doc(), roots));
+      deleteSelection(roots);
+      return true;
+    case "Mod+a":
+      state.selection = { anchor: treeEditors()[0].dataset.id!, head: treeEditors().at(-1)!.dataset.id! };
+      paintSelection();
+      return true;
+  }
+  if (!event.metaKey && !event.ctrlKey && event.key.length === 1) clearSelection();
+  return false;
+}
+
+function deleteSelection(roots: ItemId[]): void {
+  const editors = treeEditors();
+  const ids = selectedIds();
+  const before = editors[editors.findIndex((editor) => editor.dataset.id === ids[0]) - 1];
+  const after = editors[editors.findIndex((editor) => editor.dataset.id === ids.at(-1)) + 1];
+  const neighbour = before ?? after;
+  const count = roots.reduce((sum, id) => sum + 1 + descendantCount(doc(), id), 0);
+  state.selection = null;
+  const next = removeAll(doc(), roots);
+  commitAndRender(next, neighbour ? { id: neighbour.dataset.id!, offset: next.items[neighbour.dataset.id!].text.length } : null);
+  toast(`Deleted ${count} item${count === 1 ? "" : "s"}`, { label: "Undo", run: undo });
+}
+
+function copyText(text: string): void {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyWithTextarea(text));
+  } else {
+    copyWithTextarea(text);
+  }
+}
+
+function copyWithTextarea(text: string): void {
+  const area = Object.assign(document.createElement("textarea"), { value: text });
+  area.style.cssText = "position:fixed;opacity:0";
+  document.body.append(area);
+  area.select();
+  document.execCommand("copy");
+  area.remove();
+}
+
 // ---- zoom and search ------------------------------------------------------------
 
 function zoomFromHash(): ItemId {
@@ -566,6 +731,7 @@ function render(focus: Focus | null): void {
   renderSearchSummary();
   renderMenuState();
   highlightMatches();
+  paintSelection();
   if (focus) focusCaret(focus);
 }
 
@@ -879,6 +1045,10 @@ function applyTheme(): void {
 function bindGlobalKeys(): void {
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
+    if (state.selection && !editorOf(event.target) && handleSelectionKey(event)) {
+      event.preventDefault();
+      return;
+    }
     const onPage = event.target === document.body || event.target === document.documentElement;
     const inField = event.target instanceof HTMLInputElement || Boolean(editorOf(event.target));
     const binding = bindingFor(event, "global");
