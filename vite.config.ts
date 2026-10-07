@@ -37,6 +37,7 @@ const publicFiles = [
 export default defineConfig({
   base: "./",
   plugins: [serviceWorker()],
+  define: { __BUILD_COMMIT__: JSON.stringify(process.env.BUILD_COMMIT ?? "dev") },
   build: { target: "es2022", sourcemap: false },
   test: { include: ["tests/**/*.test.ts"], environment: "node" },
 } as never);
