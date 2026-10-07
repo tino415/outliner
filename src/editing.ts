@@ -29,7 +29,7 @@ import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor } from "./keys";
 import { Focus, commit, commitAndRender, doc, filter, state, ui, undo, redo } from "./app";
-import { clearSelection, paintSelection, rowsAround, focusAfterRemoving, startSelection } from "./selection";
+import { clearSelection, paintSelection, rowsAround, focusAfterRemoving, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
 import { focusCaret, noteEditorFor, rowShowsTypedText, textEditorFor, titleFor } from "./render";
 import { shortLabel, toast } from "./chrome";
@@ -417,6 +417,13 @@ export const actions = {
     if (c.inNote || c.isTitle || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
     const previous = neighbourEditor(c.editor, -1);
     startSelection(c.id, previous && previous !== ui.title ? previous.dataset.id! : c.id);
+  },
+
+  selectAll(c: EditorContext): boolean | void {
+    const length = (c.editor.textContent ?? "").length;
+    const wholeTextSelected = c.start === 0 && c.end === length;
+    if (c.inNote || c.isTitle || !wholeTextSelected) return false;
+    selectWholePage();
   },
 
   selectDown(c: EditorContext): boolean | void {

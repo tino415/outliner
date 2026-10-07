@@ -56,6 +56,7 @@ const bindings: Binding[] = [
   editor(["Escape"], "Stop editing", (c) => actions.blur(c)),
   editor(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
   editor(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
+  editor(["Mod+a"], "Select all items (press twice)", (c) => actions.selectAll(c)),
   editor(["ArrowUp"], "", (c) => actions.arrowUp(c), true),
   editor(["ArrowDown"], "", (c) => actions.arrowDown(c), true),
   editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
