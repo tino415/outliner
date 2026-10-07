@@ -1,4 +1,4 @@
-import { ItemId, ROOT, appendChild, removeCompleted, setCollapsedEverywhere } from "./model";
+import { ItemId, ROOT, appendChild, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
@@ -235,6 +235,9 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   $("item-menu-title").textContent = itemLabel(item.text, 40);
   menu.querySelector('[data-item-action="complete"] span')!.textContent = item.completed ? "Uncomplete" : "Complete";
   menu.querySelector('[data-item-action="note"] span')!.textContent = item.note ? "Edit note" : "Add a note";
+  const fold = menu.querySelector<HTMLElement>('[data-item-action="fold"]')!;
+  fold.hidden = item.children.length === 0 || Boolean(state.results);
+  fold.querySelector("span")!.textContent = item.collapsed ? "Expand" : "Collapse";
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
   const height = menu.offsetHeight;
@@ -246,6 +249,7 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
 
 const itemActions: Record<string, (c: EditorContext) => void> = {
   zoom: (c) => zoomTo(c.id),
+  fold: (c) => commitAndRender(setCollapsed(doc(), c.id, !doc().items[c.id].collapsed), null),
   note: (c) => actions.toggleNote(c),
   complete: (c) => actions.complete(c),
   duplicate: (c) => actions.duplicate(c),

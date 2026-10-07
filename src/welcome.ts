@@ -31,6 +31,7 @@ Things to try
     Bread
 Install it
   On a phone: Share, then Add to Home Screen
+  On a phone, swipe an item right to complete it, left to fold it
   On a desktop: the install icon in the address bar
   It keeps working offline
 `;

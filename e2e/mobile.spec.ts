@@ -75,6 +75,65 @@ test("the item menu stays open after a real long press ends, and its actions lea
   await expect(page.locator("#toolbar")).toBeHidden();
 });
 
+async function swipe(page: import("@playwright/test").Page, text: string, distance: number) {
+  const box = (await editor(page, text).boundingBox())!;
+  const y = box.y + box.height / 2;
+  const x = distance > 0 ? box.x + 30 : box.x + box.width - 10;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (let step = 1; step <= 8; step++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (distance * step) / 8, y }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(250);
+}
+
+test.describe("swipes on rows", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "real touch input is sent through the Chromium DevTools protocol");
+
+  test("swiping right completes an item and swiping right again reopens it", async ({ page }) => {
+    await freshOutline(page, "task\nother");
+    await swipe(page, "task", 120);
+    await expectOutline(page, "task [x]\nother");
+    await expect(page.locator("#toolbar")).toBeHidden();
+    await swipe(page, "task", 120);
+    await expectOutline(page, "task\nother");
+  });
+
+  test("swiping left folds and unfolds an item with children", async ({ page }) => {
+    await freshOutline(page, "parent\n  child\nleaf");
+    await swipe(page, "parent", -120);
+    await expectOutline(page, "parent\nleaf");
+    await swipe(page, "parent", -120);
+    await expectOutline(page, "parent\n  child\nleaf");
+  });
+
+  test("swiping left on an item without children opens its menu", async ({ page }) => {
+    await freshOutline(page, "leaf");
+    await swipe(page, "leaf", -120);
+    await expect(page.locator("#item-menu")).toBeVisible();
+    await expect(page.locator("#item-menu-title")).toHaveText("leaf");
+  });
+
+  test("a short swipe does nothing and a tap still edits", async ({ page }) => {
+    await freshOutline(page, "task");
+    await swipe(page, "task", 40);
+    await expectOutline(page, "task");
+    await editor(page, "task").tap();
+    await expect(editor(page, "task")).toBeFocused();
+  });
+
+  test("fold targets are on screen and reach left of the chevron", async ({ page }) => {
+    await freshOutline(page, "top\n  parent\n    child");
+    const top = (await row(page, "top").locator(".toggle").boundingBox())!;
+    expect(top.x).toBeGreaterThanOrEqual(0);
+    expect(top.width).toBeGreaterThanOrEqual(24);
+    const nested = (await row(page, "parent").locator(".toggle").boundingBox())!;
+    await page.touchscreen.tap(nested.x - 10, nested.y - 4);
+    await expectOutline(page, "top\n  parent");
+  });
+});
+
 test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await row(page, "projects").locator(".bullet").tap();
