@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5188",
-    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vite build && vite build -c vite.node.config.ts",
     "preview": "vite preview --host 0.0.0.0 --port 5188",
     "test": "vitest run",
     "e2e": "playwright test"
