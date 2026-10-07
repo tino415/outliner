@@ -6,6 +6,18 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Backlog (from Martin, 2026-10-08)
+
+1. **Phone usage.** The expand / collapse toggle is too small and unpleasant
+   on a phone. Research and implement improvements, gestures included; the
+   choice of gestures is open.
+2. **Properties and column view, as in org mode.** Martin uses org's
+   properties and column view for:
+   - time planning: an effort on each subheading, summed on every parent;
+   - calorie tracking: food under meal, meal under day, day under week, with
+     calories summed per meal, per day and per week.
+   Open to a different design if outliners usually solve these another way.
+
 ## Part 2: sync and a CLI
 
 Asked for: the same outline on several devices, plus a CLI for scripting and
