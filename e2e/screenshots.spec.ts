@@ -1,16 +1,38 @@
 import { test } from "@playwright/test";
-import { row } from "./helpers";
+import { clickEnd, freshOutline, row } from "./helpers";
 
 for (const theme of ["light", "dark"] as const) {
-  test(`screenshot ${theme}`, async ({ page }, info) => {
+  test(`screenshots ${theme}`, async ({ page }, info) => {
+    const shot = (name: string) => page.screenshot({ path: `screenshots/${info.project.name}-${theme}-${name}.png` });
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto("./");
-    await page.locator(".tree .text").first().waitFor();
-    await page.screenshot({ path: `screenshots/${info.project.name}-${theme}-home.png` });
+    await freshOutline(page);
+    await shot("home");
 
-    await row(page, "Plan the week").locator(".bullet").click();
+    await clickEnd(page, "Click a bullet to *zoom* into it. The breadcrumbs above lead back out.");
+    await page.waitForTimeout(150);
+    await shot("editing");
+    await page.keyboard.press("Escape");
+
+    await row(page, "Plan the week #planning").locator(".bullet").click();
     await page.locator(".title", { hasText: "Plan the week" }).waitFor();
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `screenshots/${info.project.name}-${theme}-zoomed.png` });
+    await shot("zoomed");
+
+    await page.locator(".crumb.home").click();
+    await page.locator("#search").fill("ideas");
+    await page.waitForTimeout(150);
+    await shot("search");
+    await page.locator("#search").fill("");
+
+    await page.locator("#menu-button").click();
+    await page.waitForTimeout(200);
+    await shot("menu");
+    await page.keyboard.press("Escape");
+
+    if (info.project.name === "desktop") {
+      await page.keyboard.press("?");
+      await page.waitForTimeout(200);
+      await shot("help");
+    }
   });
 }
