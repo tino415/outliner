@@ -1,0 +1,941 @@
+import {
+  Doc,
+  ItemId,
+  ROOT,
+  ViewFilter,
+  ancestors,
+  descendantCount,
+  indent,
+  insertChild,
+  indexInParent,
+  isShown,
+  mergeInto,
+  moveDown,
+  moveUp,
+  outdent,
+  remove,
+  setCollapsed,
+  setCollapsedEverywhere,
+  setNote,
+  setText,
+  shownChildren,
+  split,
+  toggleCompleted,
+} from "./model";
+import { Caret, History } from "./store";
+import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, savePrefs, saveDocSoon } from "./storage";
+import { SearchResult, search } from "./search";
+import { renderInline } from "./inline";
+import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
+import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
+import { welcomeDoc } from "./welcome";
+import { Binding, bindingFor, describeKeys } from "./keys";
+import { enableDragAndDrop } from "./drag";
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+const ui = {
+  crumbs: $("crumbs"),
+  title: $("title"),
+  titleNote: $("title-note"),
+  tree: $<HTMLUListElement>("tree"),
+  addItem: $<HTMLButtonElement>("add-item"),
+  search: $<HTMLInputElement>("search"),
+  searchSummary: $("search-summary"),
+  menu: $("menu"),
+  themeChoice: $("theme-choice"),
+  completedSwitch: $("completed-switch"),
+  importFile: $<HTMLInputElement>("import-file"),
+  toolbar: $("toolbar"),
+  help: $<HTMLDialogElement>("help"),
+  helpGrid: $("help-grid"),
+  toast: $("toast"),
+};
+
+const state = {
+  history: new History(loadDoc() ?? welcomeDoc()),
+  prefs: loadPrefs(),
+  zoom: ROOT as ItemId,
+  query: "",
+  results: null as SearchResult | null,
+  openNotes: new Set<ItemId>(),
+};
+
+const doc = (): Doc => state.history.doc;
+const filter = (): ViewFilter => ({ showCompleted: state.prefs.showCompleted });
+
+export function start(): void {
+  state.zoom = zoomFromHash();
+  applyTheme();
+  bindEditorEvents();
+  bindChrome();
+  bindGlobalKeys();
+  enableDragAndDrop(ui.tree, {
+    doc,
+    zoomInto: (id) => zoomTo(id),
+    move: (next, id) => commitAndRender(next, { id, offset: 0, selectNone: true }),
+  });
+  onDocChangedInAnotherTab((incoming) => {
+    const caret = caretNow();
+    state.history.replaceFromElsewhere(incoming);
+    if (!incoming.items[state.zoom]) state.zoom = ROOT;
+    render(caret);
+  });
+  window.addEventListener("pagehide", flushSave);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
+  render(null);
+  saveDocSoon(doc());
+}
+
+// ---- changing the document ------------------------------------------------
+
+interface Focus extends Caret {
+  selectNone?: boolean;
+}
+
+function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): void {
+  state.history.commit(next, caretBefore, typingKey);
+  saveDocSoon(next);
+}
+
+function commitAndRender(next: Doc, focus: Focus | null): void {
+  if (next === doc()) return;
+  commit(next);
+  render(focus);
+}
+
+function undo(): void {
+  const caret = state.history.undo(caretNow());
+  if (caret === undefined) return;
+  afterHistoryJump(caret);
+}
+
+function redo(): void {
+  const caret = state.history.redo(caretNow());
+  if (caret === undefined) return;
+  afterHistoryJump(caret);
+}
+
+function afterHistoryJump(caret: Caret | null): void {
+  saveDocSoon(doc());
+  if (!doc().items[state.zoom]) state.zoom = ROOT;
+  if (caret && !doc().items[caret.id]) caret = null;
+  if (caret && !isOnPage(caret.id)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
+  else render(caret);
+}
+
+function isOnPage(id: ItemId): boolean {
+  return id === state.zoom || ancestors(doc(), id).includes(state.zoom);
+}
+
+// ---- editor events ----------------------------------------------------------
+
+function bindEditorEvents(): void {
+  let caretBeforeInput: Caret | null = null;
+
+  document.addEventListener("beforeinput", (event) => {
+    if (editorOf(event.target)) caretBeforeInput = caretNow();
+  });
+
+  document.addEventListener("input", (event) => {
+    const editor = editorOf(event.target);
+    if (!editor) return;
+    const id = editor.dataset.id!;
+    const value = editor.textContent ?? "";
+    if (editor.classList.contains("note")) {
+      commit(setNote(doc(), id, value), `${id}:note`, caretBeforeInput);
+    } else {
+      commit(setText(doc(), id, value), id, caretBeforeInput);
+      if (id === state.zoom) document.title = titleFor(id);
+      editor.classList.toggle("empty", value === "");
+    }
+  });
+
+  document.addEventListener("focusout", (event) => {
+    const editor = editorOf(event.target);
+    if (!editor || !doc().items[editor.dataset.id!]) return;
+    const item = doc().items[editor.dataset.id!];
+    const isNote = editor.classList.contains("note");
+    editor.innerHTML = renderInline(isNote ? item.note : item.text);
+    if (isNote && item.note === "") {
+      state.openNotes.delete(item.id);
+      editor.hidden = true;
+    }
+  });
+
+  document.addEventListener("focusin", (event) => {
+    const editor = editorOf(event.target);
+    ui.toolbar.classList.toggle("active", Boolean(editor));
+    document.querySelectorAll(".row.focused").forEach((row) => row.classList.remove("focused"));
+    editor?.closest(".row")?.classList.add("focused");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const editor = editorOf(event.target);
+    if (!editor || event.isComposing) return;
+    const binding = bindingFor(event, "editor");
+    if (binding && binding.run(editorContext(editor, binding)) !== false) event.preventDefault();
+  });
+
+  document.addEventListener("mousedown", (event) => {
+    const target = event.target as HTMLElement;
+    const editor = editorOf(target);
+    if (!editor || document.activeElement === editor) return;
+    if (target.closest("a.link, .tag")) event.preventDefault();
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const editor = editorOf(target);
+    if (!editor || document.activeElement === editor) return;
+    const link = target.closest<HTMLAnchorElement>("a.link");
+    const tag = target.closest<HTMLElement>(".tag");
+    if (link) {
+      event.preventDefault();
+      window.open(link.href, "_blank", "noopener");
+    } else if (tag) {
+      setQuery(tag.dataset.tag!);
+    }
+  });
+
+  document.addEventListener("paste", (event) => {
+    const editor = editorOf(event.target);
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    if (!editor || editor.classList.contains("note") || !text.includes("\n")) return;
+    event.preventDefault();
+    pasteLines(editor.dataset.id!, text);
+  });
+
+  ui.tree.addEventListener("click", (event) => {
+    const toggle = (event.target as HTMLElement).closest<HTMLElement>(".toggle");
+    if (!toggle) return;
+    const id = toggle.closest<HTMLElement>(".item")!.dataset.id!;
+    toggleFold(id);
+  });
+}
+
+function editorOf(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof HTMLElement)) return null;
+  return target.closest<HTMLElement>(".text[data-id], .note[data-id]");
+}
+
+export interface EditorContext {
+  editor: HTMLElement;
+  id: ItemId;
+  inNote: boolean;
+  isTitle: boolean;
+  start: number;
+  end: number;
+  binding: Binding;
+}
+
+function editorContext(editor: HTMLElement, binding: Binding): EditorContext {
+  const selection = selectionIn(editor) ?? { start: 0, end: 0 };
+  return {
+    editor,
+    id: editor.dataset.id!,
+    inNote: editor.classList.contains("note"),
+    isTitle: editor === ui.title || editor === ui.titleNote,
+    start: selection.start,
+    end: selection.end,
+    binding,
+  };
+}
+
+function caretNow(): Caret | null {
+  const editor = editorOf(document.activeElement);
+  if (!editor) return null;
+  return {
+    id: editor.dataset.id!,
+    offset: selectionIn(editor)?.start ?? 0,
+    inNote: editor.classList.contains("note"),
+  };
+}
+
+// ---- editing actions ------------------------------------------------------------
+
+export const actions = {
+  enter(c: EditorContext): boolean | void {
+    if (c.inNote) {
+      document.execCommand("insertText", false, "\n");
+      return;
+    }
+    if (c.isTitle) {
+      const created = insertChild(doc(), state.zoom, 0);
+      commitAndRender(created.doc, { id: created.id, offset: 0 });
+      return;
+    }
+    let current = doc();
+    if (c.end > c.start) {
+      const text = current.items[c.id].text;
+      current = setText(current, c.id, text.slice(0, c.start) + text.slice(c.end));
+    }
+    const item = current.items[c.id];
+    const siblings = shownChildren(current, item.parent!, filter());
+    const isLastEmptyNested =
+      item.text === "" && item.children.length === 0 && item.parent !== state.zoom && siblings.at(-1) === c.id;
+    if (isLastEmptyNested) {
+      commitAndRender(outdent(current, c.id, state.zoom), { id: c.id, offset: 0 });
+      return;
+    }
+    const result = split(current, c.id, c.start, filter());
+    commitAndRender(result.doc, { id: result.focus, offset: 0 });
+  },
+
+  toggleNote(c: EditorContext): void {
+    if (c.inNote) {
+      focusCaret({ id: c.id, offset: doc().items[c.id].text.length });
+      return;
+    }
+    state.openNotes.add(c.id);
+    const note = noteEditorFor(c.id);
+    if (!note) return;
+    note.hidden = false;
+    focusCaret({ id: c.id, offset: doc().items[c.id].note.length, inNote: true });
+  },
+
+  backspace(c: EditorContext): boolean | void {
+    if (c.start !== 0 || c.end !== 0 || c.isTitle) return false;
+    if (c.inNote) {
+      if (doc().items[c.id].note !== "") return false;
+      actions.toggleNote(c);
+      return;
+    }
+    const item = doc().items[c.id];
+    const previous = neighbourEditor(c.editor, -1);
+    if (item.text === "" && item.children.length === 0) {
+      if (!previous && !neighbourEditor(c.editor, 1)) return;
+      const next = remove(doc(), c.id);
+      const target = previous ?? neighbourEditor(c.editor, 1)!;
+      const targetId = target.dataset.id!;
+      commitAndRender(next, { id: targetId, offset: previous ? next.items[targetId].text.length : 0 });
+      return;
+    }
+    if (!previous || previous === ui.title) return;
+    const merged = mergeInto(doc(), c.id, previous.dataset.id!);
+    commitAndRender(merged.doc, { id: previous.dataset.id!, offset: merged.offset });
+  },
+
+  deleteForward(c: EditorContext): boolean | void {
+    const length = (c.editor.textContent ?? "").length;
+    if (c.inNote || c.isTitle || c.start !== length || c.end !== length) return false;
+    const next = neighbourEditor(c.editor, 1);
+    if (!next) return;
+    const merged = mergeInto(doc(), next.dataset.id!, c.id);
+    commitAndRender(merged.doc, { id: c.id, offset: merged.offset });
+  },
+
+  arrowUp(c: EditorContext): boolean | void {
+    if (c.inNote || !isCaretOnFirstLine(c.editor)) return false;
+    const previous = neighbourEditor(c.editor, -1);
+    if (!previous) return false;
+    focusAtX(previous, caretX(c.editor), "bottom");
+  },
+
+  arrowDown(c: EditorContext): boolean | void {
+    if (c.inNote || !isCaretOnLastLine(c.editor)) return false;
+    const next = neighbourEditor(c.editor, 1);
+    if (!next) return false;
+    focusAtX(next, caretX(c.editor), "top");
+  },
+
+  arrowLeft(c: EditorContext): boolean | void {
+    if (c.inNote || c.start !== 0 || c.end !== 0) return false;
+    const previous = neighbourEditor(c.editor, -1);
+    if (!previous) return false;
+    focusCaret({ id: previous.dataset.id!, offset: (previous.textContent ?? "").length });
+  },
+
+  arrowRight(c: EditorContext): boolean | void {
+    const length = (c.editor.textContent ?? "").length;
+    if (c.inNote || c.start !== length || c.end !== length) return false;
+    const next = neighbourEditor(c.editor, 1);
+    if (!next) return false;
+    focusCaret({ id: next.dataset.id!, offset: 0 });
+  },
+
+  indent(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
+  },
+
+  outdent(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
+  },
+
+  moveUp(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c));
+  },
+
+  moveDown(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c));
+  },
+
+  complete(c: EditorContext): void {
+    if (c.isTitle) return;
+    const next = toggleCompleted(doc(), c.id);
+    if (isShown(next, c.id, filter())) {
+      commitAndRender(next, keepCaret(c));
+      return;
+    }
+    const neighbour = neighbourEditor(c.editor, 1) ?? neighbourEditor(c.editor, -1);
+    commitAndRender(next, neighbour ? { id: neighbour.dataset.id!, offset: 0 } : null);
+    toast("Completed and hidden", { label: "Undo", run: undo });
+  },
+
+  deleteItem(c: EditorContext): void {
+    if (c.isTitle) return;
+    const item = doc().items[c.id];
+    const neighbour = neighbourEditor(c.editor, -1) ?? neighbourEditor(c.editor, 1);
+    const hidden = descendantCount(doc(), c.id);
+    const next = remove(doc(), c.id);
+    const focus =
+      neighbour && neighbour !== ui.title
+        ? { id: neighbour.dataset.id!, offset: next.items[neighbour.dataset.id!].text.length }
+        : null;
+    commitAndRender(next, focus);
+    const label = item.text.trim() ? `“${truncate(item.text, 32)}”` : "Item";
+    toast(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`, { label: "Undo", run: undo });
+  },
+
+  collapse(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
+  },
+
+  expand(c: EditorContext): void {
+    if (c.isTitle) return;
+    commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
+  },
+
+  zoomIn(c: EditorContext): void {
+    if (c.isTitle) return;
+    zoomTo(c.id, { id: c.id, offset: c.start });
+  },
+
+  zoomOut(c: EditorContext): void {
+    if (state.zoom === ROOT) return;
+    const former = state.zoom;
+    zoomTo(doc().items[former].parent ?? ROOT, { id: former, offset: c.isTitle ? c.start : 0 });
+  },
+
+  bold(c: EditorContext): void {
+    wrapSelection(c, "**");
+  },
+
+  italic(c: EditorContext): void {
+    wrapSelection(c, "*");
+  },
+
+  code(c: EditorContext): void {
+    wrapSelection(c, "`");
+  },
+
+  blur(c: EditorContext): void {
+    c.editor.blur();
+  },
+
+  undo(): void {
+    undo();
+  },
+
+  redo(): void {
+    redo();
+  },
+};
+
+function keepCaret(c: EditorContext): Focus {
+  return { id: c.id, offset: c.start, inNote: c.inNote };
+}
+
+function wrapSelection(c: EditorContext, marker: string): void {
+  const text = c.editor.textContent ?? "";
+  const selected = text.slice(c.start, c.end);
+  const next = text.slice(0, c.start) + marker + selected + marker + text.slice(c.end);
+  const update = c.inNote ? setNote(doc(), c.id, next) : setText(doc(), c.id, next);
+  commit(update);
+  c.editor.textContent = next;
+  select(c.editor, c.start + marker.length, c.end + marker.length);
+}
+
+function pasteLines(id: ItemId, text: string): void {
+  const item = doc().items[id];
+  const incoming = parseIndentedText(text);
+  const replacesEmptyItem = item.text === "" && item.children.length === 0;
+  let next = doc();
+  const parent = item.parent!;
+  const at = indexInParent(next, id) + (replacesEmptyItem ? 0 : 1);
+  const result = graft(next, incoming, parent, at);
+  next = replacesEmptyItem ? remove(result.doc, id) : result.doc;
+  const last = result.ids.at(-1);
+  commitAndRender(next, last ? { id: last, offset: next.items[last].text.length } : null);
+}
+
+function toggleFold(id: ItemId): void {
+  const caret = caretNow();
+  commitAndRender(setCollapsed(doc(), id, !doc().items[id].collapsed), caret);
+}
+
+function neighbourEditor(editor: HTMLElement, direction: -1 | 1): HTMLElement | null {
+  const editors = [ui.title, ...ui.tree.querySelectorAll<HTMLElement>(".text[data-id]")];
+  const textEditor = editor.classList.contains("note") ? textEditorFor(editor.dataset.id!) ?? editor : editor;
+  const index = editors.indexOf(textEditor);
+  return editors[index + direction] ?? null;
+}
+
+function caretX(editor: HTMLElement): number {
+  return caretRect()?.left ?? editor.getBoundingClientRect().left;
+}
+
+function focusAtX(editor: HTMLElement, x: number, edge: "top" | "bottom"): void {
+  editor.focus({ preventScroll: true });
+  const rect = editor.getBoundingClientRect();
+  const y = edge === "top" ? rect.top + 6 : rect.bottom - 6;
+  const length = (editor.textContent ?? "").length;
+  const offset = offsetAtPoint(editor, x, y) ?? (edge === "top" ? 0 : length);
+  select(editor, Math.min(offset, length));
+  editor.scrollIntoView({ block: "nearest" });
+}
+
+// ---- zoom and search ------------------------------------------------------------
+
+function zoomFromHash(): ItemId {
+  const id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
+  return id && doc().items[id] ? id : ROOT;
+}
+
+let pendingZoomFocus: Focus | null = null;
+
+function zoomTo(id: ItemId, focus: Focus | null = null): void {
+  pendingZoomFocus = focus;
+  const hash = id === ROOT ? "#/" : `#/${encodeURIComponent(id)}`;
+  if (location.hash === hash || (id === ROOT && location.hash === "")) {
+    showZoom();
+  } else {
+    location.hash = hash;
+  }
+}
+
+function showZoom(): void {
+  const focus = pendingZoomFocus;
+  pendingZoomFocus = null;
+  const changed = state.zoom !== zoomFromHash();
+  state.zoom = zoomFromHash();
+  if (changed && state.query) clearQuery();
+  render(focus);
+  if (changed) {
+    ui.tree.classList.remove("entering");
+    void ui.tree.offsetWidth;
+    ui.tree.classList.add("entering");
+    if (!focus) window.scrollTo({ top: 0 });
+  }
+}
+
+function setQuery(query: string): void {
+  state.query = query;
+  ui.search.value = query;
+  render(null);
+}
+
+function clearQuery(): void {
+  state.query = "";
+  ui.search.value = "";
+  state.results = null;
+}
+
+// ---- rendering ------------------------------------------------------------------
+
+function render(focus: Focus | null): void {
+  state.results = state.query.trim() ? search(doc(), state.zoom, state.query, filter()) : null;
+  renderCrumbs();
+  renderHead();
+  renderTree();
+  renderSearchSummary();
+  renderMenuState();
+  highlightMatches();
+  if (focus) focusCaret(focus);
+}
+
+function renderCrumbs(): void {
+  const trail = ancestors(doc(), state.zoom);
+  const parts = trail.map((id) =>
+    id === ROOT
+      ? `<a class="crumb home" href="#/" aria-label="Home"><svg viewBox="0 0 20 20"><path d="M3.5 9.5L10 4l6.5 5.5M5.5 8v7.5h9V8" /></svg></a>`
+      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escapeText(truncate(doc().items[id].text, 28)) || "Untitled"}</a>`,
+  );
+  ui.crumbs.innerHTML = parts.join(`<span class="crumb-sep" aria-hidden="true">/</span>`);
+  ui.crumbs.classList.toggle("at-home", trail.length === 0);
+  if (trail.length === 0) ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
+}
+
+function renderHead(): void {
+  const item = doc().items[state.zoom];
+  ui.title.dataset.id = item.id;
+  ui.titleNote.dataset.id = item.id;
+  if (document.activeElement !== ui.title) ui.title.innerHTML = renderInline(item.text);
+  ui.title.classList.toggle("empty", item.text === "");
+  if (document.activeElement !== ui.titleNote) ui.titleNote.innerHTML = renderInline(item.note);
+  ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
+  document.title = titleFor(item.id);
+}
+
+function titleFor(id: ItemId): string {
+  const text = doc().items[id].text.trim();
+  return text ? `${truncate(text, 40)} · Outliner` : "Outliner";
+}
+
+function renderTree(): void {
+  const top = shownChildrenOf(state.zoom);
+  ui.tree.replaceChildren(...top.map(renderItem));
+  ui.tree.classList.toggle("searching", Boolean(state.results));
+  const isEmpty = top.length === 0;
+  ui.addItem.hidden = Boolean(state.results);
+  ui.addItem.classList.toggle("prominent", isEmpty);
+}
+
+function shownChildrenOf(id: ItemId): ItemId[] {
+  const children = shownChildren(doc(), id, filter());
+  if (state.results) return children.filter((child) => state.results!.shown.has(child));
+  return children;
+}
+
+function renderItem(id: ItemId): HTMLLIElement {
+  const item = doc().items[id];
+  const children = shownChildrenOf(id);
+  const hasChildren = shownChildren(doc(), id, filter()).length > 0;
+  const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
+
+  const li = document.createElement("li");
+  li.className = "item";
+  li.dataset.id = id;
+  li.setAttribute("role", "treeitem");
+  li.classList.toggle("completed", item.completed);
+  li.classList.toggle("has-children", hasChildren);
+  li.classList.toggle("folded", hasChildren && !expanded);
+  li.classList.toggle("match", Boolean(state.results?.matches.has(id)));
+  if (hasChildren) li.setAttribute("aria-expanded", String(expanded));
+
+  const note = item.note !== "" || state.openNotes.has(id);
+  li.innerHTML =
+    `<div class="row">` +
+    `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
+    `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in"><span class="dot"></span></button>` +
+    `<div class="body">` +
+    `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${id}">${renderInline(item.text)}</div>` +
+    `<div class="note" contenteditable="plaintext-only" spellcheck="true" data-id="${id}"${note ? "" : " hidden"}>${renderInline(item.note)}</div>` +
+    `</div></div>`;
+
+  if (expanded) {
+    const ul = document.createElement("ul");
+    ul.className = "children";
+    ul.setAttribute("role", "group");
+    ul.replaceChildren(...children.map(renderItem));
+    li.append(ul);
+  }
+  return li;
+}
+
+function renderSearchSummary(): void {
+  const results = state.results;
+  ui.searchSummary.hidden = !results;
+  if (!results) return;
+  const count = results.matches.size;
+  ui.searchSummary.innerHTML =
+    `<span>${count === 0 ? "No matches" : count === 1 ? "1 match" : `${count} matches`} for <strong>${escapeText(state.query.trim())}</strong></span>` +
+    `<button type="button" class="link-button" data-action="clear-search">Clear</button>`;
+}
+
+function highlightMatches(): void {
+  const registry = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
+  const HighlightClass = (window as unknown as { Highlight?: new (...ranges: Range[]) => unknown }).Highlight;
+  if (!registry || !HighlightClass) return;
+  registry.delete("search");
+  if (!state.results || state.results.terms.length === 0) return;
+  const ranges: Range[] = [];
+  for (const editor of ui.tree.querySelectorAll<HTMLElement>(".match > .row .text, .match > .row .note")) {
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+      const haystack = node.data.toLowerCase();
+      for (const term of state.results.terms) {
+        for (let at = haystack.indexOf(term); at !== -1; at = haystack.indexOf(term, at + term.length)) {
+          const range = document.createRange();
+          range.setStart(node, at);
+          range.setEnd(node, at + term.length);
+          ranges.push(range);
+        }
+      }
+    }
+  }
+  registry.set("search", new HighlightClass(...ranges));
+}
+
+function textEditorFor(id: ItemId): HTMLElement | null {
+  if (id === state.zoom) return ui.title;
+  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"] > .row .text`);
+}
+
+function noteEditorFor(id: ItemId): HTMLElement | null {
+  if (id === state.zoom) return ui.titleNote;
+  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"] > .row .note`);
+}
+
+function focusCaret(focus: Focus): void {
+  const editor = focus.inNote ? noteEditorFor(focus.id) : textEditorFor(focus.id);
+  if (!editor) return;
+  if (focus.selectNone) {
+    editor.closest(".row")?.classList.add("flash");
+    return;
+  }
+  editor.hidden = false;
+  editor.focus({ preventScroll: true });
+  select(editor, Math.min(focus.offset, (editor.textContent ?? "").length));
+  editor.scrollIntoView({ block: "nearest" });
+}
+
+// ---- chrome: search box, menu, toolbar, help, toasts ---------------------------
+
+function bindChrome(): void {
+  ui.search.addEventListener("input", () => {
+    state.query = ui.search.value;
+    render(null);
+  });
+  ui.search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      clearQuery();
+      render(null);
+      ui.search.blur();
+    } else if (event.key === "Enter" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const first = ui.tree.querySelector<HTMLElement>(".match > .row .text") ?? ui.tree.querySelector<HTMLElement>(".text");
+      if (first) focusCaret({ id: first.dataset.id!, offset: (first.textContent ?? "").length });
+    }
+  });
+
+  window.addEventListener("hashchange", showZoom);
+
+  ui.tree.addEventListener("click", (event) => {
+    if ((event.target as HTMLElement).closest(".bullet")) event.preventDefault();
+  });
+
+  ui.addItem.addEventListener("click", () => {
+    const created = insertChild(doc(), state.zoom, doc().items[state.zoom].children.length);
+    commitAndRender(created.doc, { id: created.id, offset: 0 });
+  });
+
+  document.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
+    if (!button || button.closest("#toolbar")) return;
+    runMenuAction(button.dataset.action!);
+  });
+
+  ui.themeChoice.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-theme]");
+    if (!button) return;
+    updatePrefs({ theme: button.dataset.theme as Theme });
+    applyTheme();
+  });
+
+  ui.importFile.addEventListener("change", async () => {
+    const file = ui.importFile.files?.[0];
+    ui.importFile.value = "";
+    if (!file) return;
+    try {
+      const incoming = importText(await file.text());
+      const count = Object.keys(incoming.items).length - 1;
+      const result = graft(doc(), incoming, state.zoom, doc().items[state.zoom].children.length);
+      commitAndRender(result.doc, null);
+      toast(`Imported ${count} item${count === 1 ? "" : "s"} from ${file.name}`, { label: "Undo", run: undo });
+    } catch (error) {
+      toast(`Could not import ${file.name}: ${(error as Error).message}`);
+    }
+  });
+
+  ui.toolbar.addEventListener("pointerdown", (event) => event.preventDefault());
+  ui.toolbar.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
+    const editor = editorOf(document.activeElement);
+    if (!button || !editor) return;
+    runToolbarAction(button.dataset.action!, editor);
+  });
+  keepToolbarAboveKeyboard();
+
+  $("help-close").addEventListener("click", () => ui.help.close());
+  ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
+  ui.helpGrid.innerHTML = describeKeys();
+
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+}
+
+function runMenuAction(action: string): void {
+  const page = state.zoom === ROOT ? "outline" : slug(doc().items[state.zoom].text) || "outline";
+  switch (action) {
+    case "toggle-completed":
+      updatePrefs({ showCompleted: !state.prefs.showCompleted });
+      render(caretNow());
+      break;
+    case "expand-all":
+      commitAndRender(setCollapsedEverywhere(doc(), state.zoom, false), null);
+      break;
+    case "collapse-all":
+      commitAndRender(setCollapsedEverywhere(doc(), state.zoom, true), null);
+      break;
+    case "export-markdown":
+      download(`${page}.md`, "text/markdown", exportMarkdown(doc(), state.zoom));
+      break;
+    case "export-opml":
+      download(`${page}.opml`, "text/x-opml", exportOpml(doc(), state.zoom));
+      break;
+    case "export-json":
+      download(`outliner-backup-${new Date().toISOString().slice(0, 10)}.json`, "application/json", exportJson(doc()));
+      break;
+    case "import":
+      ui.importFile.click();
+      break;
+    case "help":
+      ui.menu.hidePopover();
+      ui.help.showModal();
+      break;
+    case "clear-search":
+      clearQuery();
+      render(null);
+      break;
+  }
+}
+
+function runToolbarAction(action: string, editor: HTMLElement): void {
+  const names: Record<string, keyof typeof actions> = {
+    indent: "indent",
+    outdent: "outdent",
+    "move-up": "moveUp",
+    "move-down": "moveDown",
+    complete: "complete",
+    note: "toggleNote",
+    undo: "undo",
+    done: "blur",
+  };
+  const name = names[action];
+  if (!name) return;
+  const binding = { keys: [], label: action, context: "editor", run: () => undefined } as Binding;
+  actions[name](editorContext(editor, binding));
+}
+
+function keepToolbarAboveKeyboard(): void {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+  const place = () => {
+    const keyboard = window.innerHeight - viewport.height - viewport.offsetTop;
+    ui.toolbar.style.setProperty("--keyboard", `${Math.max(0, keyboard)}px`);
+  };
+  viewport.addEventListener("resize", place);
+  viewport.addEventListener("scroll", place);
+  place();
+}
+
+function updatePrefs(change: Partial<Prefs>): void {
+  state.prefs = { ...state.prefs, ...change };
+  savePrefs(state.prefs);
+  renderMenuState();
+}
+
+function renderMenuState(): void {
+  for (const button of ui.themeChoice.querySelectorAll<HTMLElement>("[data-theme]")) {
+    button.setAttribute("aria-checked", String(button.dataset.theme === state.prefs.theme));
+  }
+  ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
+}
+
+function applyTheme(): void {
+  const theme = state.prefs.theme;
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelector('meta[name="theme-color"]')!.setAttribute("content", dark ? "#18191d" : "#f7f5f0");
+}
+
+function bindGlobalKeys(): void {
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.isComposing) return;
+    const onPage = event.target === document.body || event.target === document.documentElement;
+    const inField = event.target instanceof HTMLInputElement;
+    const binding = bindingFor(event, "global");
+    if (!binding) return;
+    if (binding.typing && !onPage) return;
+    if (inField && binding.id !== "search") return;
+    event.preventDefault();
+    runGlobal(binding.id!);
+  });
+}
+
+function runGlobal(id: string): void {
+  switch (id) {
+    case "search":
+      ui.search.focus();
+      ui.search.select();
+      break;
+    case "help":
+      ui.help.open ? ui.help.close() : ui.help.showModal();
+      break;
+    case "undo":
+      undo();
+      break;
+    case "redo":
+      redo();
+      break;
+    case "toggle-completed":
+      runMenuAction("toggle-completed");
+      break;
+    case "escape":
+      if (state.query) {
+        clearQuery();
+        render(null);
+      }
+      break;
+    case "focus-first": {
+      const first = ui.tree.querySelector<HTMLElement>(".text");
+      if (first) focusCaret({ id: first.dataset.id!, offset: 0 });
+      else ui.addItem.click();
+      break;
+    }
+    case "zoom-out":
+      if (state.zoom !== ROOT) zoomTo(doc().items[state.zoom].parent ?? ROOT);
+      break;
+  }
+}
+
+let toastTimer: number | undefined;
+
+function toast(message: string, action?: { label: string; run: () => void }): void {
+  window.clearTimeout(toastTimer);
+  ui.toast.innerHTML = `<span>${escapeText(message)}</span>`;
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      ui.toast.hidden = true;
+      action.run();
+    });
+    ui.toast.append(button);
+  }
+  ui.toast.hidden = false;
+  toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 5000);
+}
+
+function truncate(text: string, length: number): string {
+  return text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text;
+}
+
+function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
+function escapeText(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
