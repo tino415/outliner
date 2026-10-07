@@ -59,7 +59,8 @@ test("a long press on a bullet opens the item menu instead of zooming", async ({
   await expect(row(page, "projects").locator("xpath=..")).toHaveClass(/completed/);
 });
 
-test("the item menu stays open after a real long press ends, and its actions leave the keyboard closed", async ({ page }) => {
+test("the item menu stays open after a real long press ends, and its actions leave the keyboard closed", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "real touch input is sent through the Chromium DevTools protocol");
   await freshOutline(page, "projects\nother");
   const box = (await row(page, "projects").locator(".bullet").boundingBox())!;
   const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
