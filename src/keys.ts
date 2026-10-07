@@ -109,6 +109,7 @@ const bindings: Binding[] = [
   global(["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
   global(["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
   global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
+  global(["Alt+Shift+c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
   global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),

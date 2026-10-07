@@ -10,11 +10,13 @@ export interface Prefs {
   theme: Theme;
   textSize: TextSize;
   showCompleted: boolean;
+  /** Pages whose column view was switched on or off by hand; others follow their `columns::` property. */
+  columnPages: Record<string, boolean>;
 }
 
 export type AppearancePref = keyof Pick<Prefs, "theme" | "textSize">;
 
-const defaultPrefs: Prefs = { theme: "system", textSize: "medium", showCompleted: true };
+const defaultPrefs: Prefs = { theme: "system", textSize: "medium", showCompleted: true, columnPages: {} };
 
 export function loadDoc(): Doc | null {
   const raw = localStorage.getItem(DOC_KEY);
