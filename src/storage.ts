@@ -3,7 +3,8 @@ import { Doc, ROOT } from "./model";
 const DOC_KEY = "outliner-lab:doc:v1";
 const PREFS_KEY = "outliner-lab:prefs:v1";
 
-export type Theme = "system" | "light" | "dark";
+type Theme = "system" | "light" | "dark";
+type TextSize = "small" | "medium" | "large";
 
 export interface Prefs {
   theme: Theme;
@@ -11,7 +12,7 @@ export interface Prefs {
   showCompleted: boolean;
 }
 
-export type TextSize = "small" | "medium" | "large";
+export type AppearancePref = keyof Pick<Prefs, "theme" | "textSize">;
 
 const defaultPrefs: Prefs = { theme: "system", textSize: "medium", showCompleted: true };
 
@@ -32,10 +33,6 @@ export function parseDoc(raw: string): Doc {
   return parsed;
 }
 
-export function serializeDoc(doc: Doc): string {
-  return JSON.stringify(doc);
-}
-
 let pendingSave: number | undefined;
 let unsavedDoc: Doc | null = null;
 let saveFailed: () => void = () => undefined;
@@ -50,7 +47,7 @@ export function saveDocSoon(doc: Doc): void {
   pendingSave = window.setTimeout(flushSave, 250);
 }
 
-export function discardPendingSave(): void {
+function discardPendingSave(): void {
   window.clearTimeout(pendingSave);
   unsavedDoc = null;
 }
@@ -59,7 +56,7 @@ export function flushSave(): void {
   window.clearTimeout(pendingSave);
   if (!unsavedDoc) return;
   try {
-    localStorage.setItem(DOC_KEY, serializeDoc(unsavedDoc));
+    localStorage.setItem(DOC_KEY, JSON.stringify(unsavedDoc));
     unsavedDoc = null;
   } catch (error) {
     console.error("could not save outline", error);
@@ -71,7 +68,9 @@ export function onDocChangedInAnotherTab(apply: (doc: Doc) => void): void {
   window.addEventListener("storage", (event) => {
     if (event.key !== DOC_KEY || !event.newValue) return;
     try {
-      apply(parseDoc(event.newValue));
+      const incoming = parseDoc(event.newValue);
+      discardPendingSave();
+      apply(incoming);
     } catch (error) {
       console.error("ignoring unreadable outline from another tab", error);
     }

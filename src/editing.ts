@@ -6,6 +6,7 @@ import {
   indent,
   insertChild,
   indexInParent,
+  isBlank,
   isDescendant,
   isShown,
   mergeInto,
@@ -24,17 +25,15 @@ import {
 import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
 import { openPalette } from "./palette";
-import { renderInline } from "./inline";
+import { itemLabel, renderInline, shortLabel } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
-import { bindingFor } from "./keys";
-import { Focus, commit, commitAndRender, doc, filter, state, ui, undo, redo } from "./app";
-import { clearSelection, paintSelection, rowsAround, focusAfterRemoving, selectWholePage, startSelection } from "./selection";
+import { bindingFor, bindingForKeys } from "./keys";
+import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
+import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
-import { focusCaret, noteEditorFor, rowShowsTypedText, textEditorFor, titleFor } from "./render";
-import { shortLabel, toast } from "./chrome";
-
-// ---- editor events ----------------------------------------------------------
+import { END, editorFor, focusCaret, itemElementFor, replayAnimation, textEditorFor, titleFor, treeEditors } from "./render";
+import { toast, toastWithUndo } from "./chrome";
 
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
@@ -51,28 +50,25 @@ export function bindEditorEvents(): void {
     if (!editor) return;
     const id = editor.dataset.id!;
     const value = editor.textContent ?? "";
-    if (editor.classList.contains("note")) {
-      commit(setNote(doc(), id, value), `${id}:note`, caretBeforeInput);
-    } else {
-      commit(setText(doc(), id, value), id, caretBeforeInput);
-      if (id === state.zoom) document.title = titleFor(id);
-      editor.classList.toggle("empty", value === "");
+    if (isNoteEditor(editor)) {
+      commitShownEdit(setNote(doc(), id, value), id, caretBeforeInput, `${id}:note`);
+      return;
     }
-    rowShowsTypedText(id);
-    if (state.query) state.keptInResults.add(id);
+    commitShownEdit(setText(doc(), id, value), id, caretBeforeInput, id);
+    if (id === state.zoom) document.title = titleFor(id);
+    editor.classList.toggle("empty", value === "");
   });
 
   document.addEventListener("focusout", (event) => {
     if (!editorOf(event.relatedTarget)) {
       ui.toolbar.classList.remove("active");
-      document.querySelectorAll(".row.focused").forEach((row) => row.classList.remove("focused"));
+      clearFocusedRow();
     }
     const editor = editorOf(event.target);
-    if (!editor || !doc().items[editor.dataset.id!]) return;
-    const item = doc().items[editor.dataset.id!];
-    const isNote = editor.classList.contains("note");
-    editor.innerHTML = renderInline(isNote ? item.note : item.text);
-    if (isNote && item.note === "") {
+    const item = editor && doc().items[editor.dataset.id!];
+    if (!editor || !item) return;
+    editor.innerHTML = renderInline(isNoteEditor(editor) ? item.note : item.text);
+    if (isNoteEditor(editor) && item.note === "") {
       state.openNotes.delete(item.id);
       editor.hidden = true;
     }
@@ -81,7 +77,7 @@ export function bindEditorEvents(): void {
   document.addEventListener("focusin", (event) => {
     const editor = editorOf(event.target);
     ui.toolbar.classList.toggle("active", Boolean(editor));
-    document.querySelectorAll(".row.focused").forEach((row) => row.classList.remove("focused"));
+    clearFocusedRow();
     editor?.closest(".row")?.classList.add("focused");
   });
 
@@ -95,19 +91,20 @@ export function bindEditorEvents(): void {
   document.addEventListener("mousedown", (event) => {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
-    const focused = editorOf(document.activeElement);
-    const clickedItem = editor && ui.tree.contains(editor) && !editor.classList.contains("note");
-    if (event.shiftKey && clickedItem && state.selection) {
-      event.preventDefault();
-      state.selection = { ...state.selection, head: editor.dataset.id! };
-      paintSelection();
-      return;
-    }
-    const inTree = editor && ui.tree.contains(editor) && focused && ui.tree.contains(focused);
-    if (event.shiftKey && inTree && focused !== editor && !editor.classList.contains("note")) {
-      event.preventDefault();
-      startSelection(focused.dataset.id!, editor.dataset.id!);
-      return;
+    const clickedRow = editor && ui.tree.contains(editor) && !isNoteEditor(editor) ? editor : null;
+    if (event.shiftKey && clickedRow) {
+      const focused = editorOf(document.activeElement);
+      if (state.selection) {
+        event.preventDefault();
+        state.selection = { ...state.selection, head: clickedRow.dataset.id! };
+        paintSelection();
+        return;
+      }
+      if (focused && ui.tree.contains(focused) && focused !== clickedRow) {
+        event.preventDefault();
+        startSelection(focused.dataset.id!, clickedRow.dataset.id!);
+        return;
+      }
     }
     if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
@@ -131,16 +128,14 @@ export function bindEditorEvents(): void {
   document.addEventListener("paste", (event) => {
     const editor = editorOf(event.target);
     const text = event.clipboardData?.getData("text/plain") ?? "";
-    if (!editor || editor.classList.contains("note") || !text.includes("\n")) return;
+    if (!editor || isNoteEditor(editor) || !text.includes("\n")) return;
     event.preventDefault();
     pasteLines(editor.dataset.id!, text);
   });
 
   ui.tree.addEventListener("click", (event) => {
     const toggle = (event.target as HTMLElement).closest<HTMLElement>(".toggle");
-    if (!toggle) return;
-    const id = toggle.closest<HTMLElement>(".item")!.dataset.id!;
-    toggleFold(id);
+    if (toggle) toggleFold(toggle.closest<HTMLElement>(".item")!.dataset.id!);
   });
 }
 
@@ -149,16 +144,15 @@ export function bindEditorEvents(): void {
  * keydown, so the key bindings never see them. The input they are about to
  * cause still says what was meant.
  */
+const keysMeantBy: Record<string, string> = {
+  insertParagraph: "Enter",
+  insertLineBreak: "Shift+Enter",
+  deleteContentBackward: "Backspace",
+};
+
 function handledAsKey(event: InputEvent, editor: HTMLElement): boolean {
-  const fake = (key: string, shiftKey = false) => ({ key, code: "", shiftKey, ctrlKey: false, metaKey: false, altKey: false }) as KeyboardEvent;
-  const intent: Record<string, KeyboardEvent> = {
-    insertParagraph: fake("Enter"),
-    insertLineBreak: fake("Enter", true),
-    deleteContentBackward: fake("Backspace"),
-  };
-  const key = intent[event.inputType];
-  if (!key) return false;
-  const binding = bindingFor(key, "editor");
+  const keys = keysMeantBy[event.inputType];
+  const binding = keys ? bindingForKeys(keys, "editor") : null;
   if (!binding) return false;
   const context = editorContext(editor);
   if (event.inputType === "insertLineBreak" && context.inNote) return false;
@@ -170,6 +164,14 @@ export function editorOf(target: EventTarget | null): HTMLElement | null {
   return target.closest<HTMLElement>(".text[data-id], .note[data-id]");
 }
 
+function isNoteEditor(editor: HTMLElement): boolean {
+  return editor.classList.contains("note");
+}
+
+function clearFocusedRow(): void {
+  ui.tree.querySelector(".row.focused")?.classList.remove("focused");
+}
+
 export interface EditorContext {
   editor: HTMLElement;
   id: ItemId;
@@ -177,42 +179,53 @@ export interface EditorContext {
   isTitle: boolean;
   start: number;
   end: number;
+  length: number;
+  atStart: boolean;
+  atEnd: boolean;
 }
 
 export function editorContext(editor: HTMLElement): EditorContext {
   const length = (editor.textContent ?? "").length;
-  const selection = selectionIn(editor) ?? { start: length, end: length };
+  const { start, end } = selectionIn(editor) ?? { start: length, end: length };
   return {
     editor,
     id: editor.dataset.id!,
-    inNote: editor.classList.contains("note"),
+    inNote: isNoteEditor(editor),
     isTitle: editor === ui.title || editor === ui.titleNote,
-    start: selection.start,
-    end: selection.end,
+    start,
+    end,
+    length,
+    atStart: start === 0 && end === 0,
+    atEnd: start === length && end === length,
   };
 }
 
 export function caretNow(): Caret | null {
   const editor = editorOf(document.activeElement);
   if (!editor) return null;
-  return {
-    id: editor.dataset.id!,
-    offset: selectionIn(editor)?.start ?? 0,
-    inNote: editor.classList.contains("note"),
-  };
+  return { id: editor.dataset.id!, offset: selectionIn(editor)?.start ?? 0, inNote: isNoteEditor(editor) };
 }
 
 // ---- editing actions ------------------------------------------------------------
 
+type Action = (c: EditorContext) => boolean | void;
+
+/** Actions on a row of the outline; on the page title they do nothing. */
+const onItem =
+  (run: Action): Action =>
+  (c) => {
+    if (!c.isTitle) return run(c);
+  };
+
 export const actions = {
-  enter(c: EditorContext): boolean | void {
+  enter(c: EditorContext): void {
     if (c.inNote) {
       document.execCommand("insertText", false, "\n");
       return;
     }
     if (c.isTitle) {
       const created = insertChild(doc(), state.zoom, 0);
-      commitAndRender(created.doc, { id: created.id, offset: 0 });
+      commitAndRender(created.doc, startOf(created.id));
       return;
     }
     let current = doc();
@@ -221,44 +234,39 @@ export const actions = {
       current = setText(current, c.id, text.slice(0, c.start) + text.slice(c.end));
     }
     const item = current.items[c.id];
-    const siblings = shownChildren(current, item.parent!, filter());
     const isLastEmptyNested =
-      item.text === "" && item.children.length === 0 && item.parent !== state.zoom && siblings.at(-1) === c.id;
+      isBlank(item) && item.parent !== state.zoom && shownChildren(current, item.parent!, filter()).at(-1) === c.id;
     if (isLastEmptyNested) {
-      commitAndRender(outdent(current, c.id, state.zoom), { id: c.id, offset: 0 });
+      commitAndRender(outdent(current, c.id, state.zoom), startOf(c.id));
       return;
     }
     const result = split(current, c.id, c.start, filter());
-    commitAndRender(result.doc, { id: result.focus, offset: 0 });
+    commitAndRender(result.doc, startOf(result.focus));
   },
 
   toggleNote(c: EditorContext): void {
     if (c.inNote) {
-      focusCaret({ id: c.id, offset: doc().items[c.id].text.length });
+      focusCaret({ id: c.id, offset: END });
       return;
     }
     state.openNotes.add(c.id);
-    const note = noteEditorFor(c.id);
+    const note = editorFor(c.id, "note");
     if (!note) return;
     note.hidden = false;
-    focusCaret({ id: c.id, offset: doc().items[c.id].note.length, inNote: true });
+    focusCaret({ id: c.id, offset: END, inNote: true });
   },
 
   backspace(c: EditorContext): boolean | void {
-    if (c.start !== 0 || c.end !== 0 || c.isTitle) return false;
+    if (!c.atStart || c.isTitle) return false;
     if (c.inNote) {
       if (doc().items[c.id].note !== "") return false;
       actions.toggleNote(c);
       return;
     }
-    const item = doc().items[c.id];
     const previous = neighbourEditor(c.editor, -1);
-    if (item.text === "" && item.children.length === 0 && item.note === "") {
-      if (!previous && !neighbourEditor(c.editor, 1)) return;
-      const next = remove(doc(), c.id);
-      const target = previous ?? neighbourEditor(c.editor, 1)!;
-      const targetId = target.dataset.id!;
-      commitAndRender(next, { id: targetId, offset: previous ? next.items[targetId].text.length : 0 });
+    if (isBlank(doc().items[c.id])) {
+      const target = previous ?? neighbourEditor(c.editor, 1);
+      if (target) commitAndRender(remove(doc(), c.id), { id: target.dataset.id!, offset: previous ? END : 0 });
       return;
     }
     if (!previous || previous === ui.title) return;
@@ -267,8 +275,7 @@ export const actions = {
   },
 
   deleteForward(c: EditorContext): boolean | void {
-    const length = (c.editor.textContent ?? "").length;
-    if (c.inNote || c.isTitle || c.start !== length || c.end !== length) return false;
+    if (c.inNote || c.isTitle || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
     if (!next) return;
     const merged = mergeInto(doc(), next.dataset.id!, c.id);
@@ -290,84 +297,58 @@ export const actions = {
   },
 
   arrowLeft(c: EditorContext): boolean | void {
-    if (c.inNote || c.start !== 0 || c.end !== 0) return false;
+    if (c.inNote || !c.atStart) return false;
     const previous = neighbourEditor(c.editor, -1);
     if (!previous) return false;
-    focusCaret({ id: previous.dataset.id!, offset: (previous.textContent ?? "").length });
+    focusCaret({ id: previous.dataset.id!, offset: END });
   },
 
   arrowRight(c: EditorContext): boolean | void {
-    const length = (c.editor.textContent ?? "").length;
-    if (c.inNote || c.start !== length || c.end !== length) return false;
+    if (c.inNote || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
     if (!next) return false;
-    focusCaret({ id: next.dataset.id!, offset: 0 });
+    focusCaret(startOf(next.dataset.id!));
   },
 
-  indent(c: EditorContext): void {
-    if (c.isTitle) return;
-    commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
-  },
+  indent: onItem((c) => commitAndRender(indent(doc(), c.id, filter()), keepCaret(c))),
 
-  outdent(c: EditorContext): void {
-    if (c.isTitle) return;
-    commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
-  },
+  outdent: onItem((c) => commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c))),
 
-  moveUp(c: EditorContext): void {
-    if (c.isTitle) return;
-    commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c));
-  },
+  moveUp: onItem((c) => commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c))),
 
-  moveDown(c: EditorContext): void {
-    if (c.isTitle) return;
-    commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c));
-  },
+  moveDown: onItem((c) => commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c))),
 
-  complete(c: EditorContext): void {
-    if (c.isTitle) return;
+  complete: onItem((c) => {
     const next = toggleCompleted(doc(), c.id);
-    if (isShown(next, c.id, filter())) {
-      commitAndRender(next, keepCaret(c));
-      return;
-    }
-    const around = rowsAround([c.id]);
-    const neighbour = around.after ?? around.before;
-    commitAndRender(next, neighbour ? { id: neighbour, offset: 0 } : null);
-    toast("Completed and hidden", { label: "Undo", run: undo });
-  },
+    const { before, after } = rowsAround([c.id]);
+    commitAndRender(next, [keepCaret(c), ...startsOf(after, before)]);
+    if (!isShown(next, c.id, filter())) toastWithUndo("Completed and hidden");
+  }),
 
-  duplicate(c: EditorContext): void {
-    if (c.isTitle) return;
+  duplicate: onItem((c) => {
     const result = duplicate(doc(), c.id);
     commitAndRender(result.doc, { id: result.id, offset: c.start });
-  },
+  }),
 
-  deleteItem(c: EditorContext): void {
-    if (c.isTitle) return;
+  deleteItem: onItem((c) => {
     const item = doc().items[c.id];
     const hidden = descendantCount(doc(), c.id);
-    const next = remove(doc(), c.id);
-    commitAndRender(next, focusAfterRemoving([c.id], next));
+    commitAndRender(remove(doc(), c.id), focusAfterRemoving([c.id]));
     const label = item.text.trim() ? `“${shortLabel(item.text, 32)}”` : "Item";
-    toast(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`, { label: "Undo", run: undo });
-  },
+    toastWithUndo(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`);
+  }),
 
-  collapse(c: EditorContext): void {
-    if (c.isTitle || state.results) return;
-    commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
-  },
+  collapse: onItem((c) => {
+    if (!state.results) commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
+  }),
 
-  expand(c: EditorContext): void {
-    if (c.isTitle || state.results) return;
+  expand: onItem((c) => {
+    if (state.results) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
     animateOpening(c.id);
-  },
+  }),
 
-  zoomIn(c: EditorContext): void {
-    if (c.isTitle) return;
-    zoomTo(c.id, { id: c.id, offset: c.start });
-  },
+  zoomIn: onItem((c) => zoomTo(c.id, { id: c.id, offset: c.start })),
 
   zoomOut(c: EditorContext): void {
     if (state.zoom === ROOT) return;
@@ -391,13 +372,12 @@ export const actions = {
     c.editor.blur();
   },
 
-  moveToPicker(c: EditorContext): void {
-    if (c.isTitle) return;
+  moveToPicker: onItem((c) => {
     const id = c.id;
-    const around = rowsAround([id]);
+    const { before, after } = rowsAround([id]);
     const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
     openPalette({
-      placeholder: `Move “${shortLabel(doc().items[id].text, 30) || "Untitled"}” to…`,
+      placeholder: `Move “${itemLabel(doc().items[id].text, 30)}” to…`,
       hint: "It goes to the end of the item you choose",
       candidates: (query) => {
         const found = findItems(doc(), query, 40, (other) => other === id || isDescendant(doc(), other, id));
@@ -405,13 +385,11 @@ export const actions = {
         return homeMatches ? [home, ...found] : found;
       },
       choose: (target) => {
-        commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), null);
-        const focus = [id, around.before, around.after].find((candidate) => candidate && textEditorFor(candidate));
-        if (focus) focusCaret({ id: focus, offset: 0 });
-        toast(`Moved to “${shortLabel(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, { id, offset: 0 }) });
+        commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), startsOf(id, before, after));
+        toast(`Moved to “${shortLabel(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, startOf(id)) });
       },
     });
-  },
+  }),
 
   selectUp(c: EditorContext): boolean | void {
     if (c.inNote || c.isTitle || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
@@ -420,24 +398,14 @@ export const actions = {
   },
 
   selectAll(c: EditorContext): boolean | void {
-    const length = (c.editor.textContent ?? "").length;
-    const wholeTextSelected = c.start === 0 && c.end === length;
+    const wholeTextSelected = c.start === 0 && c.end === c.length;
     if (c.inNote || c.isTitle || !wholeTextSelected) return false;
     selectWholePage();
   },
 
   selectDown(c: EditorContext): boolean | void {
-    const length = (c.editor.textContent ?? "").length;
-    if (c.inNote || c.isTitle || c.end !== length || !isCaretOnLastLine(c.editor)) return false;
+    if (c.inNote || c.isTitle || c.end !== c.length || !isCaretOnLastLine(c.editor)) return false;
     startSelection(c.id, neighbourEditor(c.editor, 1)?.dataset.id ?? c.id);
-  },
-
-  undo(): void {
-    undo();
-  },
-
-  redo(): void {
-    redo();
   },
 };
 
@@ -445,29 +413,33 @@ function keepCaret(c: EditorContext): Focus {
   return { id: c.id, offset: c.start, inNote: c.inNote };
 }
 
+function startOf(id: ItemId): Focus {
+  return { id, offset: 0 };
+}
+
+function startsOf(...ids: (ItemId | null)[]): Focus[] {
+  return ids.filter((id): id is ItemId => id !== null).map(startOf);
+}
+
 function wrapSelection(c: EditorContext, marker: string): void {
   const text = c.editor.textContent ?? "";
-  const selected = text.slice(c.start, c.end);
-  const next = text.slice(0, c.start) + marker + selected + marker + text.slice(c.end);
-  const update = c.inNote ? setNote(doc(), c.id, next) : setText(doc(), c.id, next);
-  commit(update);
+  const next = text.slice(0, c.start) + marker + text.slice(c.start, c.end) + marker + text.slice(c.end);
+  commitShownEdit(c.inNote ? setNote(doc(), c.id, next) : setText(doc(), c.id, next), c.id, caretNow());
   c.editor.textContent = next;
-  rowShowsTypedText(c.id);
   select(c.editor, c.start + marker.length, c.end + marker.length);
 }
 
 /** Lines pasted into an item go after it (replacing it if empty); into the page title, to the top of the page. */
 function pasteLines(id: ItemId, text: string): void {
   const item = doc().items[id];
-  const incoming = parseIndentedText(text);
   const intoTitle = id === state.zoom;
-  const replacesEmptyItem = !intoTitle && item.text === "" && item.children.length === 0 && item.note === "";
+  const replacesEmptyItem = !intoTitle && isBlank(item);
   const parent = intoTitle ? id : item.parent!;
   const at = intoTitle ? 0 : indexInParent(doc(), id) + (replacesEmptyItem ? 0 : 1);
-  const result = graft(doc(), incoming, parent, at);
+  const result = graft(doc(), parseIndentedText(text), parent, at);
   const next = replacesEmptyItem ? remove(result.doc, id) : result.doc;
   const last = result.ids.at(-1);
-  commitAndRender(next, last ? { id: last, offset: next.items[last].text.length } : null);
+  commitAndRender(next, last ? { id: last, offset: END } : null);
 }
 
 function toggleFold(id: ItemId): void {
@@ -478,14 +450,14 @@ function toggleFold(id: ItemId): void {
 }
 
 function animateOpening(id: ItemId): void {
-  ui.tree.querySelector(`.item[data-id="${CSS.escape(id)}"] > .children`)?.classList.add("opening");
+  const children = itemElementFor(id)?.querySelector(":scope > .children");
+  if (children) replayAnimation(children, "opening");
 }
 
 function neighbourEditor(editor: HTMLElement, direction: -1 | 1): HTMLElement | null {
-  const editors = [ui.title, ...ui.tree.querySelectorAll<HTMLElement>(".text[data-id]")];
-  const textEditor = editor.classList.contains("note") ? textEditorFor(editor.dataset.id!) ?? editor : editor;
-  const index = editors.indexOf(textEditor);
-  return editors[index + direction] ?? null;
+  const editors = [ui.title, ...treeEditors()];
+  const textEditor = isNoteEditor(editor) ? (textEditorFor(editor.dataset.id!) ?? editor) : editor;
+  return editors[editors.indexOf(textEditor) + direction] ?? null;
 }
 
 function caretX(editor: HTMLElement): number {
@@ -501,4 +473,3 @@ function focusAtX(editor: HTMLElement, x: number, edge: "top" | "bottom"): void 
   select(editor, Math.min(offset, length));
   editor.scrollIntoView({ block: "nearest" });
 }
-

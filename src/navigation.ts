@@ -2,9 +2,7 @@ import { ItemId, ROOT, ancestors } from "./model";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
 import { Focus, doc, filter, isUnder, state, ui } from "./app";
-import { render } from "./render";
-
-// ---- zoom and search ------------------------------------------------------------
+import { render, replayAnimation } from "./render";
 
 export function zoomFromHash(): ItemId {
   let id = "";
@@ -33,13 +31,11 @@ export function showZoom(): void {
   pendingZoomFocus = null;
   const changed = state.zoom !== zoomFromHash();
   state.zoom = zoomFromHash();
-  if (changed && state.query) clearQuery();
+  if (changed && state.query) changeQuery("");
   if (changed && state.zoom !== ROOT) state.recent = [state.zoom, ...state.recent.filter((id) => id !== state.zoom)].slice(0, 8);
   render(focus);
   if (changed) {
-    ui.tree.classList.remove("entering");
-    void ui.tree.offsetWidth;
-    ui.tree.classList.add("entering");
+    replayAnimation(ui.tree, "entering");
     if (!focus) window.scrollTo({ top: 0 });
   }
 }
@@ -49,12 +45,7 @@ export function setQuery(query: string): void {
   render(null);
 }
 
-export function clearQuery(): void {
-  changeQuery("");
-  state.results = null;
-}
-
-export function changeQuery(query: string): void {
+function changeQuery(query: string): void {
   state.query = query;
   if (ui.search.value !== query) ui.search.value = query;
   state.keptInResults.clear();

@@ -1,13 +1,13 @@
-import { Doc, ItemId, ROOT, ViewFilter, ancestors } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant } from "./model";
 import { Caret, History } from "./store";
-import { discardPendingSave, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
+import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
 import { SearchResult } from "./search";
 import { welcomeDoc } from "./welcome";
 import { enableBulletHandles } from "./bullets";
 import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
-import { render } from "./render";
-import { applyAppearance, bindChrome, bindGlobalKeys, bindItemMenu, openItemMenu, toast } from "./chrome";
+import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
+import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -48,20 +48,20 @@ export function start(): void {
   applyAppearance();
   bindEditorEvents();
   bindChrome();
-  bindGlobalKeys();
-  bindItemMenu();
   enableBulletHandles(ui.tree, {
     doc,
     zoomInto: (id) => zoomTo(id),
-    move: (next, id) => commitAndRender(next, { id, offset: 0, selectNone: true }),
+    move: (next, id) => {
+      commitAndRender(next, null);
+      flashRow(id);
+    },
     openMenu: openItemMenu,
   });
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();
-    discardPendingSave();
     state.history.replaceFromElsewhere(incoming);
     if (!incoming.items[state.zoom]) zoomTo(ROOT);
-    else render(caret && incoming.items[caret.id] ? caret : null);
+    else render(caret);
   });
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
@@ -73,46 +73,46 @@ export function start(): void {
 
 // ---- changing the document ------------------------------------------------
 
-export interface Focus extends Caret {
-  selectNone?: boolean;
-}
+export type Focus = Caret;
 
-export function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): void {
-  state.history.commit(next, caretBefore, typingKey);
-  saveDocSoon(next);
-}
-
-export function commitAndRender(next: Doc, focus: Focus | null): void {
+export function commitAndRender(next: Doc, focus: FocusRequest): void {
   if (next === doc()) return;
   commit(next);
   render(focus);
 }
 
+/**
+ * For edits the DOM already shows (typing, wrapping a selection in markers):
+ * no render, but the row and the search results have to know.
+ */
+export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null, typingKey: string | null = null): void {
+  commit(next, typingKey, caretBefore);
+  rowShowsTypedText(id);
+  if (state.query) state.keptInResults.add(id);
+}
+
+function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): void {
+  state.history.commit(next, caretBefore, typingKey);
+  saveDocSoon(next);
+}
+
 export function undo(): void {
-  const caret = state.history.undo(caretNow());
-  if (caret === undefined) return;
-  afterHistoryJump(caret);
+  afterHistoryJump(state.history.undo(caretNow()));
 }
 
 export function redo(): void {
-  const caret = state.history.redo(caretNow());
-  if (caret === undefined) return;
-  afterHistoryJump(caret);
+  afterHistoryJump(state.history.redo(caretNow()));
 }
 
-function afterHistoryJump(caret: Caret | null): void {
+function afterHistoryJump(caret: Caret | null | undefined): void {
+  if (caret === undefined) return;
   saveDocSoon(doc());
   if (caret && !doc().items[caret.id]) caret = null;
-  if (!doc().items[state.zoom]) zoomTo(ROOT, caret && isUnder(caret.id, ROOT) ? caret : null);
-  else if (caret && !isOnPage(caret.id)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
+  if (!doc().items[state.zoom]) zoomTo(ROOT, caret);
+  else if (caret && !isUnder(caret.id, state.zoom)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
   else render(caret);
 }
 
 export function isUnder(id: ItemId, top: ItemId): boolean {
-  return id === top || ancestors(doc(), id).includes(top);
+  return id === top || isDescendant(doc(), id, top);
 }
-
-function isOnPage(id: ItemId): boolean {
-  return isUnder(id, state.zoom);
-}
-
