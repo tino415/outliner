@@ -71,8 +71,8 @@ export function bindChrome(): void {
   });
 
   ui.toolbar.addEventListener("pointerdown", (event) => event.preventDefault());
-  ui.toolbar.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
+  ui.toolbar.addEventListener("pointerup", (event) => {
+    const button = (event.target as Element).closest<HTMLElement>("[data-action]");
     const editor = editorOf(document.activeElement);
     if (!button || !editor) return;
     runToolbarAction(button.dataset.action!, editor);
