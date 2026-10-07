@@ -11,7 +11,9 @@ import {
   indentAll,
   insertChild,
   indexInParent,
+  isDescendant,
   isShown,
+  moveTo,
   mergeInto,
   moveDown,
   moveUp,
@@ -33,12 +35,13 @@ import {
 } from "./model";
 import { Caret, History } from "./store";
 import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
-import { SearchResult, search } from "./search";
+import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
+import { openPalette } from "./palette";
 import { renderInline } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText, subtreesAsText } from "./transfer";
 import { welcomeDoc } from "./welcome";
-import { Binding, bindingFor, describeKeys, keyString } from "./keys";
+import { Binding, bindingFor, describeKeys, isMac, keyString } from "./keys";
 import { enableDragAndDrop } from "./drag";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -69,6 +72,7 @@ const state = {
   results: null as SearchResult | null,
   openNotes: new Set<ItemId>(),
   selection: null as { anchor: ItemId; head: ItemId } | null,
+  recent: [] as ItemId[],
 };
 
 const doc = (): Doc => state.history.doc;
@@ -464,6 +468,30 @@ export const actions = {
     c.editor.blur();
   },
 
+  moveToPicker(c: EditorContext): void {
+    if (c.isTitle) return;
+    const id = c.id;
+    const neighbour = neighbourEditor(c.editor, -1) ?? neighbourEditor(c.editor, 1);
+    const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
+    openPalette({
+      placeholder: `Move “${truncate(doc().items[id].text, 30) || "Untitled"}” to…`,
+      hint: "It goes to the end of the item you choose",
+      candidates: (query) => {
+        const found = findItems(doc(), query, 40, (other) => other === id || isDescendant(doc(), other, id));
+        const homeMatches = !query.trim() || home.text.toLowerCase().includes(query.trim().toLowerCase());
+        return homeMatches ? [home, ...found] : found;
+      },
+      choose: (target) => {
+        commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), null);
+        const stillOnScreen = textEditorFor(id);
+        const fallback = neighbour && neighbour !== ui.title ? textEditorFor(neighbour.dataset.id!) : null;
+        const focus = stillOnScreen ?? fallback;
+        if (focus) focusCaret({ id: focus.dataset.id!, offset: 0 });
+        toast(`Moved to “${truncate(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, { id, offset: 0 }) });
+      },
+    });
+  },
+
   selectUp(c: EditorContext): boolean | void {
     if (c.inNote || c.isTitle || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
     const previous = neighbourEditor(c.editor, -1);
@@ -536,6 +564,23 @@ function focusAtX(editor: HTMLElement, x: number, edge: "top" | "bottom"): void 
   const offset = offsetAtPoint(editor, x, y) ?? (edge === "top" ? 0 : length);
   select(editor, Math.min(offset, length));
   editor.scrollIntoView({ block: "nearest" });
+}
+
+function jumpToItem(): void {
+  const recent = (): Candidate[] =>
+    state.recent
+      .filter((id) => doc().items[id])
+      .map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
+  openPalette({
+    placeholder: "Jump to…",
+    hint: "↑ ↓ to choose · Enter to open · Esc to close",
+    candidates: (query) => {
+      if (query.trim()) return findItems(doc(), query, 40);
+      const seen = new Set(state.recent);
+      return [...recent(), ...findItems(doc(), "", 30, (id) => seen.has(id))];
+    },
+    choose: (candidate) => zoomTo(candidate.id),
+  });
 }
 
 // ---- selecting several items ------------------------------------------------------
@@ -700,6 +745,7 @@ function showZoom(): void {
   const changed = state.zoom !== zoomFromHash();
   state.zoom = zoomFromHash();
   if (changed && state.query) clearQuery();
+  if (changed && state.zoom !== ROOT) state.recent = [state.zoom, ...state.recent.filter((id) => id !== state.zoom)].slice(0, 8);
   render(focus);
   if (changed) {
     ui.tree.classList.remove("entering");
@@ -941,6 +987,7 @@ function bindChrome(): void {
   $("help-close").addEventListener("click", () => ui.help.close());
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
   ui.helpGrid.innerHTML = describeKeys();
+  document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 }
@@ -948,6 +995,10 @@ function bindChrome(): void {
 function runMenuAction(action: string): void {
   const page = state.zoom === ROOT ? "outline" : slug(doc().items[state.zoom].text) || "outline";
   switch (action) {
+    case "jump":
+      ui.menu.hidePopover();
+      jumpToItem();
+      break;
     case "toggle-completed":
       updatePrefs({ showCompleted: !state.prefs.showCompleted });
       render(caretNow());
@@ -1054,7 +1105,7 @@ function bindGlobalKeys(): void {
     const binding = bindingFor(event, "global");
     if (!binding) return;
     if (binding.typing && (inField || (binding.id === "focus-first" && !onPage))) return;
-    if (inField && binding.id !== "search" && binding.id !== "help") return;
+    if (inField && !["search", "help", "jump"].includes(binding.id!)) return;
     event.preventDefault();
     runGlobal(binding.id!);
   });
@@ -1074,6 +1125,9 @@ function runGlobal(id: string): void {
       break;
     case "redo":
       redo();
+      break;
+    case "jump":
+      jumpToItem();
       break;
     case "toggle-completed":
       runMenuAction("toggle-completed");

@@ -286,6 +286,28 @@ test.describe("zoom and search", () => {
     await expectOutline(page, "projects\n  garden plan\n  kitchen\nshopping\n  milk");
   });
 
+  test("Ctrl-K jumps to any item by name", async ({ page }) => {
+    await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(page.locator("#palette")).toBeVisible();
+    await page.keyboard.type("tom");
+    await expect(page.locator(".palette-results li.active .palette-path")).toHaveText("projects / garden");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#title")).toHaveText("tomatoes");
+  });
+
+  test("Alt-Shift-M moves an item under another one", async ({ page }) => {
+    await freshOutline(page, "inbox item\nprojects\n  garden");
+    await clickEnd(page, "inbox item");
+    await page.keyboard.press("Alt+Shift+m");
+    await page.keyboard.type("garden");
+    await page.keyboard.press("Enter");
+    await expectOutline(page, "projects\n  garden\n    inbox item");
+    await expect(page.locator("#toast")).toContainText("Moved to “garden”");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expectOutline(page, "inbox item\nprojects\n  garden");
+  });
+
   test("clicking a tag searches for it", async ({ page }) => {
     await freshOutline(page, "one #red\ntwo #blue\nthree #red");
     await row(page, "two #blue").locator(".tag").click();

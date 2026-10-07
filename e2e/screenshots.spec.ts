@@ -38,7 +38,14 @@ for (const theme of ["light", "dark"] as const) {
     await shot("menu");
     await page.keyboard.press("Escape");
 
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type("re");
+    await page.waitForTimeout(200);
+    await shot("jump");
+    await page.keyboard.press("Escape");
+
     if (info.project.name === "desktop") {
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await page.keyboard.press("?");
       await page.waitForTimeout(200);
       await shot("help");
