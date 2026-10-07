@@ -807,6 +807,110 @@ code {
   margin: 0 5px;
 }
 
+/* ---- sync ----------------------------------------------------------------- */
+
+.sync-status {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 34px;
+}
+
+.sync-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: background 0.2s;
+}
+
+.sync-status[data-status="synced"] span {
+  background: light-dark(#2f9e5b, #5fd08a);
+}
+
+.sync-status[data-status="pending"] span {
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.sync-status[data-status="refused"] span {
+  background: light-dark(#c4362b, #ff8a80);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.sync-form {
+  display: grid;
+  gap: 12px;
+  padding: 4px 24px 22px;
+  font-size: 14px;
+}
+
+.sync-explain {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sync-form label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.sync-form input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 400;
+}
+
+.sync-form input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 0;
+}
+
+.sync-state {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--muted);
+}
+
+.sync-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sync-connect {
+  padding: 8px 18px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: light-dark(#fff, #10131f);
+  font-weight: 600;
+}
+
+.sync-connect:disabled {
+  opacity: 0.6;
+}
+
+.sync-disconnect {
+  color: var(--muted);
+}
+
+.sync-dialog:not([data-connected="true"]) .sync-disconnect {
+  visibility: hidden;
+}
+
 /* ---- palette ------------------------------------------------------------- */
 
 .palette {

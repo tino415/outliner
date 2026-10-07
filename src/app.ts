@@ -8,6 +8,7 @@ import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
+import { startSync, syncedDoc } from "./syncing";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -29,7 +30,7 @@ export const ui = {
 };
 
 export const state = {
-  history: new History(loadDoc() ?? welcomeDoc()),
+  history: new History(syncedDoc() ?? loadDoc() ?? welcomeDoc()),
   prefs: loadPrefs(),
   zoom: ROOT as ItemId,
   query: "",
@@ -69,6 +70,7 @@ export function start(): void {
   render(null);
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
+  startSync();
 }
 
 // ---- changing the document ------------------------------------------------
@@ -92,21 +94,38 @@ export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null
 }
 
 function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): void {
+  const before = doc();
   state.history.commit(next, caretBefore, typingKey);
   saveDocSoon(next);
+  changedHere(before, next);
+}
+
+type ChangeListener = (before: Doc, after: Doc) => void;
+const listeners: ChangeListener[] = [];
+
+/** Every change made in this tab, typing, undo and redo included; not changes that came from elsewhere. */
+export function onChangeHere(listener: ChangeListener): void {
+  listeners.push(listener);
+}
+
+function changedHere(before: Doc, after: Doc): void {
+  for (const listener of listeners) listener(before, after);
 }
 
 export function undo(): void {
-  afterHistoryJump(state.history.undo(caretNow()));
+  const before = doc();
+  afterHistoryJump(before, state.history.undo(caretNow()));
 }
 
 export function redo(): void {
-  afterHistoryJump(state.history.redo(caretNow()));
+  const before = doc();
+  afterHistoryJump(before, state.history.redo(caretNow()));
 }
 
-function afterHistoryJump(caret: Caret | null | undefined): void {
+function afterHistoryJump(before: Doc, caret: Caret | null | undefined): void {
   if (caret === undefined) return;
   saveDocSoon(doc());
+  changedHere(before, doc());
   if (caret && !doc().items[caret.id]) caret = null;
   if (!doc().items[state.zoom]) zoomTo(ROOT, caret);
   else if (caret && !isUnder(caret.id, state.zoom)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
