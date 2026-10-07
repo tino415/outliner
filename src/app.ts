@@ -42,9 +42,9 @@ import { escape, plainText, renderInline } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText, subtreesAsText } from "./transfer";
 import { welcomeDoc } from "./welcome";
-import { Binding, bindingFor, describeKeys, keyString } from "./keys";
+import { bindingFor, describeKeys, keyString } from "./keys";
 import { isMac } from "./platform";
-import { enableDragAndDrop } from "./drag";
+import { enableBulletHandles } from "./bullets";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -87,10 +87,12 @@ export function start(): void {
   bindEditorEvents();
   bindChrome();
   bindGlobalKeys();
-  enableDragAndDrop(ui.tree, {
+  bindItemMenu();
+  enableBulletHandles(ui.tree, {
     doc,
     zoomInto: (id) => zoomTo(id),
     move: (next, id) => commitAndRender(next, { id, offset: 0, selectNone: true }),
+    openMenu: openItemMenu,
   });
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();
@@ -206,7 +208,7 @@ function bindEditorEvents(): void {
     const editor = editorOf(event.target);
     if (!editor || event.isComposing) return;
     const binding = bindingFor(event, "editor");
-    if (binding && binding.run(editorContext(editor, binding)) !== false) event.preventDefault();
+    if (binding && binding.run(editorContext(editor)) !== false) event.preventDefault();
   });
 
   document.addEventListener("mousedown", (event) => {
@@ -270,7 +272,7 @@ function handledAsKey(event: InputEvent, editor: HTMLElement): boolean {
   if (!key) return false;
   const binding = bindingFor(key, "editor");
   if (!binding) return false;
-  const context = editorContext(editor, binding);
+  const context = editorContext(editor);
   if (event.inputType === "insertLineBreak" && context.inNote) return false;
   return binding.run(context) !== false;
 }
@@ -287,11 +289,11 @@ export interface EditorContext {
   isTitle: boolean;
   start: number;
   end: number;
-  binding: Binding;
 }
 
-function editorContext(editor: HTMLElement, binding: Binding): EditorContext {
-  const selection = selectionIn(editor) ?? { start: 0, end: 0 };
+function editorContext(editor: HTMLElement): EditorContext {
+  const length = (editor.textContent ?? "").length;
+  const selection = selectionIn(editor) ?? { start: length, end: length };
   return {
     editor,
     id: editor.dataset.id!,
@@ -299,7 +301,6 @@ function editorContext(editor: HTMLElement, binding: Binding): EditorContext {
     isTitle: editor === ui.title || editor === ui.titleNote,
     start: selection.start,
     end: selection.end,
-    binding,
   };
 }
 
@@ -1194,9 +1195,65 @@ function runToolbarAction(action: string, editor: HTMLElement): void {
     done: "blur",
   };
   const name = names[action];
-  if (!name) return;
-  const binding = { keys: [], label: action, context: "editor", run: () => undefined } as Binding;
-  actions[name](editorContext(editor, binding));
+  if (name) actions[name](editorContext(editor));
+}
+
+// ---- the item menu (long press or right click on a bullet) ----------------------
+
+let menuItem: ItemId | null = null;
+
+function openItemMenu(id: ItemId, anchor: HTMLElement): void {
+  menuItem = id;
+  const menu = $("item-menu");
+  const item = doc().items[id];
+  $("item-menu-title").textContent = shortLabel(item.text, 40) || "Untitled";
+  menu.querySelector('[data-item-action="complete"] span')!.textContent = item.completed ? "Uncomplete" : "Complete";
+  menu.querySelector('[data-item-action="note"] span')!.textContent = item.note ? "Edit note" : "Add a note";
+  menu.showPopover();
+  const rect = anchor.getBoundingClientRect();
+  const height = menu.offsetHeight;
+  const fitsBelow = rect.bottom + 4 + height < window.innerHeight;
+  menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${fitsBelow ? rect.bottom + 4 : Math.max(8, rect.top - height - 4)}px`;
+}
+
+function bindItemMenu(): void {
+  $("item-menu").addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-item-action]");
+    if (!button || !menuItem || !doc().items[menuItem]) return;
+    $("item-menu").hidePopover();
+    runItemAction(button.dataset.itemAction!, menuItem);
+  });
+}
+
+function runItemAction(action: string, id: ItemId): void {
+  const editor = textEditorFor(id);
+  if (!editor) return;
+  const c = editorContext(editor);
+  switch (action) {
+    case "zoom":
+      zoomTo(id);
+      break;
+    case "note":
+      actions.toggleNote(c);
+      break;
+    case "complete":
+      actions.complete(c);
+      break;
+    case "duplicate":
+      actions.duplicate(c);
+      break;
+    case "move":
+      actions.moveToPicker(c);
+      break;
+    case "copy":
+      copyText(subtreesAsText(doc(), [id]));
+      toast("Copied as text");
+      break;
+    case "delete":
+      actions.deleteItem(c);
+      break;
+  }
 }
 
 function keepToolbarAboveKeyboard(): void {

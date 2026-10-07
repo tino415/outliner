@@ -43,6 +43,16 @@ for (const theme of ["light", "dark"] as const) {
     await shot("menu");
     await page.keyboard.press("Escape");
 
+    const bullet = row(page, "Reading list #ideas").locator(".bullet");
+    const box = (await bullet.boundingBox())!;
+    const at = { clientX: box.x + 10, clientY: box.y + 10, pointerType: "touch", pointerId: 9, isPrimary: true, button: 0 };
+    await bullet.dispatchEvent("pointerdown", at);
+    await page.waitForTimeout(600);
+    await bullet.dispatchEvent("pointerup", at);
+    await page.waitForTimeout(200);
+    await shot("item-menu");
+    await page.keyboard.press("Escape");
+
     await page.keyboard.press("ControlOrMeta+k");
     await page.keyboard.type("re");
     await page.waitForTimeout(200);

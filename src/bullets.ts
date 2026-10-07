@@ -4,6 +4,7 @@ interface DragHost {
   doc: () => Doc;
   zoomInto: (id: ItemId) => void;
   move: (next: Doc, id: ItemId) => void;
+  openMenu: (id: ItemId, anchor: HTMLElement) => void;
 }
 
 interface Drop {
@@ -14,15 +15,29 @@ interface Drop {
 
 const DRAG_THRESHOLD = 5;
 const CHILD_OFFSET = 28;
+const LONG_PRESS_MS = 450;
 
-/** Bullets are drag handles; a press that does not move is a click that zooms in. */
-export function enableDragAndDrop(tree: HTMLElement, host: DragHost): void {
+/**
+ * Bullets are handles: a press that does not move is a click that zooms in,
+ * a press that moves drags the item, and a long touch or a right click opens
+ * the item's menu.
+ */
+export function enableBulletHandles(tree: HTMLElement, host: DragHost): void {
   tree.addEventListener("pointerdown", (event) => {
     const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
     if (!bullet || event.button !== 0) return;
     event.preventDefault();
     const source = bullet.closest<HTMLElement>(".item")!;
     trackPointer(event, bullet, source, tree, host);
+  });
+  tree.addEventListener("contextmenu", (event) => {
+    const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
+    if (!bullet) return;
+    event.preventDefault();
+    const open = () => host.openMenu(bullet.closest<HTMLElement>(".item")!.dataset.id!, bullet);
+    const buttonStillDown = (event.buttons & 2) !== 0;
+    if (buttonStillDown) window.addEventListener("pointerup", () => setTimeout(open), { once: true });
+    else open();
   });
 }
 
@@ -31,11 +46,24 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
   let ghost: HTMLElement | null = null;
   let indicator: HTMLElement | null = null;
   let drop: Drop | null = null;
-  bullet.setPointerCapture(start.pointerId);
+  let menuOpened = false;
+  try {
+    bullet.setPointerCapture(start.pointerId);
+  } catch {
+    // A pointer the browser no longer tracks; the listeners below still work for it.
+  }
+  const longPress =
+    start.pointerType === "mouse"
+      ? undefined
+      : window.setTimeout(() => {
+          menuOpened = true;
+          host.openMenu(id, bullet);
+        }, LONG_PRESS_MS);
 
   const onMove = (event: PointerEvent) => {
     const distance = Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY);
-    if (!ghost && distance < DRAG_THRESHOLD) return;
+    if (menuOpened || (!ghost && distance < DRAG_THRESHOLD)) return;
+    window.clearTimeout(longPress);
     if (!ghost) {
       ghost = createGhost(source);
       indicator = Object.assign(document.createElement("div"), { className: "drop-indicator" });
@@ -57,6 +85,7 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
   };
 
   const finish = (event: PointerEvent) => {
+    window.clearTimeout(longPress);
     bullet.removeEventListener("pointermove", onMove);
     bullet.removeEventListener("pointerup", finish);
     bullet.removeEventListener("pointercancel", finish);
@@ -65,7 +94,7 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
     indicator?.remove();
     document.body.classList.remove("dragging");
     source.classList.remove("drag-source");
-    if (event.type === "pointercancel") return;
+    if (event.type === "pointercancel" || menuOpened) return;
     if (!dragged) host.zoomInto(id);
     else if (drop) host.move(moveTo(host.doc(), id, drop.parent, drop.index), id);
   };
