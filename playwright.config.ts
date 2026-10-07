@@ -14,7 +14,7 @@ export default defineConfig({
     reuseExistingServer: true,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 860 } } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 860 } }, testIgnore: /mobile/ },
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile|screenshots/ },
     { name: "webkit", use: { ...devices["Desktop Safari"] }, testMatch: /editing/ },
     { name: "firefox", use: { ...devices["Desktop Firefox"] }, testMatch: /editing/ },

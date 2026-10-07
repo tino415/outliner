@@ -150,7 +150,10 @@ function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
 
   document.addEventListener("beforeinput", (event) => {
-    if (editorOf(event.target)) caretBeforeInput = caretNow();
+    const editor = editorOf(event.target);
+    if (!editor) return;
+    caretBeforeInput = caretNow();
+    if (handledAsKey(event, editor)) event.preventDefault();
   });
 
   document.addEventListener("input", (event) => {
@@ -168,6 +171,10 @@ function bindEditorEvents(): void {
   });
 
   document.addEventListener("focusout", (event) => {
+    if (!editorOf(event.relatedTarget)) {
+      ui.toolbar.classList.remove("active");
+      document.querySelectorAll(".row.focused").forEach((row) => row.classList.remove("focused"));
+    }
     const editor = editorOf(event.target);
     if (!editor || !doc().items[editor.dataset.id!]) return;
     const item = doc().items[editor.dataset.id!];
@@ -236,6 +243,27 @@ function bindEditorEvents(): void {
     const id = toggle.closest<HTMLElement>(".item")!.dataset.id!;
     toggleFold(id);
   });
+}
+
+/**
+ * Virtual keyboards often report Enter and Backspace as an "Unidentified"
+ * keydown, so the key bindings never see them. The input they are about to
+ * cause still says what was meant.
+ */
+function handledAsKey(event: InputEvent, editor: HTMLElement): boolean {
+  const fake = (key: string, shiftKey = false) => ({ key, code: "", shiftKey, ctrlKey: false, metaKey: false, altKey: false }) as KeyboardEvent;
+  const intent: Record<string, KeyboardEvent> = {
+    insertParagraph: fake("Enter"),
+    insertLineBreak: fake("Enter", true),
+    deleteContentBackward: fake("Backspace"),
+  };
+  const key = intent[event.inputType];
+  if (!key) return false;
+  const binding = bindingFor(key, "editor");
+  if (!binding) return false;
+  const context = editorContext(editor, binding);
+  if (event.inputType === "insertLineBreak" && context.inNote) return false;
+  return binding.run(context) !== false;
 }
 
 function editorOf(target: EventTarget | null): HTMLElement | null {
