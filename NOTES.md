@@ -81,8 +81,19 @@ Built all six items of the scope, in about three hours of the six.
   deleted items as "the server has an outline" and would have replaced the
   device's outline with an empty one.
 
-Not done, left to Martin: `tailscale serve --bg --https=10001
-http://127.0.0.1:8791` (he chose to run it himself).
+Not done, left to Martin: putting the server on the tailnet. He first chose
+to run it himself, then asked me to; as user `llm` it failed (2026-10-08,
+not investigated, per instructions):
+
+```
+$ tailscale serve --bg --https=10001 http://127.0.0.1:8791
+sending serve config: Access denied: serve config denied
+
+Use 'sudo tailscale serve --bg --https=10001 http://127.0.0.1:8791'.
+To not require root, use 'sudo tailscale set --operator=$USER' once.
+```
+
+Port 10001 was free at the time (10000, 443 and 8443 are taken).
 
 Known limits:
 
