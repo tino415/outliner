@@ -66,6 +66,18 @@ Cut (and why):
 - IndexedDB: localStorage is enough for a text outline of a few MB and is
   synchronous, which keeps saving trivial
 
+## Machine issues hit (not investigated, per instructions)
+
+- 2026-10-07 22:30, checking the Tailscale URL from `dev` itself:
+  `curl https://dev.taile622dc.ts.net/outliner-lab/` →
+  `curl: (60) SSL: no alternative certificate subject name matches target hostname 'dev.taile622dc.ts.net'`
+  (same for `https://dev.taile622dc.ts.net/`). The Mac URL
+  `https://artifacts.dev.localhost/outliner-lab/` answers 200 from `dev`. The
+  Tailscale URL has not been verified from a tailnet device.
+- `EnterWorktree` refused to start in the empty repository ("Failed to resolve
+  base branch HEAD"); an empty first commit on `main` fixed that, and the work
+  lives on branch `worktree-outliner`.
+
 ## Stack
 
 - Vite + TypeScript, no UI framework. One immutable document object; every
