@@ -31,6 +31,22 @@ dev-run npx playwright test         # desktop Chromium, phone, WebKit, Firefox
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.
 
+## Properties and columns
+
+A line `key:: value` in an item's note is a property (doc/adr/0017):
+`calories:: 350 kcal`, `effort:: 1h30m`, `effort:: 1:30`, `protein:: 12 g`.
+⋯ → Columns (Alt-Shift-C) shows the page's properties as columns, each
+parent showing the sum of its children. To choose the columns and how they
+roll up, put a `columns::` property on the page, as in org mode:
+
+```
+columns:: calories{+} protein{+} effort{max}
+```
+
+`{+}` sums (the default), `{min}`, `{max}` and `{mean}` take the least, most
+or average of the children. A page with `columns::`, and everything under
+it, opens in column view. Cells are editable; a click writes the property.
+
 ## Sync server
 
 The `sync` service keeps the outline for every device and the CLI
@@ -59,6 +75,8 @@ bin/outline show "Projects/Garden" --ids
 bin/outline find "#ideas" --json
 bin/outline add "Buy seeds" --under Projects --note "before March"
 printf '%s\n' "- Week" "  - Monday" | bin/outline add - --under Plans
+bin/outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal
+bin/outline show "Week 41" --columns      # a table, parents summing their children
 bin/outline done <id>
 bin/outline move <id> --under Archive
 bin/outline export --opml > outline.opml

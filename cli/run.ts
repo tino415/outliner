@@ -13,6 +13,7 @@ import {
 } from "../src/model";
 import { exportJson, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems } from "../src/search";
+import { Cell, columnCells, declaredColumns, inferredColumns, propertiesOf, setProperty } from "../src/properties";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
@@ -29,6 +30,8 @@ commands:
   note ITEM TEXT           replace an item's note ("" removes it)
   done ITEM / undone ITEM  complete or reopen an item
   move ITEM --under ITEM   move an item and everything under it
+  set ITEM KEY VALUE       set a property (a "KEY:: VALUE" line in the note);
+                           an empty VALUE removes it
   rm ITEM                  delete an item and everything under it
   export [ITEM]            --md (default), --opml or --json
 
@@ -38,6 +41,8 @@ ITEM is an item id, or a path of item texts separated by "/", like
 options:
   --json         print JSON instead of text
   --ids          show item ids in text output
+  --columns      show: a table of properties, parents summing their
+                 children (columns from a "columns::" property, or all)
   --depth N      show only N levels
   --under ITEM   where add puts the new item (default: the top)
   --first        add or move to the first place instead of the last
@@ -54,6 +59,7 @@ export interface Outcome {
 
 interface Options {
   json: boolean;
+  columns: boolean;
   ids: boolean;
   first: boolean;
   depth?: number;
@@ -85,7 +91,8 @@ async function perform(command: string, args: string[], options: Options, outlin
   switch (command) {
     case "show": {
       const top = resolve(doc, args[0] ?? "/");
-      return options.json ? json(tree(doc, top, options.depth)) : showText(doc, top, options);
+      if (options.json) return json(tree(doc, top, options.depth, options.columns ? columnsOf(doc, top).cells : undefined));
+      return options.columns ? showTable(doc, top, options) : showText(doc, top, options);
     }
     case "find": {
       const found = findItems(doc, args.join(" "), options.limit);
@@ -121,6 +128,11 @@ async function perform(command: string, args: string[], options: Options, outlin
         if (id === parent || isDescendant(next, parent, id)) throw new Error("cannot move an item under itself");
         return moveTo(next, id, parent, options.first ? 0 : next.items[parent].children.length);
       });
+    }
+    case "set": {
+      const [, key, ...words] = args;
+      if (!key || !/^[\p{L}\p{N}_-]+$/u.test(key)) throw new Error("set needs ITEM KEY VALUE; KEY is letters, digits, - or _");
+      return changeItem(outline, args, (next, id) => setNote(next, id, setProperty(next.items[id].note, key, words.join(" "))));
     }
     case "rm":
       return changeItem(outline, args, (next, id) => remove(next, id));
@@ -211,18 +223,49 @@ interface Tree {
   text: string;
   note?: string;
   completed?: boolean;
+  properties?: Record<string, string>;
+  columns?: Record<string, string>;
   children: Tree[];
 }
 
-function tree(doc: Doc, id: ItemId, depth = Infinity): Tree {
+function tree(doc: Doc, id: ItemId, depth = Infinity, cells?: Map<ItemId, Map<string, Cell>>): Tree {
   const item = doc.items[id];
+  const properties = propertiesOf(item.note);
+  const row = cells?.get(id);
   return {
     id,
     text: item.text,
     ...(item.note ? { note: item.note } : {}),
     ...(item.completed ? { completed: true } : {}),
-    children: depth > 0 ? item.children.map((child) => tree(doc, child, depth - 1)) : [],
+    ...(properties.size > 0 ? { properties: Object.fromEntries(properties) } : {}),
+    ...(row && row.size > 0 ? { columns: Object.fromEntries([...row].map(([key, cell]) => [key, cell.text])) } : {}),
+    children: depth > 0 ? item.children.map((child) => tree(doc, child, depth - 1, cells)) : [],
   };
+}
+
+function columnsOf(doc: Doc, top: ItemId): { keys: string[]; cells: Map<ItemId, Map<string, Cell>> } {
+  const columns = declaredColumns(doc, top) ?? inferredColumns(doc, top);
+  return { keys: columns.map((column) => column.key), cells: columnCells(doc, top, columns) };
+}
+
+/** The outline as a table: one row per item, indented, with a right-aligned column per property and rollups on parents. */
+function showTable(doc: Doc, top: ItemId, options: Options): string {
+  const { keys, cells } = columnsOf(doc, top);
+  const rows: { label: string; values: string[] }[] = [];
+  const visit = (id: ItemId, depth: number) => {
+    const item = doc.items[id];
+    const label = `${"  ".repeat(depth)}${item.completed ? `~~${item.text}~~` : item.text}${options.ids ? `  [${id}]` : ""}`;
+    rows.push({ label, values: keys.map((key) => cells.get(id)?.get(key)?.text ?? "") });
+    if (options.depth !== undefined && depth >= options.depth) return;
+    for (const child of item.children) visit(child, depth + 1);
+  };
+  if (top === ROOT) doc.items[ROOT].children.forEach((child) => visit(child, 0));
+  else visit(top, 0);
+  const labelWidth = Math.max(0, ...rows.map((row) => row.label.length));
+  const widths = keys.map((key, i) => Math.max(key.length, ...rows.map((row) => row.values[i].length)));
+  const format = (label: string, values: string[]) =>
+    [label.padEnd(labelWidth), ...values.map((value, i) => value.padStart(widths[i]))].join("   ").trimEnd();
+  return [format("", keys), ...rows.map((row) => format(row.label, row.values))].join("\n");
 }
 
 function showText(doc: Doc, top: ItemId, options: Options): string {
@@ -258,7 +301,7 @@ function fail(message: string): Outcome {
 // ---- arguments ---------------------------------------------------------------------------
 
 function parseArguments(argv: string[]): { words: string[]; options: Options } {
-  const options: Options = { json: false, ids: false, first: false, limit: 20, format: "md" };
+  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, format: "md" };
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -269,6 +312,7 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
     };
     if (arg === "--json") options.json = true;
     else if (arg === "--ids") options.ids = true;
+    else if (arg === "--columns") options.columns = true;
     else if (arg === "--first") options.first = true;
     else if (arg === "--md" || arg === "--opml") options.format = arg.slice(2) as Options["format"];
     else if (arg === "--depth") options.depth = Number(value());

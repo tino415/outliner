@@ -85,6 +85,31 @@ describe("outline CLI", () => {
     expect(wrongToken).toEqual({ output: "outline: the server refused the token", code: 1 });
   });
 
+  it("sets properties and shows them as a table with sums on parents", async () => {
+    await outline('add "Monday"');
+    await outline('add "Breakfast" --under Monday');
+    await outline('add "Oats" --under Monday/Breakfast');
+    await outline('add "Coffee" --under Monday/Breakfast');
+    await outline('set Monday/Breakfast/Oats calories 300 kcal');
+    await outline('set Monday/Breakfast/Coffee calories 20 kcal');
+    await outline('set Monday/Breakfast/Coffee effort 5m');
+    expect(await outline("show --columns")).toBe(
+      [
+        "              calories   effort",
+        "Monday        320 kcal       5m",
+        "  Breakfast   320 kcal       5m",
+        "    Oats      300 kcal",
+        "    Coffee     20 kcal       5m",
+      ].join("\n"),
+    );
+    const tree = JSON.parse(await outline("show Monday --columns --json"));
+    expect(tree.columns).toEqual({ calories: "320 kcal", effort: "5m" });
+    expect(tree.children[0].children[0].properties).toEqual({ calories: "300 kcal" });
+
+    await outline("set Monday/Breakfast/Coffee effort");
+    expect(await outline("show Monday/Breakfast/Coffee")).toBe("- Coffee\n  calories:: 20 kcal");
+  });
+
   it("merges with what other clients changed in the meantime", async () => {
     const id = await outline('add "shared"');
     await outline(`note ${id} "from one client"`);

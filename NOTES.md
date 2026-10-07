@@ -13,12 +13,13 @@ below; part 1's report follows it.
    complete or reopen, swipe left to fold or, without children, to open the
    item menu; Collapse / Expand in the item menu. Tested with real touch
    input on the Pixel profile.
-2. **Properties and column view, as in org mode.** Martin uses org's
-   properties and column view for:
-   - time planning: an effort on each subheading, summed on every parent;
-   - calorie tracking: food under meal, meal under day, day under week, with
-     calories summed per meal, per day and per week.
-   Open to a different design if outliners usually solve these another way.
+2. ~~**Properties and column view, as in org mode.**~~ Done (ADR 0017):
+   `key:: value` lines in notes, shown as chips; a column view per page
+   with rollups (sum, min, max, mean; numbers with units and durations),
+   page totals in a sticky header, editable cells; `columns::` on a page
+   declares columns like org's COLUMNS; CLI `set` and `show --columns`.
+   Martin's two cases are the browser and unit tests: calories per meal,
+   day and week, and effort summed on parents.
 
 ## Part 2: sync and a CLI
 
