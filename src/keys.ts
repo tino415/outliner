@@ -45,6 +45,7 @@ const bindings: Binding[] = [
   editor(["Alt+ArrowRight", "Mod+]"], "Zoom in", (c) => actions.zoomIn(c)),
   editor(["Alt+ArrowLeft", "Mod+["], "Zoom out", (c) => actions.zoomOut(c)),
   editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
+  editor(["Alt+Shift+d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
   editor(["Mod+b"], "Bold", (c) => actions.bold(c)),
   editor(["Mod+i"], "Italic", (c) => actions.italic(c)),
   editor(["Mod+e"], "Code", (c) => actions.code(c)),

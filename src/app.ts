@@ -5,6 +5,7 @@ import {
   ViewFilter,
   ancestors,
   descendantCount,
+  duplicate,
   indent,
   insertChild,
   indexInParent,
@@ -14,6 +15,7 @@ import {
   moveUp,
   outdent,
   remove,
+  removeCompleted,
   setCollapsed,
   setCollapsedEverywhere,
   setNote,
@@ -23,7 +25,7 @@ import {
   toggleCompleted,
 } from "./model";
 import { Caret, History } from "./store";
-import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, savePrefs, saveDocSoon } from "./storage";
+import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
 import { SearchResult, search } from "./search";
 import { renderInline } from "./inline";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
@@ -83,8 +85,10 @@ export function start(): void {
   });
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
+  onSaveFailed(() => toast("Could not save: browser storage is full. Export a backup from the menu."));
   render(null);
   saveDocSoon(doc());
+  navigator.storage?.persist?.().catch(() => undefined);
 }
 
 // ---- changing the document ------------------------------------------------
@@ -384,6 +388,12 @@ export const actions = {
     const neighbour = neighbourEditor(c.editor, 1) ?? neighbourEditor(c.editor, -1);
     commitAndRender(next, neighbour ? { id: neighbour.dataset.id!, offset: 0 } : null);
     toast("Completed and hidden", { label: "Undo", run: undo });
+  },
+
+  duplicate(c: EditorContext): void {
+    if (c.isTitle) return;
+    const result = duplicate(doc(), c.id);
+    commitAndRender(result.doc, { id: result.id, offset: c.start });
   },
 
   deleteItem(c: EditorContext): void {
@@ -782,6 +792,17 @@ function runMenuAction(action: string): void {
     case "collapse-all":
       commitAndRender(setCollapsedEverywhere(doc(), state.zoom, true), null);
       break;
+    case "delete-completed": {
+      const result = removeCompleted(doc(), state.zoom);
+      ui.menu.hidePopover();
+      if (result.count === 0) {
+        toast("Nothing completed on this page");
+        break;
+      }
+      commitAndRender(result.doc, null);
+      toast(`Deleted ${result.count} completed item${result.count === 1 ? "" : "s"}`, { label: "Undo", run: undo });
+      break;
+    }
     case "export-markdown":
       download(`${page}.md`, "text/markdown", exportMarkdown(doc(), state.zoom));
       break;

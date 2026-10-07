@@ -3,7 +3,9 @@ import {
   Doc,
   ItemId,
   ROOT,
+  duplicate,
   indent,
+  removeCompleted,
   mergeInto,
   moveDown,
   moveTo,
@@ -156,6 +158,26 @@ describe("merging and removing", () => {
     const next = remove(doc, idOf(doc, "a"));
     expect(render(next)).toBe("b");
     expect(Object.keys(next.items)).toHaveLength(2);
+  });
+});
+
+describe("duplicate and clean up", () => {
+  it("duplicates a subtree right after the original with fresh ids", () => {
+    const doc = outline("a\n  a1\nb");
+    const result = duplicate(doc, idOf(doc, "a"));
+    expect(render(result.doc)).toBe("a\n  a1\na\n  a1\nb");
+    expect(result.id).not.toBe(idOf(doc, "a"));
+    consistent(result.doc);
+  });
+
+  it("removes completed items and everything under them", () => {
+    let doc = outline("a\n  a1\n  a2\nb\n  b1");
+    doc = setFlags(doc, idOf(doc, "a1"), { completed: true });
+    doc = setFlags(doc, idOf(doc, "b"), { completed: true });
+    const result = removeCompleted(doc, ROOT);
+    expect(render(result.doc)).toBe("a\n  a2");
+    expect(result.count).toBe(2);
+    expect(Object.keys(result.doc.items)).toHaveLength(3);
   });
 });
 

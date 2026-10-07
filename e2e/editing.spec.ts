@@ -141,6 +141,23 @@ test.describe("keyboard editing", () => {
     await expectOutline(page, "a\nb\n  b1\nc");
   });
 
+  test("Alt-Shift-D duplicates an item with its children", async ({ page }) => {
+    await freshOutline(page, "a\n  a1\nb");
+    await clickEnd(page, "a");
+    await page.keyboard.press("Alt+Shift+d");
+    await expectOutline(page, "a\n  a1\na\n  a1\nb");
+  });
+
+  test("the menu deletes completed items on the page", async ({ page }) => {
+    await freshOutline(page, "keep\ndone\n  inside");
+    await clickEnd(page, "done");
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await page.locator("#menu-button").click();
+    await page.getByRole("button", { name: "Delete completed" }).click();
+    await expectOutline(page, "keep");
+    await expect(page.locator("#toast")).toContainText("Deleted 1 completed item");
+  });
+
   test("Shift-Enter opens a note and returns to the item", async ({ page }) => {
     await freshOutline(page, "item");
     await clickEnd(page, "item");
