@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["server", "cli", "tests", "src/sync", "src/model.ts", "src/transfer.ts"]
+}
