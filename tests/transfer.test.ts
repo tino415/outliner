@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROOT, setFlags } from "../src/model";
-import { exportMarkdown, exportOpml, graft, parseIndentedText } from "../src/transfer";
+import { exportMarkdown, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { renderInline } from "../src/inline";
 
 describe("export", () => {
@@ -19,6 +19,29 @@ describe("export", () => {
     expect(opml).toContain('<outline text="Plan &#38; &#60;do&#62;">');
     expect(opml).toContain('<outline text="step &#34;one&#34;"/>');
     expect(opml).toContain('_note="with a note" _complete="true"');
+  });
+});
+
+describe("round trips", () => {
+  it("keeps line breaks in OPML notes", () => {
+    const base = parseIndentedText("item");
+    const doc = setFlags(base, base.items[ROOT].children[0], { note: "line1\nline2" });
+    expect(exportOpml(doc, ROOT)).toContain('_note="line1&#10;line2"');
+  });
+
+  it("copies notes and completed state so that a paste restores them", () => {
+    let doc = parseIndentedText("a\n  b\nc");
+    const [a, c] = doc.items[ROOT].children;
+    const b = doc.items[a].children[0];
+    doc = setFlags(doc, a, { note: "note of a\nsecond line" });
+    doc = setFlags(doc, b, { completed: true });
+    const pasted = parseIndentedText(subtreesAsText(doc, [a, c]));
+    const [pa, pc] = pasted.items[ROOT].children;
+    expect(pasted.items[pa].text).toBe("a");
+    expect(pasted.items[pa].note).toBe("note of a\nsecond line");
+    expect(pasted.items[pasted.items[pa].children[0]].completed).toBe(true);
+    expect(pasted.items[pasted.items[pa].children[0]].text).toBe("b");
+    expect(pasted.items[pc].text).toBe("c");
   });
 });
 

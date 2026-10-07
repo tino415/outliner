@@ -35,7 +35,7 @@ import {
   toggleCompleted,
 } from "./model";
 import { Caret, History } from "./store";
-import { Prefs, Theme, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
+import { Prefs, Theme, discardPendingSave, flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, savePrefs, saveDocSoon } from "./storage";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
 import { renderInline } from "./inline";
@@ -74,6 +74,7 @@ const state = {
   openNotes: new Set<ItemId>(),
   selection: null as { anchor: ItemId; head: ItemId } | null,
   recent: [] as ItemId[],
+  keptInResults: new Set<ItemId>(),
 };
 
 const doc = (): Doc => state.history.doc;
@@ -92,9 +93,10 @@ export function start(): void {
   });
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();
+    discardPendingSave();
     state.history.replaceFromElsewhere(incoming);
-    if (!incoming.items[state.zoom]) state.zoom = ROOT;
-    render(caret);
+    if (!incoming.items[state.zoom]) zoomTo(ROOT);
+    else render(caret && incoming.items[caret.id] ? caret : null);
   });
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
@@ -135,14 +137,18 @@ function redo(): void {
 
 function afterHistoryJump(caret: Caret | null): void {
   saveDocSoon(doc());
-  if (!doc().items[state.zoom]) state.zoom = ROOT;
   if (caret && !doc().items[caret.id]) caret = null;
-  if (caret && !isOnPage(caret.id)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
+  if (!doc().items[state.zoom]) zoomTo(ROOT, caret && isUnder(caret.id, ROOT) ? caret : null);
+  else if (caret && !isOnPage(caret.id)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);
   else render(caret);
 }
 
+function isUnder(id: ItemId, top: ItemId): boolean {
+  return id === top || ancestors(doc(), id).includes(top);
+}
+
 function isOnPage(id: ItemId): boolean {
-  return id === state.zoom || ancestors(doc(), id).includes(state.zoom);
+  return isUnder(id, state.zoom);
 }
 
 // ---- editor events ----------------------------------------------------------
@@ -357,7 +363,7 @@ export const actions = {
     }
     const item = doc().items[c.id];
     const previous = neighbourEditor(c.editor, -1);
-    if (item.text === "" && item.children.length === 0) {
+    if (item.text === "" && item.children.length === 0 && item.note === "") {
       if (!previous && !neighbourEditor(c.editor, 1)) return;
       const next = remove(doc(), c.id);
       const target = previous ?? neighbourEditor(c.editor, 1)!;
@@ -435,8 +441,9 @@ export const actions = {
       commitAndRender(next, keepCaret(c));
       return;
     }
-    const neighbour = neighbourEditor(c.editor, 1) ?? neighbourEditor(c.editor, -1);
-    commitAndRender(next, neighbour ? { id: neighbour.dataset.id!, offset: 0 } : null);
+    const around = rowsAround([c.id]);
+    const neighbour = around.after ?? around.before;
+    commitAndRender(next, neighbour ? { id: neighbour, offset: 0 } : null);
     toast("Completed and hidden", { label: "Undo", run: undo });
   },
 
@@ -449,14 +456,9 @@ export const actions = {
   deleteItem(c: EditorContext): void {
     if (c.isTitle) return;
     const item = doc().items[c.id];
-    const neighbour = neighbourEditor(c.editor, -1) ?? neighbourEditor(c.editor, 1);
     const hidden = descendantCount(doc(), c.id);
     const next = remove(doc(), c.id);
-    const focus =
-      neighbour && neighbour !== ui.title
-        ? { id: neighbour.dataset.id!, offset: next.items[neighbour.dataset.id!].text.length }
-        : null;
-    commitAndRender(next, focus);
+    commitAndRender(next, focusAfterRemoving([c.id], next));
     const label = item.text.trim() ? `“${truncate(item.text, 32)}”` : "Item";
     toast(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`, { label: "Undo", run: undo });
   },
@@ -502,7 +504,7 @@ export const actions = {
   moveToPicker(c: EditorContext): void {
     if (c.isTitle) return;
     const id = c.id;
-    const neighbour = neighbourEditor(c.editor, -1) ?? neighbourEditor(c.editor, 1);
+    const around = rowsAround([id]);
     const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
     openPalette({
       placeholder: `Move “${truncate(doc().items[id].text, 30) || "Untitled"}” to…`,
@@ -514,10 +516,8 @@ export const actions = {
       },
       choose: (target) => {
         commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), null);
-        const stillOnScreen = textEditorFor(id);
-        const fallback = neighbour && neighbour !== ui.title ? textEditorFor(neighbour.dataset.id!) : null;
-        const focus = stillOnScreen ?? fallback;
-        if (focus) focusCaret({ id: focus.dataset.id!, offset: 0 });
+        const focus = [id, around.before, around.after].find((candidate) => candidate && textEditorFor(candidate));
+        if (focus) focusCaret({ id: focus, offset: 0 });
         toast(`Moved to “${truncate(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, { id, offset: 0 }) });
       },
     });
@@ -558,15 +558,16 @@ function wrapSelection(c: EditorContext, marker: string): void {
   select(c.editor, c.start + marker.length, c.end + marker.length);
 }
 
+/** Lines pasted into an item go after it (replacing it if empty); into the page title, to the top of the page. */
 function pasteLines(id: ItemId, text: string): void {
   const item = doc().items[id];
   const incoming = parseIndentedText(text);
-  const replacesEmptyItem = item.text === "" && item.children.length === 0;
-  let next = doc();
-  const parent = item.parent!;
-  const at = indexInParent(next, id) + (replacesEmptyItem ? 0 : 1);
-  const result = graft(next, incoming, parent, at);
-  next = replacesEmptyItem ? remove(result.doc, id) : result.doc;
+  const intoTitle = id === state.zoom;
+  const replacesEmptyItem = !intoTitle && item.text === "" && item.children.length === 0 && item.note === "";
+  const parent = intoTitle ? id : item.parent!;
+  const at = intoTitle ? 0 : indexInParent(doc(), id) + (replacesEmptyItem ? 0 : 1);
+  const result = graft(doc(), incoming, parent, at);
+  const next = replacesEmptyItem ? remove(result.doc, id) : result.doc;
   const last = result.ids.at(-1);
   commitAndRender(next, last ? { id: last, offset: next.items[last].text.length } : null);
 }
@@ -678,7 +679,8 @@ function handleSelectionKey(event: KeyboardEvent): boolean {
       extendSelection(1);
       return true;
     case "ArrowUp":
-    case "ArrowDown": {
+    case "ArrowDown":
+    case "Enter": {
       const head = state.selection!.head;
       clearSelection();
       focusCaret({ id: head, offset: keys === "ArrowUp" ? 0 : doc().items[head].text.length });
@@ -727,16 +729,29 @@ function handleSelectionKey(event: KeyboardEvent): boolean {
 }
 
 function deleteSelection(roots: ItemId[]): void {
-  const editors = treeEditors();
-  const ids = selectedIds();
-  const before = editors[editors.findIndex((editor) => editor.dataset.id === ids[0]) - 1];
-  const after = editors[editors.findIndex((editor) => editor.dataset.id === ids.at(-1)) + 1];
-  const neighbour = before ?? after;
   const count = roots.reduce((sum, id) => sum + 1 + descendantCount(doc(), id), 0);
   state.selection = null;
   const next = removeAll(doc(), roots);
-  commitAndRender(next, neighbour ? { id: neighbour.dataset.id!, offset: next.items[neighbour.dataset.id!].text.length } : null);
+  commitAndRender(next, focusAfterRemoving(roots, next));
   toast(`Deleted ${count} item${count === 1 ? "" : "s"}`, { label: "Undo", run: undo });
+}
+
+/** The nearest rows above and below `roots` that are not inside any of them. */
+function rowsAround(roots: ItemId[]): { before: ItemId | null; after: ItemId | null } {
+  const items = roots.map((id) => ui.tree.querySelector(`.item[data-id="${CSS.escape(id)}"]`)).filter(Boolean) as Element[];
+  const inside = (editor: HTMLElement) => items.some((item) => item.contains(editor));
+  const editors = treeEditors();
+  const first = editors.findIndex(inside);
+  if (first === -1) return { before: null, after: null };
+  const after = editors.slice(first).find((editor) => !inside(editor));
+  return { before: editors[first - 1]?.dataset.id ?? null, after: after?.dataset.id ?? null };
+}
+
+function focusAfterRemoving(roots: ItemId[], next: Doc): Focus | null {
+  const { before, after } = rowsAround(roots);
+  if (before) return { id: before, offset: next.items[before].text.length };
+  if (after) return { id: after, offset: 0 };
+  return null;
 }
 
 function copyText(text: string): void {
@@ -759,7 +774,12 @@ function copyWithTextarea(text: string): void {
 // ---- zoom and search ------------------------------------------------------------
 
 function zoomFromHash(): ItemId {
-  const id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
+  let id = "";
+  try {
+    id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
+  } catch {
+    return ROOT;
+  }
   return id && doc().items[id] ? id : ROOT;
 }
 
@@ -792,21 +812,40 @@ function showZoom(): void {
 }
 
 function setQuery(query: string): void {
-  state.query = query;
-  ui.search.value = query;
+  changeQuery(query);
   render(null);
 }
 
 function clearQuery(): void {
-  state.query = "";
-  ui.search.value = "";
+  changeQuery("");
   state.results = null;
+}
+
+function changeQuery(query: string): void {
+  state.query = query;
+  if (ui.search.value !== query) ui.search.value = query;
+  state.keptInResults.clear();
+}
+
+/**
+ * Search results, plus every item edited while this query is active, so that
+ * an item does not vanish under the caret because it stopped matching.
+ */
+function searchResults(focus: Focus | null): SearchResult | null {
+  if (!state.query.trim()) return null;
+  if (focus && focus.id !== state.zoom) state.keptInResults.add(focus.id);
+  const results = search(doc(), state.zoom, state.query, filter());
+  for (const id of state.keptInResults) {
+    if (!doc().items[id] || !isUnder(id, state.zoom)) continue;
+    for (const shown of [id, ...ancestors(doc(), id)]) if (shown !== state.zoom && isUnder(shown, state.zoom)) results.shown.add(shown);
+  }
+  return results;
 }
 
 // ---- rendering ------------------------------------------------------------------
 
 function render(focus: Focus | null): void {
-  state.results = state.query.trim() ? search(doc(), state.zoom, state.query, filter()) : null;
+  state.results = searchResults(focus);
   const started = performance.now();
   renderCrumbs();
   renderHead();
@@ -835,9 +874,9 @@ function renderHead(): void {
   const item = doc().items[state.zoom];
   ui.title.dataset.id = item.id;
   ui.titleNote.dataset.id = item.id;
-  if (document.activeElement !== ui.title) ui.title.innerHTML = renderInline(item.text);
+  if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderInline(item.text);
   ui.title.classList.toggle("empty", item.text === "");
-  if (document.activeElement !== ui.titleNote) ui.titleNote.innerHTML = renderInline(item.note);
+  if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderInline(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
   document.title = titleFor(item.id);
 }
@@ -1018,7 +1057,7 @@ function focusCaret(focus: Focus): void {
 
 function bindChrome(): void {
   ui.search.addEventListener("input", () => {
-    state.query = ui.search.value;
+    changeQuery(ui.search.value);
     render(null);
   });
   ui.search.addEventListener("keydown", (event) => {
@@ -1195,7 +1234,8 @@ function applyTheme(): void {
 function bindGlobalKeys(): void {
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
-    if (state.selection && !editorOf(event.target) && handleSelectionKey(event)) {
+    const typingSomewhere = event.target instanceof HTMLElement && Boolean(event.target.closest("input, dialog, .text, .note"));
+    if (state.selection && !typingSomewhere && handleSelectionKey(event)) {
       event.preventDefault();
       return;
     }
@@ -1204,13 +1244,14 @@ function bindGlobalKeys(): void {
     const binding = bindingFor(event, "global");
     if (!binding) return;
     if (binding.typing && (inField || (binding.id === "focus-first" && !onPage))) return;
-    if (inField && !["search", "help", "jump"].includes(binding.id!)) return;
+    if (inField && !["search", "help", "jump", "toggle-completed"].includes(binding.id!)) return;
     event.preventDefault();
     runGlobal(binding.id!);
   });
 }
 
 function runGlobal(id: string): void {
+  if (["search", "help", "jump"].includes(id)) clearSelection();
   switch (id) {
     case "search":
       ui.search.focus();

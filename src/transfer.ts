@@ -11,8 +11,8 @@ export function exportOpml(doc: Doc, top: ItemId): string {
     const item = doc.items[id];
     const pad = "  ".repeat(depth);
     const attributes = [
-      `text="${escape(item.text)}"`,
-      item.note ? `_note="${escape(item.note)}"` : "",
+      `text="${attribute(item.text)}"`,
+      item.note ? `_note="${attribute(item.note)}"` : "",
       item.completed ? `_complete="true"` : "",
     ]
       .filter(Boolean)
@@ -28,26 +28,27 @@ export function exportOpml(doc: Doc, top: ItemId): string {
   );
 }
 
-export function exportMarkdown(doc: Doc, top: ItemId): string {
-  const lines: string[] = [];
-  const walk = (id: ItemId, depth: number) => {
-    for (const child of doc.items[id].children) {
-      const item = doc.items[child];
-      const pad = "  ".repeat(depth);
-      lines.push(`${pad}- ${item.completed ? "~~" + item.text + "~~" : item.text}`);
-      for (const noteLine of item.note.split("\n").filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
-      walk(child, depth + 1);
-    }
-  };
-  walk(top, 0);
-  return lines.join("\n") + "\n";
+/** XML normalises raw line breaks in attribute values to spaces, so they are written as references. */
+function attribute(text: string): string {
+  return escape(text).replace(/\n/g, "&#10;").replace(/\r/g, "&#13;").replace(/\t/g, "&#9;");
 }
 
+export function exportMarkdown(doc: Doc, top: ItemId): string {
+  return subtreesAsText(doc, doc.items[top].children) + "\n";
+}
+
+/**
+ * A Markdown list: completed items struck through, notes as indented lines
+ * without a bullet. `parseIndentedText` reads the same shape back.
+ */
 export function subtreesAsText(doc: Doc, roots: ItemId[]): string {
   const lines: string[] = [];
   const walk = (id: ItemId, depth: number) => {
-    lines.push(`${"  ".repeat(depth)}- ${doc.items[id].text}`);
-    for (const child of doc.items[id].children) walk(child, depth + 1);
+    const item = doc.items[id];
+    const pad = "  ".repeat(depth);
+    lines.push(`${pad}- ${item.completed ? `~~${item.text}~~` : item.text}`);
+    for (const noteLine of item.note.split("\n").filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
+    for (const child of item.children) walk(child, depth + 1);
   };
   for (const root of roots) walk(root, 0);
   return lines.join("\n");
@@ -84,17 +85,32 @@ function importOpml(xml: string): Doc {
   return doc;
 }
 
+const BULLET = /^([-*+]|\d+[.)])\s+/;
+
+/**
+ * Indented lines become nested items. In a bulleted list, a line without a
+ * bullet indented under an item is that item's note, and `~~text~~` is a
+ * completed item.
+ */
 export function parseIndentedText(text: string): Doc {
   let doc = emptyDoc();
-  const stack: { indent: number; id: ItemId }[] = [{ indent: -1, id: ROOT }];
+  const stack: { indent: number; id: ItemId; bulleted: boolean }[] = [{ indent: -1, id: ROOT, bulleted: false }];
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
     const indent = line.length - line.trimStart().length;
+    const bulleted = BULLET.test(line.trim());
+    const last = stack[stack.length - 1];
+    if (!bulleted && last.bulleted && indent > last.indent) {
+      const note = doc.items[last.id].note;
+      doc = setNote(doc, last.id, note ? `${note}\n${line.trim()}` : line.trim());
+      continue;
+    }
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
-    const content = line.trim().replace(/^([-*+]|\d+[.)])\s+/, "");
-    const created = appendChild(doc, stack[stack.length - 1].id, content);
-    doc = created.doc;
-    stack.push({ indent, id: created.id });
+    const content = line.trim().replace(BULLET, "");
+    const struck = /^~~(.+)~~$/.exec(content);
+    const created = appendChild(doc, stack[stack.length - 1].id, struck ? struck[1] : content);
+    doc = struck ? setFlags(created.doc, created.id, { completed: true }) : created.doc;
+    stack.push({ indent, id: created.id, bulleted });
   }
   return doc;
 }
