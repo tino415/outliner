@@ -1,26 +1,36 @@
 import { Page, expect } from "@playwright/test";
 
 export function row(page: Page, text: string) {
-  return page.locator(".row").filter({ has: page.locator(":scope > .body > .text", { hasText: text }) });
+  const exact = new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+  return page.locator(".row").filter({ has: page.locator(":scope > .body > .text", { hasText: exact }) });
 }
 
 export function editor(page: Page, text: string) {
   return row(page, text).locator(".text");
 }
 
+/** Opens the app on a clean origin, seeded with `outline` (indented text) or the welcome outline. */
 export async function freshOutline(page: Page, outline?: string) {
+  const seed = outline === undefined ? null : JSON.stringify(docFrom(outline));
+  await page.addInitScript((doc) => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "yes");
+    localStorage.clear();
+    if (doc) localStorage.setItem("outliner-lab:doc:v1", doc);
+  }, seed);
   await page.goto("./");
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
   await page.locator(".tree .text").first().waitFor();
-  if (outline === undefined) return;
-  await page.evaluate((text) => {
-    const lines = text.trim().split("\n");
-    const items: Record<string, unknown> = {};
-    const root = { id: "root", text: "Test", note: "", parent: null, children: [] as string[], collapsed: false, completed: false, updated: 0 };
-    items.root = root;
-    const stack: { indent: number; item: typeof root }[] = [{ indent: -1, item: root }];
-    lines.forEach((line, i) => {
+}
+
+function docFrom(outline: string) {
+  const root = { id: "root", text: "Test", note: "", parent: null as string | null, children: [] as string[], collapsed: false, completed: false, updated: 0 };
+  const items: Record<string, typeof root> = { root };
+  const stack: { indent: number; item: typeof root }[] = [{ indent: -1, item: root }];
+  outline
+    .replace(/^\n/, "")
+    .trimEnd()
+    .split("\n")
+    .forEach((line, i) => {
       const indent = line.length - line.trimStart().length;
       while (stack.at(-1)!.indent >= indent) stack.pop();
       const parent = stack.at(-1)!.item;
@@ -29,10 +39,7 @@ export async function freshOutline(page: Page, outline?: string) {
       parent.children.push(item.id);
       stack.push({ indent, item });
     });
-    localStorage.setItem("outliner-lab:doc:v1", JSON.stringify({ items }));
-  }, outline);
-  await page.reload();
-  await page.locator(".tree .text").first().waitFor();
+  return { items };
 }
 
 /** The visible outline as indented text, two spaces per level. */
