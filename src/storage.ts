@@ -47,6 +47,11 @@ export function saveDocSoon(doc: Doc): void {
   pendingSave = window.setTimeout(flushSave, 250);
 }
 
+export function discardPendingSave(): void {
+  window.clearTimeout(pendingSave);
+  unsavedDoc = null;
+}
+
 export function flushSave(): void {
   window.clearTimeout(pendingSave);
   if (!unsavedDoc) return;

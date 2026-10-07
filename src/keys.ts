@@ -89,11 +89,19 @@ export function keyString(event: KeyboardEvent): string {
   return parts.join("+");
 }
 
+/**
+ * Letters follow the layout (Ctrl+Z is Z on QWERTZ too). Only when the key
+ * does not produce a Latin letter, as on Cyrillic layouts or with Option on
+ * a Mac, does the physical key position decide. Brackets fall back to their
+ * position because many layouts put them behind AltGr.
+ */
 function baseKey(event: KeyboardEvent): string {
+  const typed = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  if (/^[a-z]$/.test(typed)) return typed;
   if (event.code.startsWith("Key")) return event.code.slice(3).toLowerCase();
+  if (["[", "]", "/", "?"].includes(typed)) return typed;
   if (event.code === "BracketLeft") return "[";
   if (event.code === "BracketRight") return "]";
-  if (event.code === "Slash" && !event.shiftKey) return "/";
   return event.key;
 }
 
