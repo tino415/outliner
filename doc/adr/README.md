@@ -17,3 +17,4 @@ session report; the records here hold the choices behind them.
 5. [A hand-written service worker, cache first](0005-hand-written-service-worker.md)
 6. [The toolchain and the browsers live in the Playwright image](0006-toolchain-in-the-playwright-image.md)
 7. [Import adds to the page instead of replacing the outline](0007-import-adds-instead-of-replacing.md)
+8. [Selecting items is a mode without a caret](0008-selecting-items-is-a-mode-without-a-caret.md)

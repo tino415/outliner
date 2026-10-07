@@ -3,6 +3,12 @@ import {
   Doc,
   ItemId,
   ROOT,
+  completeAll,
+  indentAll,
+  moveAllDown,
+  moveAllUp,
+  outdentAll,
+  selectionRoots,
   duplicate,
   indent,
   removeCompleted,
@@ -16,7 +22,7 @@ import {
   split,
   visibleOrder,
 } from "../src/model";
-import { parseIndentedText } from "../src/transfer";
+import { parseIndentedText, subtreesAsText } from "../src/transfer";
 import { search } from "../src/search";
 
 const all = { showCompleted: true };
@@ -178,6 +184,52 @@ describe("duplicate and clean up", () => {
     expect(render(result.doc)).toBe("a\n  a2");
     expect(result.count).toBe(2);
     expect(Object.keys(result.doc.items)).toHaveLength(3);
+  });
+});
+
+describe("block operations on a selection", () => {
+  const ids = (doc: Doc, ...texts: string[]) => texts.map((text) => idOf(doc, text));
+
+  it("indents a block under the item above, keeping its order", () => {
+    const doc = outline("a\nb\nc\nd");
+    expect(render(indentAll(doc, ids(doc, "b", "c"), all))).toBe("a\n  b\n  c\nd");
+  });
+
+  it("does not indent any of a block whose first item cannot indent", () => {
+    const doc = outline("a\nb");
+    expect(indentAll(doc, ids(doc, "a", "b"), all)).toBe(doc);
+  });
+
+  it("outdents a block, keeping its order", () => {
+    const doc = outline("p\n  a\n  b\n  c");
+    expect(render(outdentAll(doc, ids(doc, "a", "b"), ROOT))).toBe("p\n  c\na\nb");
+  });
+
+  it("moves a block up and down as one", () => {
+    const doc = outline("a\nb\nc\nd");
+    expect(render(moveAllUp(doc, ids(doc, "c", "d"), all))).toBe("a\nc\nd\nb");
+    expect(render(moveAllDown(doc, ids(doc, "a", "b"), all))).toBe("c\na\nb\nd");
+    expect(moveAllDown(doc, ids(doc, "c", "d"), all)).toBe(doc);
+  });
+
+  it("completes all, or uncompletes all when every one is already complete", () => {
+    let doc = outline("a\nb");
+    doc = setFlags(doc, idOf(doc, "a"), { completed: true });
+    const once = completeAll(doc, ids(doc, "a", "b"));
+    expect(render(once)).toBe("a [x]\nb [x]");
+    expect(render(completeAll(once, ids(doc, "a", "b")))).toBe("a\nb");
+  });
+
+  it("keeps only the roots of a selection", () => {
+    const doc = outline("a\n  a1\nb");
+    expect(selectionRoots(doc, ids(doc, "a", "a1", "b"))).toEqual(ids(doc, "a", "b"));
+  });
+
+  it("copies subtrees as a markdown list that pastes back", () => {
+    const doc = outline("a\n  a1\nb");
+    const text = subtreesAsText(doc, ids(doc, "a"));
+    expect(text).toBe("- a\n  - a1");
+    expect(render(parseIndentedText(text))).toBe("a\n  a1");
   });
 });
 

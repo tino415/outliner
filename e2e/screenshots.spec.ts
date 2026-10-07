@@ -13,6 +13,15 @@ for (const theme of ["light", "dark"] as const) {
     await shot("editing");
     await page.keyboard.press("Escape");
 
+    if (info.project.name === "desktop") {
+      await clickEnd(page, "Monday: write the draft");
+      await page.keyboard.press("Shift+ArrowDown");
+      await page.keyboard.press("Shift+ArrowDown");
+      await page.waitForTimeout(100);
+      await shot("selection");
+      await page.keyboard.press("Escape");
+    }
+
     await row(page, "Plan the week #planning").locator(".bullet").click();
     await page.locator(".title", { hasText: "Plan the week" }).waitFor();
     await page.waitForTimeout(300);

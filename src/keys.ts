@@ -52,6 +52,8 @@ const bindings: Binding[] = [
   editor(["Mod+z"], "Undo", () => actions.undo()),
   editor(["Mod+Shift+z", "Mod+y"], "Redo", () => actions.redo()),
   editor(["Escape"], "Stop editing", (c) => actions.blur(c)),
+  editor(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
+  editor(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
   editor(["ArrowUp"], "", (c) => actions.arrowUp(c), true),
   editor(["ArrowDown"], "", (c) => actions.arrowDown(c), true),
   editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
@@ -74,7 +76,7 @@ export function bindingFor(event: KeyboardEvent, context: Binding["context"]): B
   return bindings.find((binding) => binding.context === context && binding.keys.includes(pressed)) ?? null;
 }
 
-function keyString(event: KeyboardEvent): string {
+export function keyString(event: KeyboardEvent): string {
   const key = baseKey(event);
   const isSymbol = key.length === 1 && !/[a-z0-9]/.test(key);
   const parts: string[] = [];

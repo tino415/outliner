@@ -43,6 +43,16 @@ export function exportMarkdown(doc: Doc, top: ItemId): string {
   return lines.join("\n") + "\n";
 }
 
+export function subtreesAsText(doc: Doc, roots: ItemId[]): string {
+  const lines: string[] = [];
+  const walk = (id: ItemId, depth: number) => {
+    lines.push(`${"  ".repeat(depth)}- ${doc.items[id].text}`);
+    for (const child of doc.items[id].children) walk(child, depth + 1);
+  };
+  for (const root of roots) walk(root, 0);
+  return lines.join("\n");
+}
+
 /** Reads a file's text as either our JSON or OPML; the result replaces nothing, the caller decides. */
 export function importText(text: string): Doc {
   const trimmed = text.trimStart();

@@ -193,6 +193,53 @@ test.describe("keyboard editing", () => {
   });
 });
 
+test.describe("selecting several items", () => {
+  test("Shift-arrows select items; Tab, move and complete act on the block", async ({ page }) => {
+    await freshOutline(page, "a\nb\nc\nd");
+    await editor(page, "b").click();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("End");
+    await page.keyboard.press("Shift+ArrowDown");
+    await expect(page.locator(".item.selected")).toHaveCount(2);
+
+    await page.keyboard.press("Tab");
+    await expectOutline(page, "a\n  b\n  c\nd");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Alt+Shift+ArrowUp");
+    await expectOutline(page, "b\nc\na\nd");
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await expectOutline(page, "b [x]\nc [x]\na\nd");
+    await expect(page.locator(".item.selected")).toHaveCount(2);
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".item.selected")).toHaveCount(0);
+  });
+
+  test("Backspace deletes the selected block and undo brings it back", async ({ page }) => {
+    await freshOutline(page, "a\nb\n  b1\nc");
+    await clickEnd(page, "b");
+    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("Shift+ArrowDown");
+    await page.keyboard.press("Backspace");
+    await expectOutline(page, "a");
+    await expect(page.locator("#toast")).toContainText("Deleted 3 items");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expectOutline(page, "a\nb\n  b1\nc");
+  });
+
+  test("Shift-click selects a range and copy puts it on the clipboard", async ({ page, context, browserName }) => {
+    test.skip(browserName !== "chromium", "clipboard permissions are Chromium-only in Playwright");
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await freshOutline(page, "a\n  a1\nb\nc");
+    await clickEnd(page, "a");
+    await editor(page, "b").click({ modifiers: ["Shift"] });
+    await expect(page.locator(".item.selected")).toHaveCount(3);
+    await page.keyboard.press("ControlOrMeta+c");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("- a\n  - a1\n- b");
+  });
+});
+
 test.describe("zoom and search", () => {
   test("clicking a bullet zooms in, breadcrumbs and Back zoom out", async ({ page }) => {
     await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
