@@ -12,8 +12,8 @@ export interface Candidate {
  */
 export function findItems(doc: Doc, query: string, limit: number, exclude: (id: ItemId) => boolean = () => false): Candidate[] {
   const terms = searchTerms(query);
-  const needle = query.trim().toLowerCase();
-  const found: { candidate: Candidate; score: number }[] = [];
+  const quality = matchQuality(query);
+  const found: { id: ItemId; score: number }[] = [];
   let order = 0;
   const walk = (id: ItemId, depth: number) => {
     for (const child of doc.items[id].children) {
@@ -22,8 +22,7 @@ export function findItems(doc: Doc, query: string, limit: number, exclude: (id: 
       const text = doc.items[child].text;
       const lower = text.toLowerCase();
       if (text.trim() && terms.every((term) => lower.includes(term))) {
-        const score = matchQuality(lower, needle) + depth * 100 + order / 1e6;
-        found.push({ candidate: { id: child, text, path: pathOf(doc, child) }, score });
+        found.push({ id: child, score: quality(lower) + depth * 100 + order / 1e6 });
       }
       walk(child, depth + 1);
     }
@@ -32,15 +31,19 @@ export function findItems(doc: Doc, query: string, limit: number, exclude: (id: 
   return found
     .sort((a, b) => a.score - b.score)
     .slice(0, limit)
-    .map((entry) => entry.candidate);
+    .map(({ id }) => ({ id, text: doc.items[id].text, path: pathOf(doc, id) }));
 }
 
-function matchQuality(text: string, needle: string): number {
-  if (!needle || text.startsWith(needle)) return 0;
-  const wordStarts = searchTerms(needle).every((term) =>
-    new RegExp(`(^|[^\\p{L}\\p{N}])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "u").test(text),
+/** Text starting with the query ranks first, then text where every term starts a word, then the rest. */
+function matchQuality(query: string): (text: string) => number {
+  const needle = query.trim().toLowerCase();
+  const wordStarts = searchTerms(needle).map(
+    (term) => new RegExp(`(^|[^\\p{L}\\p{N}])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "u"),
   );
-  return wordStarts ? 1000 : 2000;
+  return (text) => {
+    if (!needle || text.startsWith(needle)) return 0;
+    return wordStarts.every((pattern) => pattern.test(text)) ? 1000 : 2000;
+  };
 }
 
 export function pathOf(doc: Doc, id: ItemId): string[] {

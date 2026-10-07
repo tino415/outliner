@@ -1,33 +1,59 @@
 import { EditorContext, actions } from "./editing";
+import { selectionActions } from "./selection";
+import { globalActions } from "./chrome";
 import { escape } from "./inline";
 import { isMac } from "./platform";
 
-export interface Binding {
+/** Where a global shortcut applies, judged by what has focus. */
+export type Reach = "anywhere" | "outsideFields" | "onPage";
+
+interface Shortcut {
   keys: string[];
   label: string;
-  context: "editor" | "global";
-  run: (c: EditorContext) => boolean | void;
-  id?: string;
-  /** Global binding that only applies when nothing editable has focus. */
-  typing?: boolean;
   hidden?: boolean;
 }
 
-const editor = (keys: string[], label: string, run: Binding["run"], hidden = false): Binding => ({
+interface EditorBinding extends Shortcut {
+  context: "editor";
+  run: (c: EditorContext) => boolean | void;
+}
+
+interface SelectionBinding extends Shortcut {
+  context: "selection";
+  run: () => boolean | void;
+}
+
+interface GlobalBinding extends Shortcut {
+  context: "global";
+  reach: Reach;
+  run: () => boolean | void;
+}
+
+type Binding = EditorBinding | SelectionBinding | GlobalBinding;
+type BindingIn<C extends Binding["context"]> = Extract<Binding, { context: C }>;
+
+const editor = (keys: string[], label: string, run: EditorBinding["run"], hidden = false): EditorBinding => ({
+  context: "editor",
   keys,
   label,
-  context: "editor",
   run,
   hidden,
 });
 
-const global = (keys: string[], label: string, id: string, typing = false, hidden = false): Binding => ({
+const selection = (keys: string[], run: SelectionBinding["run"]): SelectionBinding => ({
+  context: "selection",
+  keys,
+  label: "",
+  run,
+  hidden: true,
+});
+
+const global = (keys: string[], label: string, reach: Reach, run: GlobalBinding["run"], hidden = false): GlobalBinding => ({
+  context: "global",
   keys,
   label,
-  context: "global",
-  run: () => undefined,
-  id,
-  typing,
+  reach,
+  run,
   hidden,
 });
 
@@ -51,8 +77,8 @@ const bindings: Binding[] = [
   editor(["Mod+b"], "Bold", (c) => actions.bold(c)),
   editor(["Mod+i"], "Italic", (c) => actions.italic(c)),
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
-  editor(["Mod+z"], "Undo", () => actions.undo()),
-  editor(["Mod+Shift+z", "Mod+y"], "Redo", () => actions.redo()),
+  editor(["Mod+z"], "Undo", () => globalActions.undo()),
+  editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   editor(["Escape"], "Stop editing", (c) => actions.blur(c)),
   editor(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
   editor(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
@@ -62,22 +88,41 @@ const bindings: Binding[] = [
   editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
   editor(["ArrowRight"], "", (c) => actions.arrowRight(c), true),
 
-  global(["Mod+k"], "Jump to an item", "jump"),
-  global(["/"], "Search", "search", true),
-  global(["Mod+f"], "Search", "search"),
-  global(["?"], "Show shortcuts", "help", true),
-  global(["Mod+/"], "Show shortcuts", "help"),
-  global(["Mod+o"], "Show / hide completed", "toggle-completed"),
-  global(["Mod+z"], "Undo", "undo", false, true),
-  global(["Mod+Shift+z", "Mod+y"], "Redo", "redo", false, true),
-  global(["Escape"], "Clear search", "escape", true, true),
-  global(["Enter", "ArrowDown"], "Start editing", "focus-first", true, true),
-  global(["Alt+ArrowLeft", "Mod+["], "Zoom out", "zoom-out", true, true),
+  selection(["Shift+ArrowUp"], () => selectionActions.extend(-1)),
+  selection(["Shift+ArrowDown"], () => selectionActions.extend(1)),
+  selection(["ArrowUp"], () => selectionActions.leaveAt("start")),
+  selection(["ArrowDown", "Enter"], () => selectionActions.leaveAt("end")),
+  selection(["Escape"], () => selectionActions.leave()),
+  selection(["Tab"], () => selectionActions.indent()),
+  selection(["Shift+Tab"], () => selectionActions.outdent()),
+  selection(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], () => selectionActions.moveUp()),
+  selection(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], () => selectionActions.moveDown()),
+  selection(["Mod+Enter"], () => selectionActions.complete()),
+  selection(["Backspace", "Delete", "Mod+Shift+Backspace"], () => selectionActions.remove()),
+  selection(["Mod+c"], () => selectionActions.copy()),
+  selection(["Mod+x"], () => selectionActions.cut()),
+  selection(["Mod+a"], () => selectionActions.selectPage()),
+
+  global(["Mod+k"], "Jump to an item", "anywhere", () => globalActions.jump()),
+  global(["/"], "Search", "outsideFields", () => globalActions.search()),
+  global(["Mod+f"], "Search", "anywhere", () => globalActions.search()),
+  global(["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
+  global(["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
+  global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
+  global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
+  global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
+  global(["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
+  global(["Enter", "ArrowDown"], "Start editing", "onPage", () => globalActions.startEditing(), true),
+  global(["Alt+ArrowLeft", "Mod+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
 ];
 
-export function bindingFor(event: KeyboardEvent, context: Binding["context"]): Binding | null {
-  const pressed = keyString(event);
-  return bindings.find((binding) => binding.context === context && binding.keys.includes(pressed)) ?? null;
+export function bindingFor<C extends Binding["context"]>(event: KeyboardEvent, context: C): BindingIn<C> | null {
+  return bindingForKeys(keyString(event), context);
+}
+
+export function bindingForKeys<C extends Binding["context"]>(keys: string, context: C): BindingIn<C> | null {
+  const found = bindings.find((binding) => binding.context === context && binding.keys.includes(keys));
+  return (found as BindingIn<C> | undefined) ?? null;
 }
 
 export function keyString(event: KeyboardEvent): string {

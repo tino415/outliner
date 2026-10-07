@@ -1,4 +1,4 @@
-import { Doc, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote, toggleCompleted } from "./model";
+import { Doc, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote } from "./model";
 import { escape } from "./inline";
 import { parseDoc } from "./storage";
 
@@ -77,7 +77,7 @@ function importOpml(xml: string): Doc {
       doc = created.doc;
       const note = outline.getAttribute("_note");
       if (note) doc = setNote(doc, created.id, note);
-      if (outline.getAttribute("_complete") === "true") doc = toggleCompleted(doc, created.id);
+      if (outline.getAttribute("_complete") === "true") doc = setFlags(doc, created.id, { completed: true });
       walk(outline, created.id);
     }
   };

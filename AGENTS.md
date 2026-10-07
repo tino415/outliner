@@ -7,7 +7,12 @@
   tests exercise the previous build.
 - Rendering keeps rows between renders (doc/adr/0009). Any new display state
   that changes a row's markup must go into the display-state string in
-  `renderItem`, or the row will not be rebuilt.
+  `renderItem`, or the row will not be rebuilt. A change that edits the DOM
+  directly instead of rendering goes through `commitShownEdit`, never bare
+  history commits.
+- Shortcuts live in one table in `src/keys.ts`: editor, selection and global
+  bindings. Global ones say where they apply (`reach`) instead of being
+  special-cased in the handler.
 - Item text is raw text with markdown markers kept in the DOM
   (doc/adr/0003). `renderInline` output must have the raw text as its
   `textContent`; `tests/transfer.test.ts` pins this.

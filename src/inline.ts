@@ -29,9 +29,9 @@ export function renderInline(text: string): string {
 }
 
 function renderToken(groups: Record<string, string | undefined>, raw: string): string {
-  if (groups.code) return wrapped("code", "", raw, 1);
-  if (groups.bold) return wrapped("strong", "", raw, 2);
-  if (groups.italic) return wrapped("em", "", raw, 1);
+  if (groups.code) return wrapped("code", raw, 1);
+  if (groups.bold) return wrapped("strong", raw, 2);
+  if (groups.italic) return wrapped("em", raw, 1);
   if (groups.mdlink) {
     const [, label, url] = /^\[([^\]]+)\]\((.+)\)$/.exec(raw)!;
     return `${marker("[")}<a class="link" href="${escape(url)}" target="_blank" rel="noopener">${escape(label)}</a>${marker(`](${url})`)}`;
@@ -41,10 +41,10 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
   return escape(raw);
 }
 
-function wrapped(tag: string, attributes: string, raw: string, markerLength: number): string {
+function wrapped(tag: string, raw: string, markerLength: number): string {
   const open = raw.slice(0, markerLength);
   const inner = raw.slice(markerLength, raw.length - markerLength);
-  return `<${tag}${attributes}>${marker(open)}${escape(inner)}${marker(open)}</${tag}>`;
+  return `<${tag}>${marker(open)}${escape(inner)}${marker(open)}</${tag}>`;
 }
 
 function marker(text: string): string {
@@ -59,10 +59,23 @@ export function plainText(text: string): string {
   return container.textContent ?? "";
 }
 
-export function escape(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+export function shortLabel(text: string, length: number): string {
+  const plain = plainText(text).trim();
+  return plain.length > length ? `${plain.slice(0, length - 1).trimEnd()}…` : plain;
 }
 
-export function tagsIn(text: string): string[] {
-  return [...text.matchAll(TOKEN)].filter((match) => match.groups?.tag).map((match) => match[0].toLowerCase());
+export function itemLabel(text: string, length: number): string {
+  return shortLabel(text, length) || "Untitled";
+}
+
+export function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
+export function escape(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }

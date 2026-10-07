@@ -1,15 +1,20 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
-import { escape, renderInline } from "./inline";
+import { escape, itemLabel, renderInline, shortLabel } from "./inline";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
 import { searchResults } from "./navigation";
-import { renderMenuState, shortLabel } from "./chrome";
+import { renderMenuState } from "./chrome";
 
-// ---- rendering ------------------------------------------------------------------
+/** Caret offset meaning "the end of the text, whatever its length". */
+export const END = Number.POSITIVE_INFINITY;
 
-export function render(focus: Focus | null): void {
-  state.results = searchResults(focus);
+/** Where the caret should go after a render: the first candidate still on screen. */
+export type FocusRequest = Focus | Focus[] | null;
+
+export function render(request: FocusRequest): void {
+  const candidates = request === null ? [] : [request].flat();
+  state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
   renderCrumbs();
   renderHead();
@@ -18,20 +23,24 @@ export function render(focus: Focus | null): void {
   renderMenuState();
   highlightMatches();
   paintSelection();
+  const focus = candidates.find((candidate) => editorFor(candidate.id, candidate.inNote ? "note" : "text"));
   if (focus) focusCaret(focus);
   performance.measure("render", { start: started });
 }
 
 function renderCrumbs(): void {
   const trail = ancestors(doc(), state.zoom);
+  ui.crumbs.classList.toggle("at-home", trail.length === 0);
+  if (trail.length === 0) {
+    ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
+    return;
+  }
   const parts = trail.map((id) =>
     id === ROOT
       ? `<a class="crumb home" href="#/" aria-label="Home"><svg viewBox="0 0 20 20"><path d="M3.5 9.5L10 4l6.5 5.5M5.5 8v7.5h9V8" /></svg></a>`
-      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escape(shortLabel(doc().items[id].text, 28)) || "Untitled"}</a>`,
+      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escape(itemLabel(doc().items[id].text, 28))}</a>`,
   );
   ui.crumbs.innerHTML = parts.join(`<span class="crumb-sep" aria-hidden="true">/</span>`);
-  ui.crumbs.classList.toggle("at-home", trail.length === 0);
-  if (trail.length === 0) ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
 }
 
 function renderHead(): void {
@@ -82,16 +91,20 @@ function renderTree(): void {
 }
 
 function shownChildrenOf(id: ItemId): ItemId[] {
-  const children = shownChildren(doc(), id, filter());
-  if (state.results) return children.filter((child) => state.results!.shown.has(child));
-  return children;
+  return inResults(shownChildren(doc(), id, filter()));
+}
+
+function inResults(children: ItemId[]): ItemId[] {
+  const results = state.results;
+  return results ? children.filter((child) => results.shown.has(child)) : children;
 }
 
 function renderItem(id: ItemId): HTMLLIElement {
   rowsSeen.add(id);
   const item = doc().items[id];
-  const children = shownChildrenOf(id);
-  const hasChildren = shownChildren(doc(), id, filter()).length > 0;
+  const shown = shownChildren(doc(), id, filter());
+  const children = inResults(shown);
+  const hasChildren = shown.length > 0;
   const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const displayState = `${hasChildren} ${expanded} ${noteOpen}`;
@@ -191,26 +204,38 @@ function highlightMatches(): void {
   registry.set("search", new HighlightClass(...ranges));
 }
 
-export function textEditorFor(id: ItemId): HTMLElement | null {
-  if (id === state.zoom) return ui.title;
-  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"] > .row .text`);
+/** Text editors of the visible rows, in reading order: the order arrow keys and selection follow. */
+export function treeEditors(): HTMLElement[] {
+  return [...ui.tree.querySelectorAll<HTMLElement>(".text[data-id]")];
 }
 
-export function noteEditorFor(id: ItemId): HTMLElement | null {
-  if (id === state.zoom) return ui.titleNote;
-  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"] > .row .note`);
+export function itemElementFor(id: ItemId): HTMLElement | null {
+  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
+}
+
+export function editorFor(id: ItemId, part: "text" | "note"): HTMLElement | null {
+  if (id === state.zoom) return part === "text" ? ui.title : ui.titleNote;
+  return itemElementFor(id)?.querySelector<HTMLElement>(`:scope > .row .${part}`) ?? null;
+}
+
+export function textEditorFor(id: ItemId): HTMLElement | null {
+  return editorFor(id, "text");
+}
+
+export function replayAnimation(element: Element, className: string): void {
+  element.classList.remove(className);
+  void (element as HTMLElement).offsetWidth;
+  element.classList.add(className);
+}
+
+export function flashRow(id: ItemId): void {
+  const row = itemElementFor(id)?.querySelector(":scope > .row");
+  if (row) replayAnimation(row, "flash");
 }
 
 export function focusCaret(focus: Focus): void {
-  const editor = focus.inNote ? noteEditorFor(focus.id) : textEditorFor(focus.id);
+  const editor = editorFor(focus.id, focus.inNote ? "note" : "text");
   if (!editor) return;
-  if (focus.selectNone) {
-    const row = editor.closest(".row");
-    row?.classList.remove("flash");
-    void (row as HTMLElement | null)?.offsetWidth;
-    row?.classList.add("flash");
-    return;
-  }
   editor.hidden = false;
   editor.focus({ preventScroll: true });
   select(editor, Math.min(focus.offset, (editor.textContent ?? "").length));
