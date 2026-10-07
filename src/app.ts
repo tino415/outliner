@@ -987,6 +987,7 @@ function bindChrome(): void {
   $("help-close").addEventListener("click", () => ui.help.close());
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
   ui.helpGrid.innerHTML = describeKeys();
+  $("build-info").textContent = `Stored only in this browser · build ${__BUILD_COMMIT__}`;
   document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
