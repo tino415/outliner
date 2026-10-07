@@ -1,0 +1,19 @@
+# Decision records
+
+One file per decision that was argued rather than obvious, numbered in the
+order it was taken. A record says what was decided, what it cost and what was
+rejected. What the code does, the code says.
+
+A record is not edited once accepted. A later decision supersedes it in a new
+file that says so.
+
+`NOTES.md` at the repository root holds the scope, the cut list and the
+session report; the records here hold the choices behind them.
+
+1. [Plain TypeScript, no UI framework](0001-plain-typescript-no-ui-framework.md)
+2. [One immutable document, re-rendered on structure, never on typing](0002-immutable-document-rerender-on-structure.md)
+3. [Items are raw text; formatting is rendered around it, not into it](0003-items-are-raw-text.md)
+4. [localStorage, one JSON document, undo by snapshots](0004-localstorage-and-snapshot-undo.md)
+5. [A hand-written service worker, cache first](0005-hand-written-service-worker.md)
+6. [The toolchain and the browsers live in the Playwright image](0006-toolchain-in-the-playwright-image.md)
+7. [Import adds to the page instead of replacing the outline](0007-import-adds-instead-of-replacing.md)
