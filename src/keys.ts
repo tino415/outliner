@@ -1,4 +1,4 @@
-import { EditorContext, actions } from "./app";
+import { EditorContext, actions } from "./editing";
 import { escape } from "./inline";
 import { isMac } from "./platform";
 
