@@ -115,6 +115,15 @@ test.describe("swipes on rows", () => {
     await expect(page.locator("#item-menu-title")).toHaveText("leaf");
   });
 
+  test("a tap right after a swipe is not swallowed", async ({ page }) => {
+    // 60 px is past the slop but short of the threshold: long enough to start a swipe, too slow for Chrome to treat the
+    // next tap as stopping a fling, which it would swallow by itself. Folding reacts to the click, unlike editing.
+    await freshOutline(page, "task\nparent\n  child");
+    await swipe(page, "task", 60);
+    await row(page, "parent").locator(".toggle").tap();
+    await expectOutline(page, "task\nparent");
+  });
+
   test("a short swipe does nothing and a tap still edits", async ({ page }) => {
     await freshOutline(page, "task");
     await swipe(page, "task", 40);

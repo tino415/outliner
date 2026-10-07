@@ -110,6 +110,16 @@ describe("outline CLI", () => {
     expect(await outline("show Monday/Breakfast/Coffee")).toBe("- Coffee\n  calories:: 20 kcal");
   });
 
+  it("keeps the table aligned with wide characters", async () => {
+    await outline('add "日本語"');
+    await outline('add "plain"');
+    await outline("set 日本語 n 1");
+    await outline("set plain n 22");
+    const [, wide, plain] = (await outline("show --columns")).split("\n");
+    const width = (line: string) => [...line].reduce((sum, char) => sum + (/[　-鿿]/.test(char) ? 2 : 1), 0);
+    expect(width(wide)).toBe(width(plain));
+  });
+
   it("merges with what other clients changed in the meantime", async () => {
     const id = await outline('add "shared"');
     await outline(`note ${id} "from one client"`);

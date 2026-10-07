@@ -27,3 +27,4 @@ session report; the records here hold the choices behind them.
 15. [Remote changes reset undo history](0015-remote-changes-reset-undo-history.md)
 16. [Touch: a large fold target and swipes on rows](0016-touch-gestures-on-rows.md)
 17. [Properties in notes, and a column view with rollups](0017-properties-in-notes-and-a-column-view-with-rollups.md)
+18. [Tabs are replicas that share stored state](0018-tabs-are-replicas-that-share-stored-state.md)

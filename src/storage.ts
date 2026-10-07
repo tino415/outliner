@@ -66,9 +66,9 @@ export function flushSave(): void {
   }
 }
 
-export function onDocChangedInAnotherTab(apply: (doc: Doc) => void): void {
+export function onDocChangedInAnotherTab(apply: (doc: Doc) => void, unless: () => boolean): void {
   window.addEventListener("storage", (event) => {
-    if (event.key !== DOC_KEY || !event.newValue) return;
+    if (event.key !== DOC_KEY || !event.newValue || unless()) return;
     try {
       const incoming = parseDoc(event.newValue);
       discardPendingSave();

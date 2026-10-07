@@ -964,7 +964,8 @@ code {
   animation: pulse 1.2s ease-in-out infinite;
 }
 
-.sync-status[data-status="refused"] span {
+.sync-status[data-status="refused"] span,
+.sync-status[data-status="rejected"] span {
   background: light-dark(#c4362b, #ff8a80);
 }
 

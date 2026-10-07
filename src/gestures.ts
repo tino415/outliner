@@ -48,7 +48,6 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
       if (Math.abs(dy) > SLOP && Math.abs(dy) >= Math.abs(dx)) return stop();
       if (Math.abs(dx) < SLOP || Math.abs(dx) < 2 * Math.abs(dy)) return;
       band = showBand(item, row);
-      row.setPointerCapture?.(start.pointerId);
     }
     action = dx > 0 ? (doc().items[id].completed ? "reopen" : "complete") : leftSwipeAction(id);
     const nowArmed = Math.abs(dx) >= THRESHOLD;
@@ -67,7 +66,8 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
     stop();
     if (!swiped) return;
     swallowNextClick();
-    if (armed && action && event.type === "pointerup") perform(action, id, row);
+    const chosen = action;
+    if (armed && chosen && event.type === "pointerup") setTimeout(() => perform(chosen, id, row));
   };
 
   const stop = () => {
@@ -127,6 +127,8 @@ function swallowNextClick(): void {
     event.preventDefault();
     event.stopPropagation();
   };
+  const stopSwallowing = () => window.removeEventListener("click", swallow, { capture: true });
   window.addEventListener("click", swallow, { capture: true, once: true });
-  setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 400);
+  window.addEventListener("pointerdown", stopSwallowing, { capture: true, once: true });
+  setTimeout(stopSwallowing, 400);
 }

@@ -111,6 +111,7 @@ export function bindEditorEvents(): void {
     if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
     if (target.closest("a.link, .tag")) event.preventDefault();
+    else if (isNoteEditor(editor) && editor.querySelector(".prop-line")) placeCaretBeforeLinesAppear(event, editor);
   });
 
   document.addEventListener("click", (event) => {
@@ -168,6 +169,19 @@ export function editorOf(target: EventTarget | null): HTMLElement | null {
 
 function isNoteEditor(editor: HTMLElement): boolean {
   return editor.classList.contains("note");
+}
+
+/**
+ * Focusing a note reveals property lines the column view hides, which moves
+ * the text under the pointer. The caret goes where the click was, measured
+ * before anything moves.
+ */
+function placeCaretBeforeLinesAppear(event: MouseEvent, note: HTMLElement): void {
+  const offset = offsetAtPoint(note, event.clientX, event.clientY);
+  if (offset === null) return;
+  event.preventDefault();
+  note.focus({ preventScroll: true });
+  select(note, offset);
 }
 
 function clearFocusedRow(): void {

@@ -261,11 +261,27 @@ function showTable(doc: Doc, top: ItemId, options: Options): string {
   };
   if (top === ROOT) doc.items[ROOT].children.forEach((child) => visit(child, 0));
   else visit(top, 0);
-  const labelWidth = Math.max(0, ...rows.map((row) => row.label.length));
-  const widths = keys.map((key, i) => Math.max(key.length, ...rows.map((row) => row.values[i].length)));
+  const labelWidth = Math.max(0, ...rows.map((row) => displayWidth(row.label)));
+  const widths = keys.map((key, i) => Math.max(displayWidth(key), ...rows.map((row) => displayWidth(row.values[i]))));
   const format = (label: string, values: string[]) =>
-    [label.padEnd(labelWidth), ...values.map((value, i) => value.padStart(widths[i]))].join("   ").trimEnd();
+    [padEnd(label, labelWidth), ...values.map((value, i) => padStart(value, widths[i]))].join("   ").trimEnd();
   return [format("", keys), ...rows.map((row) => format(row.label, row.values))].join("\n");
+}
+
+const WIDE = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦\u{1f300}-\u{1faff}]/u;
+const ZERO_WIDTH = /[\p{M}​-‏︀-️]/u;
+
+/** Columns a terminal gives the text: wide East Asian characters and emoji take two, combining marks none. */
+function displayWidth(text: string): number {
+  return [...text].reduce((width, char) => width + (ZERO_WIDTH.test(char) ? 0 : WIDE.test(char) ? 2 : 1), 0);
+}
+
+function padEnd(text: string, width: number): string {
+  return text + " ".repeat(Math.max(0, width - displayWidth(text)));
+}
+
+function padStart(text: string, width: number): string {
+  return " ".repeat(Math.max(0, width - displayWidth(text))) + text;
 }
 
 function showText(doc: Doc, top: ItemId, options: Options): string {

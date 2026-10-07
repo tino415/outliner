@@ -42,6 +42,11 @@ describe("property lines", () => {
     expect(setProperty("text", "effort", "1h")).toBe("text\neffort:: 1h");
     expect(setProperty("text\neffort:: 1h\nmore", "effort", "")).toBe("text\nmore");
   });
+
+  it("rewrites the line whose value is the one in effect when a key is written twice", () => {
+    const note = setProperty("effort:: 1h\neffort:: 2h", "effort", "4h");
+    expect(propertiesOf(note).get("effort")).toBe("4h");
+  });
 });
 
 describe("amounts", () => {
@@ -119,6 +124,34 @@ describe("rollups", () => {
     expect(columnCells(plan, ROOT, [{ key: "effort", summary: "sum" }]).get(project)!.get("effort")!.text).toBe("50h 15m");
     expect(columnCells(plan, ROOT, [{ key: "effort", summary: "max" }]).get(project)!.get("effort")!.text).toBe("48h");
     expect(columnCells(plan, ROOT, [{ key: "effort", summary: "mean" }]).get(project)!.get("effort")!.text).toBe("16h 45m");
+  });
+
+  it("reads org's duration summaries {:min} {:max} {:mean}", () => {
+    expect(parseColumns("effort{:max} a{:min} b{:mean} c{:}")).toEqual([
+      { key: "effort", summary: "max" },
+      { key: "a", summary: "min" },
+      { key: "b", summary: "mean" },
+      { key: "c", summary: "sum" },
+    ]);
+  });
+
+  it("adds plain numbers to numbers with a unit, whatever their order", () => {
+    const doc = outline("Day\n  a | kcal:: 200\n  b | kcal:: 300 kcal");
+    expect(columnCells(doc, ROOT, [{ key: "kcal", summary: "sum" }]).get(idOf(doc, "Day"))!.get("kcal")!.text).toBe("500 kcal");
+  });
+
+  it("reads 1h30 as a duration and 1,200 as twelve hundred", () => {
+    expect(formatAmount(parseAmount("1h30")!)).toBe("1h 30m");
+    expect(formatAmount(parseAmount("1,200 kcal")!)).toBe("1200 kcal");
+    expect(formatAmount(parseAmount("1,5 g")!)).toBe("1.5 g");
+  });
+
+  it("leaves hidden completed items out of the totals", () => {
+    let doc = outline("Plan\n  a | effort:: 1h\n  b | effort:: 5h");
+    doc = { items: { ...doc.items, [idOf(doc, "b")]: { ...doc.items[idOf(doc, "b")], completed: true } } };
+    const effort = [{ key: "effort", summary: "sum" as const }];
+    expect(columnCells(doc, ROOT, effort, { showCompleted: false }).get(idOf(doc, "Plan"))!.get("effort")!.text).toBe("1h");
+    expect(columnCells(doc, ROOT, effort, { showCompleted: true }).get(idOf(doc, "Plan"))!.get("effort")!.text).toBe("6h");
   });
 
   it("shows text values as they are and leaves rows without values empty", () => {

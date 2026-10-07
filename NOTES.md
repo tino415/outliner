@@ -1,5 +1,50 @@
 # outliner-lab
 
+## Morning summary (2026-10-08)
+
+Both backlog items are done and published:
+
+- Phone: a bigger fold target and swipes on rows (ADR 0016).
+- Properties and column view: `key:: value` lines in notes, plus a column
+  view with rollups (ADR 0017).
+
+Try the column view with Alt-Shift-C, or Columns in the ⋯ menu. Two examples:
+
+- Under a week, add days, then meals, then foods with notes like
+  `kcal:: 420`.
+- Put `effort:: 1h30` on subtasks.
+
+A review round on the new code and on sync found 14 bugs, all fixed. Each fix
+has a test that was run against the old code and failed first. The ones you
+would notice:
+
+- **Turning sync off on a device that joined.** The device fell back to its
+  old outline after a reload. It now keeps the synced one.
+- **Two tabs offline.** The tab that saved last dropped the other tab's
+  edits. Each tab is now a replica that merges in what the others stored
+  (new ADR 0018).
+- **Joining replaced the outline already on the device.** The toast now
+  offers "Add mine back", which copies it under "From this device, <date>".
+- **A note over 100,000 characters.** The server rejected the whole batch, so
+  nothing synced after it. That change now stays on the device, the status
+  dot turns red with a reason, and everything else still syncs.
+- **Column view:**
+  - Escape left a dead input in the cell.
+  - Clicking a note typed into a hidden property line.
+  - `{:max}` was summed.
+  - Values with mixed units and `1h30` were dropped.
+  - `1,200` was read as 1.2.
+  - A key written twice edited the wrong line.
+  - Hidden completed items counted in totals.
+- **CLI:** tables were misaligned with wide characters.
+- **Phone:** a tap right after a swipe could be swallowed.
+
+Checks: 101 unit tests, and 156 browser tests across 5 browser profiles
+(10 skipped on engines without the touch tooling), all passing. The sync
+server code did not change, so the running `sync` container was left alone.
+
+Not done: nothing has been tried on a real phone.
+
 A WorkFlowy-style outliner as an installable, offline PWA. Everything stays in
 the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 

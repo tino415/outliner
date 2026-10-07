@@ -312,6 +312,23 @@ export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
   return { doc: next, id: copyId };
 }
 
+/** Copies every top-level item of `source`, with its subtree, into a new item at the end of `doc`. */
+export function appendOutline(doc: Doc, source: Doc, title: string): { doc: Doc; id: ItemId } {
+  let id = "";
+  const next = edit(doc, (d) => {
+    const copy = (sourceId: ItemId, parent: ItemId, index: number) => {
+      const original = source.items[sourceId];
+      const created = d.create(parent, index, original.text);
+      Object.assign(created, { note: original.note, completed: original.completed, collapsed: original.collapsed });
+      original.children.forEach((child, i) => copy(child, created.id, i));
+    };
+    const holder = d.create(ROOT, d.read(ROOT).children.length, title);
+    source.items[ROOT].children.forEach((child, i) => copy(child, holder.id, i));
+    id = holder.id;
+  });
+  return { doc: next, id };
+}
+
 export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: number } {
   let count = 0;
   const next = edit(doc, (d) => {
