@@ -23,18 +23,8 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(".", copy));
-          return response;
-        })
-        .catch(() => caches.match(".", { ignoreSearch: true })),
-    );
-    return;
-  }
-
-  event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
+  const cacheKey = request.mode === "navigate" ? "." : request;
+  event.respondWith(
+    caches.match(cacheKey, { ignoreSearch: request.mode === "navigate", ignoreVary: true }).then((cached) => cached ?? fetch(request)),
+  );
 });
