@@ -4,3 +4,4 @@ dist-node/
 test-results/
 playwright-report/
 .claude/worktrees/
+.env.sync

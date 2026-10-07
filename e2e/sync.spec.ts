@@ -101,6 +101,16 @@ test("the CLI and the app see each other's changes", async ({ browser }) => {
   expect(shown.output).toBe("- Inbox\n  - ~~from the CLI~~");
 });
 
+test("a server whose items were all deleted takes this device's outline instead of an empty one", async ({ browser }) => {
+  const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
+  const id = (await run(["add", "test item"], env)).output;
+  await run(["rm", id], env);
+  const one = await device(browser, "my notes");
+  await connect(one);
+  await expect(one.locator("#toast")).toContainText("this outline is now synced");
+  await expectOutline(one, "my notes");
+});
+
 test("a wrong token is reported and nothing is lost", async ({ browser }) => {
   const one = await device(browser, "keep me");
   await one.locator("#menu-button").click();
