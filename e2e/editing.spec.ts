@@ -151,7 +151,8 @@ test.describe("keyboard editing", () => {
     await expect(row(page, "item").locator(".note")).toHaveText("a note");
   });
 
-  test("pasting several lines creates several items", async ({ page }) => {
+  test("pasting several lines creates several items", async ({ page, browserName }) => {
+    test.skip(browserName === "firefox", "Firefox ignores clipboardData on a synthetic paste event");
     await freshOutline(page, "first");
     await clickEnd(page, "first");
     await page.keyboard.press("Enter");

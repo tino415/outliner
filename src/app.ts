@@ -859,11 +859,11 @@ function bindGlobalKeys(): void {
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
     const onPage = event.target === document.body || event.target === document.documentElement;
-    const inField = event.target instanceof HTMLInputElement;
+    const inField = event.target instanceof HTMLInputElement || Boolean(editorOf(event.target));
     const binding = bindingFor(event, "global");
     if (!binding) return;
-    if (binding.typing && !onPage) return;
-    if (inField && binding.id !== "search") return;
+    if (binding.typing && (inField || (binding.id === "focus-first" && !onPage))) return;
+    if (inField && binding.id !== "search" && binding.id !== "help") return;
     event.preventDefault();
     runGlobal(binding.id!);
   });
