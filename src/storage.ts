@@ -35,6 +35,11 @@ export function serializeDoc(doc: Doc): string {
 
 let pendingSave: number | undefined;
 let unsavedDoc: Doc | null = null;
+let saveFailed: () => void = () => undefined;
+
+export function onSaveFailed(handler: () => void): void {
+  saveFailed = handler;
+}
 
 export function saveDocSoon(doc: Doc): void {
   unsavedDoc = doc;
@@ -50,6 +55,7 @@ export function flushSave(): void {
     unsavedDoc = null;
   } catch (error) {
     console.error("could not save outline", error);
+    saveFailed();
   }
 }
 

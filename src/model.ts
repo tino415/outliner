@@ -311,6 +311,41 @@ export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc
   });
 }
 
+export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
+  let copyId = "";
+  const next = edit(doc, (d) => {
+    const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
+      const source = d.read(sourceId);
+      const created = d.create(parent, index, source.text);
+      Object.assign(created, { note: source.note, completed: source.completed, collapsed: source.collapsed });
+      source.children.forEach((child, i) => copy(child, created.id, i));
+      return created.id;
+    };
+    const original = d.read(id);
+    copyId = copy(id, original.parent!, d.read(original.parent!).children.indexOf(id) + 1);
+  });
+  return { doc: next, id: copyId };
+}
+
+export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: number } {
+  let count = 0;
+  const next = edit(doc, (d) => {
+    const walk = (id: ItemId) => {
+      for (const child of [...d.read(id).children]) {
+        if (d.read(child).completed) {
+          count += 1;
+          d.detach(child);
+          d.removeSubtree(child);
+        } else {
+          walk(child);
+        }
+      }
+    };
+    walk(top);
+  });
+  return { doc: count > 0 ? next : doc, count };
+}
+
 export function remove(doc: Doc, id: ItemId): Doc {
   return edit(doc, (d) => {
     d.detach(id);
