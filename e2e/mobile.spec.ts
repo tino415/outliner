@@ -45,6 +45,20 @@ test("Enter and Backspace from a virtual keyboard split and join items", async (
   await expectOutline(page, "hello world");
 });
 
+test("a long press on a bullet opens the item menu instead of zooming", async ({ page }) => {
+  await freshOutline(page, "projects\n  garden\nother");
+  const bullet = row(page, "projects").locator(".bullet");
+  const box = (await bullet.boundingBox())!;
+  const at = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, pointerType: "touch", pointerId: 7, isPrimary: true, button: 0 };
+  await bullet.dispatchEvent("pointerdown", at);
+  await page.waitForTimeout(600);
+  await bullet.dispatchEvent("pointerup", at);
+  await expect(page.locator("#item-menu")).toBeVisible();
+  await expect(page.locator("#title")).toHaveText("Test");
+  await page.locator('[data-item-action="complete"]').tap();
+  await expect(row(page, "projects").locator("xpath=..")).toHaveClass(/completed/);
+});
+
 test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await row(page, "projects").locator(".bullet").tap();

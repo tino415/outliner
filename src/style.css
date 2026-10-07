@@ -881,6 +881,30 @@ code {
   color: var(--muted);
 }
 
+.item-menu {
+  width: 220px;
+}
+
+.item-menu-title {
+  padding: 6px 10px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item.danger {
+  color: light-dark(#c4362b, #ff8a80);
+}
+
+.bullet {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .menu-footer {
   padding: 8px 10px 4px;
   border-top: 1px solid var(--border);
@@ -1064,6 +1088,20 @@ body.dragging {
   .search-hint,
   [data-action="help"] {
     display: none;
+  }
+
+  .item-menu {
+    inset: auto 10px calc(10px + env(safe-area-inset-bottom)) 10px !important;
+    width: auto;
+    font-size: 16px;
+  }
+
+  .item-menu .menu-item {
+    padding: 11px 12px;
+  }
+
+  .item-menu::backdrop {
+    background: rgb(0 0 0 / 0.22);
   }
 
   body:has(.toolbar.active) .toast {

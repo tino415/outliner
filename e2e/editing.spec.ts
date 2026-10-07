@@ -316,6 +316,20 @@ test.describe("zoom and search", () => {
   });
 });
 
+test.describe("item menu", () => {
+  test("right-clicking a bullet offers actions on that item", async ({ page }) => {
+    await freshOutline(page, "a\nb\n  b1\nc");
+    await row(page, "b").locator(".bullet").click({ button: "right" });
+    await expect(page.locator("#item-menu")).toBeVisible();
+    await expect(page.locator("#item-menu-title")).toHaveText("b");
+    await page.locator('[data-item-action="duplicate"]').click();
+    await expectOutline(page, "a\nb\n  b1\nb\n  b1\nc");
+    await row(page, "c").locator(".bullet").click({ button: "right" });
+    await page.locator('[data-item-action="delete"]').click();
+    await expectOutline(page, "a\nb\n  b1\nb\n  b1");
+  });
+});
+
 test.describe("drag and drop", () => {
   test("dragging a bullet below another item moves it there", async ({ page }) => {
     await freshOutline(page, "a\nb\nc");
