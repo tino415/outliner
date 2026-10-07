@@ -74,7 +74,7 @@ export function columnViewShown(): boolean {
 function columnView(): ColumnView | null {
   if (!columnViewShown()) return null;
   const chosen = declaredColumns(doc(), state.zoom) ?? inferredColumns(doc(), state.zoom);
-  return { columns: chosen, cells: columnCells(doc(), state.zoom, chosen) };
+  return { columns: chosen, cells: columnCells(doc(), state.zoom, chosen, filter()) };
 }
 
 const SUMMARY_LABELS: Record<Column["summary"], string> = { sum: "total", min: "least", max: "most", mean: "average" };

@@ -111,6 +111,80 @@ test("a server whose items were all deleted takes this device's outline instead 
   await expectOutline(one, "my notes");
 });
 
+test("a device that joined keeps the synced outline after turning sync off and reloading", async ({ browser }) => {
+  const one = await device(browser, "a\nb");
+  await connect(one);
+  await synced(one);
+  const two = await device(browser, "x");
+  await connect(two);
+  await clickEnd(one, "a");
+  await one.keyboard.type(" remote");
+  await synced(one);
+  await syncNow(two);
+  await expectOutline(two, "a remote\nb");
+  await two.locator("#sync-status").click();
+  await two.getByRole("button", { name: "Turn sync off" }).click();
+  await two.reload();
+  await expectOutline(two, "a remote\nb");
+});
+
+test("two tabs of one browser offline keep both tabs' edits", async ({ browser }) => {
+  const tabA = await device(browser, "a\nb");
+  await connect(tabA);
+  await synced(tabA);
+  const tabB = await tabA.context().newPage();
+  await tabB.goto("./");
+  await expectOutline(tabB, "a\nb");
+  await tabA.context().setOffline(true);
+  await clickEnd(tabA, "a");
+  await tabA.keyboard.type(" fromA");
+  await tabA.waitForTimeout(800);
+  await clickEnd(tabB, "b");
+  await tabB.keyboard.type(" fromB");
+  await tabB.waitForTimeout(800);
+  await tabA.reload();
+  await expectOutline(tabA, "a fromA\nb fromB");
+  await tabA.context().setOffline(false);
+  await syncNow(tabA);
+  await syncNow(tabB);
+  const other = await device(browser, "x");
+  await connect(other);
+  await expectOutline(other, "a fromA\nb fromB");
+});
+
+test("joining a server keeps this device's outline within reach", async ({ browser }) => {
+  const one = await device(browser, "server item");
+  await connect(one);
+  await synced(one);
+  const two = await device(browser, "my own notes");
+  await connect(two);
+  await expectOutline(two, "server item");
+  await two.locator("#toast").getByRole("button", { name: "Add mine back" }).click();
+  await expect(two.locator(".text", { hasText: "my own notes" })).toBeVisible();
+  await synced(two);
+  await syncNow(one);
+  await expect(one.locator(".text", { hasText: "my own notes" })).toBeVisible();
+});
+
+test("a note too long to sync is reported and does not hold back other changes", async ({ browser }) => {
+  const one = await device(browser, "a\nb");
+  await connect(one);
+  await synced(one);
+  const two = await device(browser, "x");
+  await connect(two);
+  await one.evaluate(() => {
+    const note = document.querySelector<HTMLElement>(".note")!;
+    note.hidden = false;
+    note.focus();
+    document.execCommand("insertText", false, "x".repeat(100_001));
+  });
+  await clickEnd(one, "b");
+  await one.keyboard.type(" still syncs");
+  await expect(one.locator("#sync-status")).toHaveAttribute("data-status", "rejected");
+  await syncNow(two);
+  await expectOutline(two, "a\nb still syncs");
+});
+
 test("a wrong token is reported and nothing is lost", async ({ browser }) => {
   const one = await device(browser, "keep me");
   await one.locator("#menu-button").click();

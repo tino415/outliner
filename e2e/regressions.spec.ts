@@ -242,6 +242,46 @@ test("copying a selection without the clipboard API keeps the selection", async 
   await expect(page.locator(".item.selected")).toHaveCount(2);
 });
 
+test("a column cell can be edited again after Escape or an unchanged Enter", async ({ page }) => {
+  await freshOutline(page, "Plan | columns:: effort\n  task | effort:: 1h");
+  await row(page, "Plan").locator(".bullet").click();
+  const cell = row(page, "task").locator('.cell[data-key="effort"]');
+  await cell.click();
+  await page.keyboard.type("5h");
+  await page.keyboard.press("Escape");
+  await expect(cell).toHaveText("1h");
+  await cell.click();
+  await page.keyboard.press("Enter");
+  await expect(cell).toHaveText("1h");
+  await cell.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("7h");
+  await page.keyboard.press("Enter");
+  await expect(cell).toHaveText("7h");
+});
+
+test("clicking a note's text while a property line is hidden types where clicked", async ({ page }) => {
+  await freshOutline(page, "Plan | columns:: effort\n  task | effort:: 1h; free text here");
+  await row(page, "Plan").locator(".bullet").click();
+  const note = row(page, "task").locator(".note");
+  const box = (await note.boundingBox())!;
+  await page.mouse.click(box.x + box.width - 2, box.y + box.height / 2);
+  await page.keyboard.press("End");
+  await page.keyboard.type("X");
+  await expect(note).toHaveText("effort:: 1h\nfree text hereX");
+});
+
+test("clicking another item after editing a cell leaves the caret in that item", async ({ page }) => {
+  await freshOutline(page, "Plan | columns:: effort\n  Parent\n    Child | effort:: 1h");
+  await row(page, "Plan").locator(".bullet").click();
+  await row(page, "Child").locator('.cell[data-key="effort"]').click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("2h");
+  await editor(page, "Parent").click();
+  await expect(row(page, "Parent").locator('.cell[data-key="effort"]')).toHaveText("2h");
+  await expect(editor(page, "Parent")).toBeFocused();
+});
+
 test("the item menu takes keyboard focus when it opens", async ({ page }) => {
   await freshOutline(page, "a");
   await row(page, "a").locator(".bullet").click({ button: "right" });

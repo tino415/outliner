@@ -22,7 +22,7 @@ const FIELDS: Record<Field, "string" | "boolean" | "string or null"> = {
   deleted: "boolean",
 };
 
-const MAX_TEXT = 100_000;
+export const MAX_TEXT = 100_000;
 
 /** Throws with a readable reason unless `body` is a well-formed sync request. */
 export function parseSyncRequest(body: unknown): SyncRequest {

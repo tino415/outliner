@@ -23,6 +23,7 @@ export function bindColumnCells(): void {
 }
 
 function editCell(cell: HTMLElement, id: ItemId, key: string): void {
+  const shown = [...cell.childNodes];
   const input = Object.assign(document.createElement("input"), {
     className: "cell-input",
     value: propertiesOf(doc().items[id].note).get(key) ?? "",
@@ -36,11 +37,12 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
     if (done) return;
     done = true;
     const note = doc().items[id]?.note;
-    if (save && note !== undefined) {
-      const next = setProperty(note, key, input.value);
-      if (next !== note) return commitAndRender(setNote(doc(), id, next), null);
+    const next = save && note !== undefined ? setProperty(note, key, input.value) : note;
+    if (next === note) {
+      cell.replaceChildren(...shown);
+      return;
     }
-    render(null);
+    commitAndRender(setNote(doc(), id, next!), caretNow());
   };
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") finish(true);
@@ -49,7 +51,7 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
     event.preventDefault();
     event.stopPropagation();
   });
-  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("blur", () => setTimeout(() => finish(true)));
 }
 
 /** Notes are edited without renders, so cells catch up when a note loses focus. */

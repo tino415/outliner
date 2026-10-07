@@ -8,7 +8,7 @@ import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
-import { startSync, syncedDoc } from "./syncing";
+import { isSyncing, startSync, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -66,7 +66,7 @@ export function start(): void {
     state.history.replaceFromElsewhere(incoming);
     if (!incoming.items[state.zoom]) zoomTo(ROOT);
     else render(caret);
-  });
+  }, isSyncing);
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
   onSaveFailed(() => toast("Could not save: browser storage is full. Export a backup from the menu."));

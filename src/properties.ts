@@ -1,4 +1,4 @@
-import { Doc, ItemId, ancestors } from "./model";
+import { Doc, ItemId, ViewFilter, ancestors, shownChildren } from "./model";
 
 /*
  * Properties are `key:: value` lines in an item's note (doc/adr/0017). This
@@ -27,7 +27,7 @@ export function propertiesOf(note: string): Map<string, string> {
 export function setProperty(note: string, key: string, value: string): string {
   const wanted = key.toLowerCase();
   const lines = note === "" ? [] : note.split("\n");
-  const index = lines.findIndex((line) => propertyLine(line)?.key === wanted);
+  const index = lines.findLastIndex((line) => propertyLine(line)?.key === wanted);
   const written = `${key}:: ${value.trim()}`;
   if (value.trim() === "") return lines.filter((_, i) => i !== index).join("\n");
   if (index === -1) return [...lines, written].join("\n");
@@ -40,12 +40,14 @@ export type Amount = { kind: "number"; value: number; unit: string } | { kind: "
 
 const DURATION_PARTS = /^(?:(\d+(?:\.\d+)?)\s*d)?\s*(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m(?:in)?)?$/i;
 const CLOCK = /^(\d+):([0-5]\d)$/;
-const NUMBER = /^(-?\d+(?:[.,]\d+)?)\s*(.*)$/;
+const NUMBER = /^(-?\d[\d,]*(?:\.\d+)?)\s*(.*)$/;
+const THOUSANDS = /^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/;
+const HOURS_AND_MINUTES = /^(\d+)\s*h\s*(\d{1,2})$/i;
 
 export function parseAmount(raw: string): Amount | null {
   const text = raw.trim();
   if (!text) return null;
-  const clock = CLOCK.exec(text);
+  const clock = CLOCK.exec(text) ?? HOURS_AND_MINUTES.exec(text);
   if (clock) return { kind: "duration", minutes: Number(clock[1]) * 60 + Number(clock[2]) };
   const parts = DURATION_PARTS.exec(text);
   if (parts && (parts[1] || parts[2] || parts[3])) {
@@ -53,8 +55,13 @@ export function parseAmount(raw: string): Amount | null {
     return { kind: "duration", minutes: Math.round(days * 1440 + hours * 60 + minutes) };
   }
   const number = NUMBER.exec(text);
-  if (number) return { kind: "number", value: Number(number[1].replace(",", ".")), unit: number[2].trim() };
+  if (number) return { kind: "number", value: numberFrom(number[1]), unit: number[2].trim() };
   return null;
+}
+
+/** "1,200" is twelve hundred, "1,5" one and a half. */
+function numberFrom(digits: string): number {
+  return Number(THOUSANDS.test(digits) ? digits.replaceAll(",", "") : digits.replace(",", "."));
 }
 
 export function formatAmount(amount: Amount): string {
@@ -83,7 +90,7 @@ const SUMMARIES: Record<string, Summary> = { "+": "sum", ":": "sum", sum: "sum",
 export function parseColumns(spec: string): Column[] {
   return [...spec.matchAll(/([\p{L}\p{N}_-]+)(?:\{([^}]*)\})?/gu)].map((match) => ({
     key: match[1].toLowerCase(),
-    summary: SUMMARIES[(match[2] ?? "+").trim().toLowerCase()] ?? "sum",
+    summary: SUMMARIES[(match[2] ?? "+").trim().toLowerCase().replace(/^:(?=.)/, "")] ?? "sum",
   }));
 }
 
@@ -118,19 +125,26 @@ export interface Cell {
 /**
  * The cell of every column for `top` and everything under it. An item whose
  * children have values shows their summary, recursively; otherwise its own
- * value. Only amounts of the same kind and unit as the first one are combined.
+ * value. Items the view hides (completed ones, when those are hidden) count
+ * for nothing.
  */
-export function columnCells(doc: Doc, top: ItemId, columns: Column[]): Map<ItemId, Map<string, Cell>> {
+export function columnCells(
+  doc: Doc,
+  top: ItemId,
+  columns: Column[],
+  filter: ViewFilter = { showCompleted: true },
+): Map<ItemId, Map<string, Cell>> {
   const cells = new Map<ItemId, Map<string, Cell>>();
   const amounts = new Map<string, Amount | null>();
 
   const visit = (id: ItemId) => {
     const item = doc.items[id];
-    item.children.forEach(visit);
+    const children = shownChildren(doc, id, filter);
+    children.forEach(visit);
     const own = propertiesOf(item.note);
     const row = new Map<string, Cell>();
     for (const column of columns) {
-      const fromChildren = item.children
+      const fromChildren = children
         .map((child) => amounts.get(`${child}\u0000${column.key}`))
         .filter((amount): amount is Amount => Boolean(amount));
       const summary = summarize(fromChildren, column.summary);
@@ -146,20 +160,25 @@ export function columnCells(doc: Doc, top: ItemId, columns: Column[]): Map<ItemI
   return cells;
 }
 
+/**
+ * Combines amounts of the first one's kind. Numbers share the first unit
+ * any of them names; plain numbers count with it ("200" and "300 kcal" make
+ * "500 kcal"), numbers in another unit are left out.
+ */
 function summarize(amounts: Amount[], summary: Summary): Amount | null {
   if (amounts.length === 0) return null;
-  const first = amounts[0];
-  const alike = amounts.filter((amount) =>
-    first.kind === "duration" ? amount.kind === "duration" : amount.kind === "number" && amount.unit === first.unit,
-  );
-  const values = alike.map((amount) => (amount.kind === "duration" ? amount.minutes : amount.value));
+  const kind = amounts[0].kind;
+  const unit = amounts.flatMap((amount) => (amount.kind === "number" && amount.unit ? [amount.unit] : []))[0] ?? "";
+  const values = amounts.flatMap((amount) => {
+    if (amount.kind !== kind) return [];
+    if (amount.kind === "duration") return [amount.minutes];
+    return amount.unit === "" || amount.unit === unit ? [amount.value] : [];
+  });
   const combined =
     summary === "min"
       ? Math.min(...values)
       : summary === "max"
         ? Math.max(...values)
         : values.reduce((total, value) => total + value, 0) / (summary === "mean" ? values.length : 1);
-  return first.kind === "duration"
-    ? { kind: "duration", minutes: Math.round(combined) }
-    : { kind: "number", value: combined, unit: first.unit };
+  return kind === "duration" ? { kind, minutes: Math.round(combined) } : { kind, value: combined, unit };
 }
