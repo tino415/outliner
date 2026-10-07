@@ -166,6 +166,76 @@ test("Enter while items are selected leaves the selection", async ({ page }) => 
   await expect(page.locator(".item.selected")).toHaveCount(0);
 });
 
+test("undo after Ctrl-B shows the text without the markers", async ({ page }) => {
+  await freshOutline(page, "alpha\nbeta");
+  await clickEnd(page, "alpha");
+  await page.keyboard.press("Shift+Home");
+  await page.keyboard.press("ControlOrMeta+b");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expectOutline(page, "alpha\nbeta");
+  await page.keyboard.press("End");
+  await page.keyboard.type("X");
+  await expectOutline(page, "alphaX\nbeta");
+});
+
+for (const surface of ["help", "menu", "item-menu"] as const) {
+  test(`Escape closes the ${surface}`, async ({ page }) => {
+    await freshOutline(page, "a");
+    if (surface === "help") await page.keyboard.press("?");
+    if (surface === "menu") await page.locator("#menu-button").click();
+    if (surface === "item-menu") await row(page, "a").locator(".bullet").click({ button: "right" });
+    const opened = page.locator({ help: "#help", menu: "#menu", "item-menu": "#item-menu" }[surface]);
+    await expect(opened).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(opened).toBeHidden();
+  });
+}
+
+test("folding is unavailable during a search and the outline is unchanged after it", async ({ page }) => {
+  await freshOutline(page, "parent apple\n  child\nother");
+  await page.locator("#search").fill("apple");
+  await expect(row(page, "parent apple").locator(".toggle")).toBeHidden();
+  await editor(page, "parent apple").click();
+  await page.keyboard.press("ControlOrMeta+ArrowUp");
+  await page.keyboard.press("Escape");
+  await page.locator("#search").fill("");
+  await expectOutline(page, "parent apple\n  child\nother");
+});
+
+test("an item edited during a search stays in the results", async ({ page }) => {
+  await freshOutline(page, "apple one\napple two\nbanana");
+  await page.locator("#search").fill("apple");
+  await editor(page, "apple one").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("xyz");
+  await clickEnd(page, "apple two");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("new");
+  await expectOutline(page, "xyz\napple two\nnew");
+});
+
+test("a block of roots from different parents does not move apart", async ({ page }) => {
+  await freshOutline(page, "a\n  a1\n  a2\nb\nc");
+  await clickEnd(page, "a2");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("Alt+Shift+ArrowUp");
+  await expectOutline(page, "a\n  a1\n  a2\nb\nc");
+});
+
+test("Shift-click extends an existing selection", async ({ page }) => {
+  await freshOutline(page, "a\nb\nc\nd");
+  await clickEnd(page, "a");
+  await page.keyboard.press("Shift+ArrowDown");
+  await editor(page, "d").click({ modifiers: ["Shift"] });
+  await expect(page.locator(".item.selected")).toHaveCount(4);
+});
+
+test("the item menu takes keyboard focus when it opens", async ({ page }) => {
+  await freshOutline(page, "a");
+  await row(page, "a").locator(".bullet").click({ button: "right" });
+  await expect(page.locator('[data-item-action="zoom"]')).toBeFocused();
+});
+
 test("undo that removes the zoomed item goes home and updates the address", async ({ page }) => {
   await freshOutline(page, "a");
   await clickEnd(page, "a");

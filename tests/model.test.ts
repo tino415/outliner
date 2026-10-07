@@ -212,6 +212,12 @@ describe("block operations on a selection", () => {
     expect(moveAllDown(doc, ids(doc, "c", "d"), all)).toBe(doc);
   });
 
+  it("does not move a block whose roots have different parents", () => {
+    const doc = outline("a\n  a1\n  a2\nb\nc");
+    expect(moveAllUp(doc, ids(doc, "a2", "b"), all)).toBe(doc);
+    expect(moveAllDown(doc, ids(doc, "a2", "b"), all)).toBe(doc);
+  });
+
   it("completes all, or uncompletes all when every one is already complete", () => {
     let doc = outline("a\nb");
     doc = setFlags(doc, idOf(doc, "a"), { completed: true });

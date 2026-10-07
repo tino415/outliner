@@ -178,6 +178,7 @@ function bindEditorEvents(): void {
       editor.classList.toggle("empty", value === "");
     }
     rowShowsTypedText(id);
+    if (state.query) state.keptInResults.add(id);
   });
 
   document.addEventListener("focusout", (event) => {
@@ -214,6 +215,13 @@ function bindEditorEvents(): void {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
     const focused = editorOf(document.activeElement);
+    const clickedItem = editor && ui.tree.contains(editor) && !editor.classList.contains("note");
+    if (event.shiftKey && clickedItem && state.selection) {
+      event.preventDefault();
+      state.selection = { ...state.selection, head: editor.dataset.id! };
+      paintSelection();
+      return;
+    }
     const inTree = editor && ui.tree.contains(editor) && focused && ui.tree.contains(focused);
     if (event.shiftKey && inTree && focused !== editor && !editor.classList.contains("note")) {
       event.preventDefault();
@@ -465,12 +473,12 @@ export const actions = {
   },
 
   collapse(c: EditorContext): void {
-    if (c.isTitle) return;
+    if (c.isTitle || state.results) return;
     commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
   },
 
   expand(c: EditorContext): void {
-    if (c.isTitle) return;
+    if (c.isTitle || state.results) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
     animateOpening(c.id);
   },
@@ -556,6 +564,7 @@ function wrapSelection(c: EditorContext, marker: string): void {
   const update = c.inNote ? setNote(doc(), c.id, next) : setText(doc(), c.id, next);
   commit(update);
   c.editor.textContent = next;
+  rowShowsTypedText(c.id);
   select(c.editor, c.start + marker.length, c.end + marker.length);
 }
 
@@ -574,6 +583,7 @@ function pasteLines(id: ItemId, text: string): void {
 }
 
 function toggleFold(id: ItemId): void {
+  if (state.results) return;
   const opening = doc().items[id].collapsed;
   commitAndRender(setCollapsed(doc(), id, !opening), caretNow());
   if (opening) animateOpening(id);
@@ -1201,9 +1211,11 @@ function runToolbarAction(action: string, editor: HTMLElement): void {
 // ---- the item menu (long press or right click on a bullet) ----------------------
 
 let menuItem: ItemId | null = null;
+let menuOpenedByTouch = false;
 
-function openItemMenu(id: ItemId, anchor: HTMLElement): void {
+function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean): void {
   menuItem = id;
+  menuOpenedByTouch = byTouch;
   const menu = $("item-menu");
   const item = doc().items[id];
   $("item-menu-title").textContent = shortLabel(item.text, 40) || "Untitled";
@@ -1215,6 +1227,7 @@ function openItemMenu(id: ItemId, anchor: HTMLElement): void {
   const fitsBelow = rect.bottom + 4 + height < window.innerHeight;
   menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
   menu.style.top = `${fitsBelow ? rect.bottom + 4 : Math.max(8, rect.top - height - 4)}px`;
+  menu.querySelector<HTMLElement>("[data-item-action]")!.focus();
 }
 
 function bindItemMenu(): void {
@@ -1254,6 +1267,8 @@ function runItemAction(action: string, id: ItemId): void {
       actions.deleteItem(c);
       break;
   }
+  const wantsTyping = action === "note" || action === "move";
+  if (menuOpenedByTouch && !wantsTyping) editorOf(document.activeElement)?.blur();
 }
 
 function keepToolbarAboveKeyboard(): void {
@@ -1306,7 +1321,9 @@ function bindGlobalKeys(): void {
     const onPage = event.target === document.body || event.target === document.documentElement;
     const inField = event.target instanceof HTMLInputElement || Boolean(editorOf(event.target));
     const binding = bindingFor(event, "global");
-    if (!binding) return;
+    const inOverlay = event.target instanceof Element && Boolean(event.target.closest("dialog, [popover]"));
+    if (!binding || inOverlay) return;
+    if (binding.id === "escape" && !state.query) return;
     if (binding.typing && (inField || (binding.id === "focus-first" && !onPage))) return;
     if (inField && !["search", "help", "jump", "toggle-completed"].includes(binding.id!)) return;
     event.preventDefault();

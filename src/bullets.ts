@@ -4,7 +4,7 @@ interface DragHost {
   doc: () => Doc;
   zoomInto: (id: ItemId) => void;
   move: (next: Doc, id: ItemId) => void;
-  openMenu: (id: ItemId, anchor: HTMLElement) => void;
+  openMenu: (id: ItemId, anchor: HTMLElement, byTouch: boolean) => void;
 }
 
 interface Drop {
@@ -34,7 +34,7 @@ export function enableBulletHandles(tree: HTMLElement, host: DragHost): void {
     const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
     if (!bullet) return;
     event.preventDefault();
-    const open = () => host.openMenu(bullet.closest<HTMLElement>(".item")!.dataset.id!, bullet);
+    const open = () => host.openMenu(bullet.closest<HTMLElement>(".item")!.dataset.id!, bullet, false);
     const buttonStillDown = (event.buttons & 2) !== 0;
     if (buttonStillDown) window.addEventListener("pointerup", () => setTimeout(open), { once: true });
     else open();
@@ -57,7 +57,7 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
       ? undefined
       : window.setTimeout(() => {
           menuOpened = true;
-          host.openMenu(id, bullet);
+          bullet.classList.add("pressed");
         }, LONG_PRESS_MS);
 
   const onMove = (event: PointerEvent) => {
@@ -94,6 +94,8 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
     indicator?.remove();
     document.body.classList.remove("dragging");
     source.classList.remove("drag-source");
+    bullet.classList.remove("pressed");
+    if (menuOpened && event.type === "pointerup") setTimeout(() => host.openMenu(id, bullet, true));
     if (event.type === "pointercancel" || menuOpened) return;
     if (!dragged) host.zoomInto(id);
     else if (drop) host.move(moveTo(host.doc(), id, drop.parent, drop.index), id);

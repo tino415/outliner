@@ -59,6 +59,21 @@ test("a long press on a bullet opens the item menu instead of zooming", async ({
   await expect(row(page, "projects").locator("xpath=..")).toHaveClass(/completed/);
 });
 
+test("the item menu stays open after a real long press ends, and its actions leave the keyboard closed", async ({ page }) => {
+  await freshOutline(page, "projects\nother");
+  const box = (await row(page, "projects").locator(".bullet").boundingBox())!;
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+  await page.waitForTimeout(800);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(300);
+  await expect(page.locator("#item-menu")).toBeVisible();
+  await page.locator('[data-item-action="delete"]').tap();
+  await expectOutline(page, "other");
+  await expect(page.locator("#toolbar")).toBeHidden();
+});
+
 test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await row(page, "projects").locator(".bullet").tap();
