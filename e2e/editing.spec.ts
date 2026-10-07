@@ -228,6 +228,27 @@ test.describe("selecting several items", () => {
     await expectOutline(page, "a\nb\n  b1\nc");
   });
 
+  test("Ctrl-A twice selects every item on the page", async ({ page }) => {
+    await freshOutline(page, "a\n  a1\nb");
+    await clickEnd(page, "b");
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect(page.locator(".item.selected")).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+a");
+    await expect(page.locator(".item.selected")).toHaveCount(3);
+    await page.keyboard.press("Backspace");
+    await expect(page.locator(".tree .item")).toHaveCount(0);
+  });
+
+  test("the menu clears the page, and undo brings it back", async ({ page }) => {
+    await freshOutline(page, "a\n  a1\nb");
+    await page.locator("#menu-button").click();
+    await page.getByRole("button", { name: "Clear this page" }).click();
+    await expect(page.locator(".tree .item")).toHaveCount(0);
+    await expect(page.locator("#add-item")).toHaveClass(/prominent/);
+    await page.locator("#toast button").click();
+    await expectOutline(page, "a\n  a1\nb");
+  });
+
   test("Shift-click selects a range and copy puts it on the clipboard", async ({ page, context, browserName }) => {
     test.skip(browserName !== "chromium", "clipboard permissions are Chromium-only in Playwright");
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);

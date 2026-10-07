@@ -15,6 +15,7 @@ Welcome to your outline
   Search with **/** or Ctrl F, or click a tag like #ideas
   **Ctrl K** jumps to any item by name
   Press **?** for every shortcut
+  Ready to start? The ⋯ menu has **Clear this page**
 Things to try
   Plan the week #planning
     Monday: write the draft

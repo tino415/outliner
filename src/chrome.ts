@@ -1,4 +1,4 @@
-import { ItemId, ROOT, insertChild, removeCompleted, setCollapsedEverywhere } from "./model";
+import { ItemId, ROOT, descendantCount, insertChild, removeAll, removeCompleted, setCollapsedEverywhere } from "./model";
 import { Prefs, savePrefs } from "./storage";
 import { escape, plainText } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, subtreesAsText } from "./transfer";
@@ -105,6 +105,15 @@ function runMenuAction(action: string): void {
     case "collapse-all":
       commitAndRender(setCollapsedEverywhere(doc(), state.zoom, true), null);
       break;
+    case "clear-page": {
+      ui.menu.hidePopover();
+      const items = doc().items[state.zoom].children;
+      if (items.length === 0) break;
+      const count = items.reduce((sum, id) => sum + 1 + descendantCount(doc(), id), 0);
+      commitAndRender(removeAll(doc(), items), null);
+      toast(`Deleted ${count} item${count === 1 ? "" : "s"}`, { label: "Undo", run: undo });
+      break;
+    }
     case "delete-completed": {
       const result = removeCompleted(doc(), state.zoom);
       ui.menu.hidePopover();

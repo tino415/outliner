@@ -117,15 +117,20 @@ export function handleSelectionKey(event: KeyboardEvent): boolean {
       deleteSelection(roots);
       return true;
     case "Mod+a":
-      state.selection = { anchor: treeEditors()[0].dataset.id!, head: treeEditors().at(-1)!.dataset.id! };
-      paintSelection();
+      selectWholePage();
       return true;
   }
   if (!event.metaKey && !event.ctrlKey && event.key.length === 1) clearSelection();
   return false;
 }
 
-function deleteSelection(roots: ItemId[]): void {
+export function selectWholePage(): void {
+  const editors = treeEditors();
+  if (editors.length === 0) return;
+  startSelection(editors[0].dataset.id!, editors.at(-1)!.dataset.id!);
+}
+
+export function deleteSelection(roots: ItemId[]): void {
   const count = roots.reduce((sum, id) => sum + 1 + descendantCount(doc(), id), 0);
   state.selection = null;
   const next = removeAll(doc(), roots);
