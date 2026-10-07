@@ -230,6 +230,18 @@ test("Shift-click extends an existing selection", async ({ page }) => {
   await expect(page.locator(".item.selected")).toHaveCount(4);
 });
 
+test("copying a selection without the clipboard API keeps the selection", async ({ page }) => {
+  await freshOutline(page, "a\nb\nc");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: undefined }));
+  await clickEnd(page, "a");
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("ControlOrMeta+c");
+  await expect(page.locator(".item.selected")).toHaveCount(2);
+  await page.keyboard.press("Tab");
+  await expectOutline(page, "a\nb\nc");
+  await expect(page.locator(".item.selected")).toHaveCount(2);
+});
+
 test("the item menu takes keyboard focus when it opens", async ({ page }) => {
   await freshOutline(page, "a");
   await row(page, "a").locator(".bullet").click({ button: "right" });

@@ -156,7 +156,7 @@ function copyText(text: string): void {
 }
 
 function copyWithTextarea(text: string): void {
-  const area = Object.assign(document.createElement("textarea"), { value: text });
+  const area = Object.assign(document.createElement("textarea"), { value: text, className: CLIPBOARD_BUFFER });
   area.style.cssText = "position:fixed;opacity:0";
   document.body.append(area);
   area.select();
@@ -164,6 +164,10 @@ function copyWithTextarea(text: string): void {
   area.remove();
 }
 
+const CLIPBOARD_BUFFER = "clipboard-buffer";
+
 export function endSelectionWhenSomethingTakesFocus(): void {
-  document.addEventListener("focusin", clearSelection);
+  document.addEventListener("focusin", (event) => {
+    if (!(event.target as Element).classList?.contains(CLIPBOARD_BUFFER)) clearSelection();
+  });
 }
