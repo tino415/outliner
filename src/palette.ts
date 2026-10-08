@@ -1,11 +1,16 @@
-import { Candidate } from "./search";
 import { escape, plainText, renderInline } from "./inline";
 
-export interface PaletteRequest {
+export interface PaletteOption {
+  text: string;
+  path: string[];
+  shortcut?: string;
+}
+
+export interface PaletteRequest<O extends PaletteOption> {
   placeholder: string;
   hint: string;
-  candidates: (query: string) => Candidate[];
-  choose: (candidate: Candidate) => void;
+  candidates: (query: string) => O[];
+  choose: (option: O) => void;
 }
 
 const dialog = document.getElementById("palette") as HTMLDialogElement;
@@ -13,12 +18,12 @@ const input = dialog.querySelector<HTMLInputElement>("input")!;
 const list = dialog.querySelector<HTMLElement>(".palette-results")!;
 const hint = dialog.querySelector<HTMLElement>(".palette-hint")!;
 
-let current: PaletteRequest | null = null;
-let shown: Candidate[] = [];
+let current: PaletteRequest<PaletteOption> | null = null;
+let shown: PaletteOption[] = [];
 let active = 0;
 
-export function openPalette(request: PaletteRequest): void {
-  current = request;
+export function openPalette<O extends PaletteOption>(request: PaletteRequest<O>): void {
+  current = request as unknown as PaletteRequest<PaletteOption>;
   input.value = "";
   input.placeholder = request.placeholder;
   hint.textContent = request.hint;
@@ -30,9 +35,9 @@ export function openPalette(request: PaletteRequest): void {
 input.addEventListener("input", refresh);
 
 input.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+  const step = stepFor(event);
+  if (step) {
     event.preventDefault();
-    const step = event.key === "ArrowDown" ? 1 : -1;
     active = (active + step + shown.length) % Math.max(shown.length, 1);
     paintActive();
   } else if (event.key === "Enter") {
@@ -40,6 +45,15 @@ input.addEventListener("keydown", (event) => {
     choose(active);
   }
 });
+
+function stepFor(event: KeyboardEvent): -1 | 1 | null {
+  if (event.key === "ArrowDown") return 1;
+  if (event.key === "ArrowUp") return -1;
+  const ctrlItself = event.ctrlKey && !event.metaKey && !event.altKey;
+  if (ctrlItself && event.code === "KeyN") return 1;
+  if (ctrlItself && event.code === "KeyP") return -1;
+  return null;
+}
 
 list.addEventListener("click", (event) => {
   const option = (event.target as HTMLElement).closest<HTMLElement>("[data-index]");
@@ -53,17 +67,16 @@ dialog.addEventListener("click", (event) => {
 function refresh(): void {
   shown = current?.candidates(input.value) ?? [];
   active = 0;
-  list.innerHTML =
-    shown
-      .map(
-        (candidate, index) =>
-          `<li role="option" data-index="${index}">` +
-          `<span class="palette-text">${renderInline(candidate.text) || "<em>Untitled</em>"}</span>` +
-          (candidate.path.length ? `<span class="palette-path">${candidate.path.map((step) => escape(plainText(step))).join(" / ")}</span>` : "") +
-          `</li>`,
-      )
-      .join("") || `<li class="palette-empty">Nothing found</li>`;
+  list.innerHTML = shown.map(optionHtml).join("") || `<li class="palette-empty">Nothing found</li>`;
   paintActive();
+}
+
+function optionHtml(option: PaletteOption, index: number): string {
+  const isCommand = option.shortcut !== undefined;
+  const text = `<span class="palette-text">${renderInline(option.text) || "<em>Untitled</em>"}</span>`;
+  const path = option.path.length ? `<span class="palette-path">${option.path.map((step) => escape(plainText(step))).join(" / ")}</span>` : "";
+  const shortcut = isCommand ? `<span class="palette-shortcut">${option.shortcut}</span>` : "";
+  return `<li role="option" data-index="${index}"${isCommand ? ` class="palette-command"` : ""}>${text}${path}${shortcut}</li>`;
 }
 
 function paintActive(): void {
@@ -74,9 +87,9 @@ function paintActive(): void {
 }
 
 function choose(index: number): void {
-  const candidate = shown[index];
-  if (!candidate || !current) return;
+  const option = shown[index];
+  if (!option || !current) return;
   const request = current;
   dialog.close();
-  request.choose(candidate);
+  request.choose(option);
 }
