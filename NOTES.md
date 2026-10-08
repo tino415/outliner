@@ -104,6 +104,9 @@ value in both.
    in `dist-node/outline.mjs` needs only Node; the package would wrap it
    with `OUTLINE_SERVER` and `OUTLINE_TOKEN` read from the environment or a
    config file, never baked in.
+8. **CLI: place an item next to another.** `--before ITEM` and `--after ITEM`
+   for `add` and `move`, putting it beside ITEM under ITEM's parent. Today
+   only `--under` and `--first` exist.
 
 ## Part 2: sync and a CLI
 
