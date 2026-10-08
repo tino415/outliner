@@ -1,4 +1,5 @@
 import { escape, plainText, renderInline } from "./inline";
+import { select, selectionIn } from "./caret";
 
 export interface PaletteOption {
   text: string;
@@ -24,6 +25,7 @@ let active = 0;
 
 export function openPalette<O extends PaletteOption>(request: PaletteRequest<O>): void {
   current = request as unknown as PaletteRequest<PaletteOption>;
+  caretToRestore = caretInFocusedEditor();
   input.value = "";
   input.placeholder = request.placeholder;
   hint.textContent = request.hint;
@@ -91,5 +93,29 @@ function choose(index: number): void {
   if (!option || !current) return;
   const request = current;
   dialog.close();
+  restoreCaret();
   request.choose(option);
 }
+
+/*
+ * Leaving an editor re-renders it, so the browser's own focus return puts the
+ * caret at its start; a command or a cancelled palette must find it where it was.
+ */
+let caretToRestore: { editor: HTMLElement; start: number; end: number } | null = null;
+
+function caretInFocusedEditor(): typeof caretToRestore {
+  const editor = document.activeElement;
+  if (!(editor instanceof HTMLElement) || !editor.isContentEditable) return null;
+  const selection = selectionIn(editor);
+  return selection && { editor, ...selection };
+}
+
+function restoreCaret(): void {
+  const saved = caretToRestore;
+  caretToRestore = null;
+  if (!saved || !saved.editor.isConnected) return;
+  saved.editor.focus({ preventScroll: true });
+  select(saved.editor, saved.start, saved.end);
+}
+
+dialog.addEventListener("close", restoreCaret);

@@ -330,3 +330,132 @@ test("the menu does not say the outline is stored only in this browser while it 
     await server.stop();
   }
 });
+
+test("jumping by typing an item's first word and Enter opens the item, not a command of that name", async ({ page }) => {
+  await freshOutline(page, "Delete old photos\nother");
+  await clickEnd(page, "other");
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("delete");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#title")).toHaveText("Delete old photos");
+  await page.goBack();
+  await expectOutline(page, "Delete old photos\nother");
+});
+
+test("completion: Enter after clicking elsewhere in the same item splits it", async ({ page }) => {
+  await freshOutline(page, "a #work\nhello world");
+  await clickEnd(page, "hello world");
+  await page.keyboard.type(" #wo");
+  await expect(page.locator(".completion")).toBeVisible();
+  const box = (await editor(page, "hello world #wo").boundingBox())!;
+  await page.mouse.click(box.x + 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expectOutline(page, "a #work\n\nhello world #wo");
+});
+
+test("completion leaves Enter alone while an IME is composing", async ({ page }) => {
+  await freshOutline(page, "a #work\nc");
+  await clickEnd(page, "c");
+  await page.keyboard.type(" #w");
+  await expect(page.locator(".completion")).toBeVisible();
+  await page.evaluate(() =>
+    document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, isComposing: true, bubbles: true, cancelable: true })),
+  );
+  await expectOutline(page, "a #work\nc #w");
+});
+
+test("[[ then Escape keeps the caret where it was", async ({ page }) => {
+  await freshOutline(page, "Garden\nsee");
+  await clickEnd(page, "see");
+  await page.keyboard.type(" [[");
+  await expect(page.locator("#palette")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#palette")).toBeHidden();
+  await page.keyboard.type("Garden]]");
+  await expectOutline(page, "Garden\nsee [[Garden]]");
+});
+
+test("a command from Ctrl-K acts with the caret where it was", async ({ page }) => {
+  await freshOutline(page, "abc");
+  await clickEnd(page, "abc");
+  await page.keyboard.press("Control+k");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("d");
+  await expectOutline(page, "abcd");
+});
+
+test("capture asks for properties afresh each time", async ({ page }) => {
+  await freshOutline(page, "Spend | :capture: Money; :ask: amount\nMoney");
+  await page.keyboard.press("Alt+Shift+n");
+  await page.locator("#capture-text").fill("lunch");
+  await page.locator("#capture-fields input").fill("12");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Captured");
+  await page.keyboard.press("Alt+Shift+n");
+  await expect(page.locator("#capture-fields input")).toHaveValue("");
+});
+
+test("Ctrl-Shift-E in the middle of a note line keeps the rest of the line visible", async ({ page }) => {
+  await freshOutline(page, "item | abcdef");
+  await editor(page, "item").click();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Home");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Control+Shift+e");
+  await page.keyboard.type("x");
+  await page.keyboard.press("Escape");
+  await expect(row(page, "item").locator(".note")).toHaveText("abc\n```\nx\n```\ndef");
+});
+
+test("Shift-Tab inside a code block takes back an indentation instead of outdenting the item", async ({ page }) => {
+  await freshOutline(page, "parent\n  child | ```;   x; ```");
+  await editor(page, "child").click();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Home");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Shift+Tab");
+  await expectOutline(page, "parent\n  child");
+  await expect(row(page, "child").locator(".note")).toHaveText("```\n x\n```");
+});
+
+test("Tab inside a code block in the zoomed page's note indents", async ({ page }) => {
+  await freshOutline(page, "Page | ```; x; ```\nother");
+  await editor(page, "Page").click();
+  await page.keyboard.press("Control+]");
+  await expect(page.locator("#title")).toHaveText("Page");
+  await page.locator("#title-note").click();
+  await page.evaluate(() => {
+    const note = document.getElementById("title-note")!;
+    const walker = document.createTreeWalker(note, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let offset = 0;
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const length = node.textContent!.length;
+      if (offset + length >= 5) {
+        range.setStart(node, 5 - offset);
+        break;
+      }
+      offset += length;
+    }
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  });
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => document.getElementById("title-note")!.textContent)).toBe("```\nx  \n```");
+});
+
+test("on a Mac Ctrl-A and Ctrl-E in a note go to the start and end of the line", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, "platform", { get: () => "MacIntel" }));
+  await freshOutline(page, "item | one; two; three");
+  await editor(page, "item").click();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Control+a");
+  await page.keyboard.type(">");
+  await page.keyboard.press("Control+e");
+  await page.keyboard.type("<");
+  await page.keyboard.press("Escape");
+  await expect(row(page, "item").locator(".note")).toHaveText("one\n>two<\nthree");
+});

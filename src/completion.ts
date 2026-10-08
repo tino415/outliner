@@ -32,6 +32,7 @@ let editor: HTMLElement | null = null;
 let typed: Typed | null = null;
 let shown: string[] = [];
 let active = 0;
+let offeredAt = 0;
 
 export function bindCompletion(doc: () => Doc): void {
   document.addEventListener("input", (event) => {
@@ -40,6 +41,7 @@ export function bindCompletion(doc: () => Doc): void {
   });
   document.addEventListener("keydown", steerCompletion, true);
   document.addEventListener("focusout", closeCompletion);
+  document.addEventListener("selectionchange", closeWhenTheCaretMoves);
   list.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     const option = (event.target as HTMLElement).closest<HTMLElement>("[data-index]");
@@ -57,6 +59,7 @@ export function offerCompletion(target: HTMLElement, current: Doc): void {
   shown = words.filter((word) => word.toLowerCase().startsWith(prefix) && word.toLowerCase() !== prefix).slice(0, LIMIT);
   if (shown.length === 0) return closeCompletion();
   editor = target;
+  offeredAt = caret!.start;
   active = 0;
   paint();
 }
@@ -94,7 +97,7 @@ function byUse(words: string[]): string[] {
 }
 
 function steerCompletion(event: KeyboardEvent): void {
-  if (list.hidden || event.target !== editor) return;
+  if (list.hidden || event.target !== editor || event.isComposing) return;
   const ctrlItself = event.ctrlKey && !event.metaKey && !event.altKey;
   const step =
     event.key === "ArrowDown" || (ctrlItself && event.code === "KeyN") ? 1 : event.key === "ArrowUp" || (ctrlItself && event.code === "KeyP") ? -1 : 0;
@@ -123,6 +126,13 @@ function choose(index: number): void {
   select(target, typed.start, caret.end);
   closeCompletion();
   insertText(replacement.endsWith(" ") && /^\s/.test(after) ? replacement.trimEnd() : replacement);
+}
+
+/** A click, undo or anything else that moves the caret without typing leaves what was being typed. */
+function closeWhenTheCaretMoves(): void {
+  if (list.hidden || !editor) return;
+  const caret = selectionIn(editor);
+  if (!caret || caret.start !== caret.end || caret.start !== offeredAt) closeCompletion();
 }
 
 export function closeCompletion(): void {

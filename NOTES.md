@@ -98,6 +98,24 @@ Assumptions (Martin away):
 - `9:00` written as a value is a time of day and shows as `9:00`; before, it
   showed as `9h`. `1:30` therefore shows as `1:30`, still summed as 1h 30m.
 
+Review round (two review agents, 01:20): 16 bugs confirmed with failing
+tests, fixed in two commits ("Fix review round on properties and
+formulas", and the palette/completion/code-block/capture round). Not done:
+
+- Two of the new browser tests are intermittent, failing about 1 run in 3:
+  "a command from Ctrl-K acts with the caret where it was" (the caret can
+  still land at the start after Escape) and "completion: Enter after
+  clicking elsewhere in the same item splits it". The fixes (restore the
+  caret on palette close; close completion on selectionchange) work most of
+  the time; a timing race remains. Next step: restore the caret after the
+  dialog's own focus return, e.g. in a requestAnimationFrame.
+- Not fixed, noted by the review: keys containing `-` read `a-b` as one
+  key; backlinks and `[[` work inside code blocks; CLI config errors print
+  a stack trace; the CLI's `--template` matches names, not `:key:`
+  letters; a template item named like its own target files under itself.
+- Session ran out of token budget at about 01:40; nothing is untested
+  except as listed here.
+
 Blocked:
 
 - Converting the three `key::` lines in the live outline (Food plan /
