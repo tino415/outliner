@@ -91,6 +91,43 @@ describe("computed columns", () => {
   });
 });
 
+describe("computed columns, review round", () => {
+  it("formats a negative duration", () => {
+    const doc = outline("Day | :columns: effort spare{=2h - effort}\n  Task | :effort: 3h30m");
+    expect(column(doc, "Day", "spare")).toEqual({ Task: "-1h 30m" });
+  });
+
+  it("starts the first item at the page's start when it has no effort of its own", () => {
+    const doc = outline(["Monday | :start: 9:00; :columns: effort start{=parent.start + before(effort)}", "  Morning", "  Standup | :effort: 15m"].join("\n"));
+    expect(column(doc, "Monday", "start")).toEqual({ Monday: "9:00", Morning: "9:00", Standup: "9:00" });
+  });
+
+  it("computes the same start for a row whether the view is zoomed into its parent or not", () => {
+    const doc = outline(
+      [
+        "Monday | :start: 9:00; :columns: effort start{=clock(parent.start + before(effort))}",
+        "  Standup | :effort: 15m",
+        "  Deep work",
+        "    Write | :effort: 1h30m",
+      ].join("\n"),
+    );
+    expect(column(doc, "Monday", "start").Write).toBe("9:15");
+    expect(column(doc, "Deep work", "start").Write).toBe("9:15");
+  });
+
+  it("marks both columns of a cycle as errors", () => {
+    const doc = outline("P | :columns: a{=b} b{=a}\n  x");
+    const top = idOf(doc, "P");
+    const row = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "x"))!;
+    expect(row.get("a")?.text).toBe("error");
+    expect(row.get("b")?.text).toBe("error");
+  });
+
+  it.each(["parent.start + 1h 30m", "effort + 1H", "price + 5 Kč"])("reads amounts written as property values are: %s", (source) => {
+    expect(() => parseFormula(source)).not.toThrow();
+  });
+});
+
 describe("parsing formulas", () => {
   it.each(["parent.start + before(effort)", "clock(9:00 + 1h30m)", "-(a - b) * 2 / 3", "previous.end", "max(effort)", "350 kcal + a"])(
     "reads %s",
