@@ -635,6 +635,9 @@ code {
   right: max(16px, env(safe-area-inset-right));
   margin: 0;
   width: 264px;
+  max-height: calc(100dvh - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 14px;
