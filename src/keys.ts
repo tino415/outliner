@@ -83,6 +83,8 @@ const bindings: Binding[] = [
   editor(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
   editor(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
   editor(["Mod+a"], "Select all items (press twice)", (c) => actions.selectAll(c)),
+  editor(["Ctrl+n"], "Next item", (c) => actions.nextItem(c)),
+  editor(["Ctrl+p"], "Previous item", (c) => actions.previousItem(c)),
   editor(["ArrowUp"], "", (c) => actions.arrowUp(c), true),
   editor(["ArrowDown"], "", (c) => actions.arrowDown(c), true),
   editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
@@ -118,7 +120,12 @@ const bindings: Binding[] = [
 ];
 
 export function bindingFor<C extends Binding["context"]>(event: KeyboardEvent, context: C): BindingIn<C> | null {
-  return bindingForKeys(keyString(event), context);
+  return bindingForKeys(keyString(event), context) ?? (pressesCtrlItself(event) ? bindingForKeys(keyString(event).replace(/^Mod\+/, "Ctrl+"), context) : null);
+}
+
+/** "Mod" is Ctrl or ⌘ alike; "Ctrl" bindings are for the Ctrl key itself, as Emacs habits on a Mac expect. */
+function pressesCtrlItself(event: KeyboardEvent): boolean {
+  return event.ctrlKey && !event.metaKey;
 }
 
 export function bindingForKeys<C extends Binding["context"]>(keys: string, context: C): BindingIn<C> | null {
@@ -160,6 +167,7 @@ function pretty(keys: string): string {
       const label =
         {
           Mod: isMac ? "⌘" : "Ctrl",
+          Ctrl: isMac ? "⌃" : "Ctrl",
           Alt: isMac ? "⌥" : "Alt",
           Shift: "⇧",
           ArrowUp: "↑",
