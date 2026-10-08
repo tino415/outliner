@@ -31,7 +31,7 @@ export class FormulaError extends Error {}
 
 // ---- parsing ---------------------------------------------------------------------------
 
-const TOKEN = /\s*(?:(\d+:[0-5]\d|\d[\d.,]*(?:\s*[a-z]+(?:\d+[a-z]*)*\b)?)|([\p{L}_][\p{L}\p{N}_-]*(?:\.[\p{L}_][\p{L}\p{N}_-]*)?)|([-+*/()]))/uy;
+const TOKEN = /\s*(?:(\d+:[0-5]\d|\d[\d.,]*(?:\s*\p{L}+(?:\s*\d[\d.,]*\s*\p{L}+)*)?)|([\p{L}_][\p{L}\p{N}_-]*(?:\.[\p{L}_][\p{L}\p{N}_-]*)?)|([-+*/()]))/uy;
 
 export function parseFormula(source: string): Formula {
   const tokens = tokenize(source);
@@ -128,7 +128,7 @@ function call(name: FunctionName, argument: Formula | string, scope: Scope): Amo
     return value && { ...value, clock: true };
   }
   const values = name === "before" ? scope.before(argument as string) : scope.children(argument as string);
-  if (values.length === 0) return name === "before" ? zeroLike(scope, argument as string) : null;
+  if (values.length === 0) return name === "before" ? PLAIN_ZERO : null;
   if (name === "before" || name === "sum") return values.reduce((total, value) => combine("+", total, value)!);
   if (name === "mean") return scale(values.reduce((total, value) => combine("+", total, value)!), 1 / values.length);
   const pick = name === "min" ? Math.min : Math.max;
@@ -136,16 +136,19 @@ function call(name: FunctionName, argument: Formula | string, scope: Scope): Amo
   return values.find((value) => magnitude(value) === best)!;
 }
 
-/** Nothing before the first item adds nothing: a zero of the kind the column holds, or plain 0. */
-function zeroLike(scope: Scope, key: string): Amount {
-  const sample = scope.value("self", key) ?? scope.children(key)[0];
-  return sample?.kind === "duration" ? { kind: "duration", minutes: 0 } : { kind: "number", value: 0, unit: sample?.kind === "number" ? sample.unit : "" };
+/** What nothing before the first item adds up to; it adds to a duration as well as to a number. */
+const PLAIN_ZERO: Amount = { kind: "number", value: 0, unit: "" };
+
+function isPlainZero(amount: Amount): boolean {
+  return amount.kind === "number" && amount.value === 0 && amount.unit === "";
 }
 
 function combine(operator: "+" | "-" | "*" | "/", left: Amount | null, right: Amount | null): Amount | null {
   if (!left || !right) return null;
   if (operator === "+" || operator === "-") {
     const sign = operator === "+" ? 1 : -1;
+    if (isPlainZero(right)) return left;
+    if (isPlainZero(left)) return scale(right, sign);
     if (left.kind === "duration" && right.kind === "duration") return { ...left, minutes: left.minutes + sign * right.minutes };
     if (left.kind === "number" && right.kind === "number") return { kind: "number", value: left.value + sign * right.value, unit: left.unit || right.unit };
     throw new FormulaError("cannot add a duration and a number");

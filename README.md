@@ -35,7 +35,7 @@ podman compose exec app npx playwright test         # desktop Chromium, phone, W
 
 A line `:key: value` in an item's note is a property, as in org mode
 (doc/adr/0017, 0020): `:calories: 350 kcal`, `:effort: 1h30m`,
-`:effort: 1:30`, `:protein: 12 g`. Typing `:` at the start of a note line
+`:start: 9:00` (a time of day), `:protein: 12 g`. Typing `:` at the start of a note line
 offers the keys already in use, and `#` offers the tags.
 ⋯ → Columns (Alt-Shift-C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
@@ -60,7 +60,10 @@ Monday
 ```
 
 Each item then starts when the items above it are done, counted from the
-parent's start. Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
+parent's start. An item with its own `:start:` keeps it; the items after
+it still count from the parent's start.
+A formula that cannot be computed shows `error`, the reason on hover.
+Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
 (`parent.start`) or the previous sibling (`previous.end`), `before(key)`
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and

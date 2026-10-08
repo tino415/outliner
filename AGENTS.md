@@ -74,7 +74,7 @@ before writing and do not delete without being asked.
 - Commits: one plain line, no trailers; a bug fix is the failing test
   committed alone as WIP, then the fix amended into it.
 - Settings that belong to the outline (column specs) live in the outline as
-  `key:: value` lines, so they sync and the CLI sees them; settings of one
+  `:key: value` lines, so they sync and the CLI sees them; settings of one
   device (theme, the Columns switch) live in `Prefs`.
 - "Mod" in `src/keys.ts` is Ctrl or ⌘ alike; "Ctrl" bindings are the Ctrl
   key itself (Emacs habits on a Mac). Ctrl-N cannot be taken from Chrome on

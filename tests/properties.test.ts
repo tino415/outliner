@@ -40,6 +40,16 @@ describe("property lines", () => {
     expect([...propertiesOf("```yaml\n:key: in code\n```\n:real: 1")]).toEqual([["real", "1"]]);
   });
 
+  it("leaves a property-looking line inside a code block alone when setting the property", () => {
+    const written = setProperty(":effort: 1h\n```\n:effort: 5h\n```", "effort", "2h");
+    expect(propertiesOf(written).get("effort")).toBe("2h");
+    expect(written).toContain("```\n:effort: 5h\n```");
+  });
+
+  it("does not write a property into a code block that only shows one", () => {
+    expect(propertiesOf(setProperty("```\n:effort: 5h\n```", "effort", "2h")).get("effort")).toBe("2h");
+  });
+
   it("rewrites, appends and removes a property without touching other lines", () => {
     expect(setProperty("", "effort", "2h")).toBe(":effort: 2h");
     expect(setProperty("text\n:effort: 1h", "Effort", "3h")).toBe("text\n:Effort: 3h");
