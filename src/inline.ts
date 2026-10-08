@@ -53,22 +53,54 @@ function marker(text: string): string {
 
 const PROPERTY = /^(\s*)(:)([\p{L}\p{N}_-]+)(:[ \t]*)(.*)$/u;
 
-/** A note: like item text, but `:key: value` lines show as a key and a value (doc/adr/0020). */
+const FENCE = /^\s*```/;
+
+/**
+ * A note: like item text, but `:key: value` lines show as a key and a value
+ * (doc/adr/0020), and lines between ``` fences as a code block (doc/adr/0021).
+ */
 export function renderNote(note: string): string {
   const lines = note.split("\n");
-  return lines
-    .map((line, index) => {
-      const lineBreak = index < lines.length - 1 ? "\n" : "";
-      const property = PROPERTY.exec(line);
-      if (!property) return renderInline(line) + lineBreak;
-      const [, lead, opening, key, separator, value] = property;
-      return (
-        `<span class="prop-line" data-key="${escape(key.toLowerCase())}">${escape(lead)}<span class="prop">` +
-        `${marker(opening)}<span class="prop-key">${escape(key)}</span>${marker(separator)}<span class="prop-value">${renderInline(value)}</span>` +
-        `</span>${lineBreak}</span>`
-      );
-    })
-    .join("");
+  let html = "";
+  for (let index = 0; index < lines.length; index++) {
+    const fenceEnd = FENCE.test(lines[index]) ? closingFence(lines, index) : null;
+    const end = fenceEnd ?? index;
+    const lineBreak = end < lines.length - 1 ? "\n" : "";
+    html +=
+      fenceEnd === null
+        ? renderNoteLine(lines[index], lineBreak)
+        : renderCodeBlock(lines.slice(index, end + 1), FENCE.test(lines[end]) && end > index) + lineBreak;
+    index = end;
+  }
+  return html;
+}
+
+/** The line that closes the fence opened at `start`, or the last line when it is never closed. */
+function closingFence(lines: string[], start: number): number {
+  const close = lines.findIndex((line, index) => index > start && FENCE.test(line));
+  return close === -1 ? lines.length - 1 : close;
+}
+
+function renderCodeBlock(lines: string[], closed: boolean): string {
+  const [opening, ...rest] = lines;
+  const code = closed ? rest.slice(0, -1) : rest;
+  const closing = closed ? marker((code.length ? "\n" : "") + rest.at(-1)!) : "";
+  const language = opening.trim().slice(3).trim();
+  return (
+    `<span class="code-block"${language ? ` data-language="${escape(language)}"` : ""}>` +
+    `${marker(opening + (rest.length ? "\n" : ""))}<code>${escape(code.join("\n"))}</code>${closing}</span>`
+  );
+}
+
+function renderNoteLine(line: string, lineBreak: string): string {
+  const property = PROPERTY.exec(line);
+  if (!property) return renderInline(line) + lineBreak;
+  const [, lead, opening, key, separator, value] = property;
+  return (
+    `<span class="prop-line" data-key="${escape(key.toLowerCase())}">${escape(lead)}<span class="prop">` +
+    `${marker(opening)}<span class="prop-key">${escape(key)}</span>${marker(separator)}<span class="prop-value">${renderInline(value)}</span>` +
+    `</span>${lineBreak}</span>`
+  );
 }
 
 /** The text as a reader sees it, without markdown markers: for breadcrumbs, titles and labels. */
