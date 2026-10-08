@@ -49,6 +49,23 @@ roll up, put a `:columns:` property on the page, as in org mode:
 or average of the children. A page with `:columns:`, and everything under
 it, opens in column view. Cells are editable; a click writes the property.
 
+A column with a formula in its braces is computed for every row below the
+page that has no value of its own (doc/adr/0022). A day planned as a
+timetable:
+
+```
+Monday
+  :start: 9:00
+  :columns: effort start{=parent.start + before(effort)}
+```
+
+Each item then starts when the items above it are done, counted from the
+parent's start. Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
+`+ - * /`, another column of the row (`effort`), of the parent
+(`parent.start`) or the previous sibling (`previous.end`), `before(key)`
+over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
+`clock(…)` to show a duration as a time.
+
 ## Sync server
 
 The `sync` service keeps the outline for every device and the CLI

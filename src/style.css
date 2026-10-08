@@ -952,6 +952,15 @@ code {
   cursor: default;
 }
 
+.cell.computed {
+  color: var(--accent);
+}
+
+.cell.error {
+  color: light-dark(#b3261e, #ff8a80);
+  font-style: italic;
+}
+
 .completed > .row .cell {
   color: var(--muted);
 }
