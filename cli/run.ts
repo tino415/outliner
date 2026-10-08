@@ -3,6 +3,7 @@ import {
   ItemId,
   ROOT,
   ancestors,
+  indexInParent,
   insertChild,
   isDescendant,
   moveTo,
@@ -29,7 +30,8 @@ commands:
   edit ITEM TEXT           replace an item's text
   note ITEM TEXT           replace an item's note ("" removes it)
   done ITEM / undone ITEM  complete or reopen an item
-  move ITEM --under ITEM   move an item and everything under it
+  move ITEM --under ITEM   move an item and everything under it; --before
+                           or --after ITEM put it beside ITEM instead
   set ITEM KEY VALUE       set a property (a "KEY:: VALUE" line in the note);
                            an empty VALUE removes it
   rm ITEM                  delete an item and everything under it
@@ -46,6 +48,8 @@ options:
   --depth N      show only N levels
   --under ITEM   where add puts the new item (default: the top)
   --first        add or move to the first place instead of the last
+  --before ITEM  add or move to just before ITEM, beside it
+  --after ITEM   add or move to just after ITEM, beside it
   --note TEXT    a note for the item add creates
   --limit N      how many items find prints (default 20)
   --server URL   the sync server (default: $OUTLINE_SERVER)
@@ -64,6 +68,8 @@ interface Options {
   first: boolean;
   depth?: number;
   under?: string;
+  before?: string;
+  after?: string;
   note?: string;
   limit: number;
   format: "md" | "opml" | "json";
@@ -100,8 +106,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       return found.map((item) => `${item.id}  ${[...item.path, item.text].join(" / ")}`).join("\n");
     }
     case "add": {
-      const parent = resolve(doc, options.under ?? "/");
-      const at = options.first ? 0 : doc.items[parent].children.length;
+      const { parent, at } = place(doc, options);
       const text = args.join(" ");
       if (text === "-") {
         const result = graft(doc, parseIndentedText(stdin), parent, at);
@@ -122,11 +127,12 @@ async function perform(command: string, args: string[], options: Options, outlin
     case "undone":
       return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: false }));
     case "move": {
-      if (!options.under) throw new Error("move needs --under ITEM");
-      const parent = resolve(doc, options.under);
+      if (!options.under && besideOf(options) === undefined) throw new Error("move needs --under, --before or --after ITEM");
+      const { parent, at, beside } = place(doc, options);
       return changeItem(outline, args, (next, id) => {
+        if (id === beside) throw new Error("cannot move an item beside itself");
         if (id === parent || isDescendant(next, parent, id)) throw new Error("cannot move an item under itself");
-        return moveTo(next, id, parent, options.first ? 0 : next.items[parent].children.length);
+        return moveTo(next, id, parent, at);
       });
     }
     case "set": {
@@ -145,6 +151,30 @@ async function perform(command: string, args: string[], options: Options, outlin
     default:
       throw new Error(`unknown command ${command}; run outline help`);
   }
+}
+
+interface Place {
+  parent: ItemId;
+  at: number;
+  beside?: ItemId;
+}
+
+function place(doc: Doc, options: Options): Place {
+  const beside = besideOf(options);
+  if (beside === undefined) {
+    const parent = resolve(doc, options.under ?? "/");
+    return { parent, at: options.first ? 0 : doc.items[parent].children.length };
+  }
+  if (options.under !== undefined || options.first) throw new Error("--before and --after cannot go with --under or --first");
+  const sibling = resolve(doc, beside);
+  if (sibling === ROOT) throw new Error("the top of the outline has no place beside it");
+  const at = indexInParent(doc, sibling) + (options.after !== undefined ? 1 : 0);
+  return { parent: doc.items[sibling].parent!, at, beside: sibling };
+}
+
+function besideOf(options: Options): string | undefined {
+  if (options.before !== undefined && options.after !== undefined) throw new Error("give either --before or --after, not both");
+  return options.before ?? options.after;
 }
 
 async function changeItem(outline: Outline, args: string[], change: (doc: Doc, id: ItemId) => Doc): Promise<string> {
@@ -333,6 +363,8 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
     else if (arg === "--md" || arg === "--opml") options.format = arg.slice(2) as Options["format"];
     else if (arg === "--depth") options.depth = Number(value());
     else if (arg === "--under") options.under = value();
+    else if (arg === "--before") options.before = value();
+    else if (arg === "--after") options.after = value();
     else if (arg === "--note") options.note = value();
     else if (arg === "--limit") options.limit = Number(value());
     else if (arg === "--server") options.server = value();

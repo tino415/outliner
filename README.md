@@ -79,6 +79,8 @@ bin/outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal
 bin/outline show "Week 41" --columns      # a table, parents summing their children
 bin/outline done <id>
 bin/outline move <id> --under Archive
+bin/outline move <id> --after "Projects/Garden"   # beside it, under its parent
+bin/outline add "Call the plumber" --before "Inbox/Pay rent"
 bin/outline export --opml > outline.opml
 bin/outline help
 ```
