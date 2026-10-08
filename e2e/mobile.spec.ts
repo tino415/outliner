@@ -167,6 +167,39 @@ test.describe("swipes on rows", () => {
   });
 });
 
+test.describe("menus on a short screen", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 420 });
+  });
+
+  async function reachable(page: import("@playwright/test").Page, selector: string) {
+    const target = page.locator(selector);
+    await target.scrollIntoViewIfNeeded();
+    const box = (await target.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(420);
+  }
+
+  test("the main menu scrolls to its last line", async ({ page }) => {
+    await freshOutline(page, "a");
+    await page.locator("#menu-button").tap();
+    await reachable(page, "#build-info");
+  });
+
+  test("the item menu scrolls to its last action", async ({ page }) => {
+    await freshOutline(page, "a");
+    const bullet = row(page, "a").locator(".bullet");
+    const box = (await bullet.boundingBox())!;
+    const at = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, pointerType: "touch", pointerId: 7, isPrimary: true, button: 0 };
+    await bullet.dispatchEvent("pointerdown", at);
+    await page.waitForTimeout(600);
+    await bullet.dispatchEvent("pointerup", at);
+    await expect(page.locator("#item-menu")).toBeVisible();
+    await reachable(page, "#item-menu-title");
+    await reachable(page, '[data-item-action="delete"]');
+  });
+});
+
 test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await row(page, "projects").locator(".bullet").tap();
