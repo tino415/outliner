@@ -36,6 +36,10 @@ describe("property lines", () => {
     ]);
   });
 
+  it("does not read property lines inside a code block", () => {
+    expect([...propertiesOf("```yaml\n:key: in code\n```\n:real: 1")]).toEqual([["real", "1"]]);
+  });
+
   it("rewrites, appends and removes a property without touching other lines", () => {
     expect(setProperty("", "effort", "2h")).toBe(":effort: 2h");
     expect(setProperty("text\n:effort: 1h", "Effort", "3h")).toBe("text\n:Effort: 3h");

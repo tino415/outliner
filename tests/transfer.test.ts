@@ -100,6 +100,25 @@ describe("renderInline", () => {
     expect(html).toContain("<em>");
   });
 
+  it.each([
+    "```\nlet x = 1 * 2 * 3;\n```",
+    "before\n```js\n  if (a) {\n    #notatag\n  }\n```\nafter",
+    "```\n```",
+    "```",
+    "```\nunclosed\n",
+    "a\n```\n\n```\n",
+  ])("keeps the raw text of code blocks: %j", (note) => {
+    const html = renderNote(note);
+    expect(textOf(html)).toBe(note);
+    expect(html).toContain('<span class="code-block"');
+    expect(html).not.toContain("<em>");
+    expect(html).not.toContain('class="tag"');
+  });
+
+  it("names the language of a code block", () => {
+    expect(renderNote("```elixir\nIO.puts 1\n```")).toContain('data-language="elixir"');
+  });
+
   it("does not treat multiplication as italic", () => {
     expect(renderInline("2 * 3 * 4")).not.toContain("<em>");
   });
