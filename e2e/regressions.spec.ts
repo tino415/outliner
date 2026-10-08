@@ -302,6 +302,16 @@ test("undo that removes the zoomed item goes home and updates the address", asyn
   expect(new URL(page.url()).hash).toBe("#/");
 });
 
+test("Enter in a note starts a new line", async ({ page }) => {
+  await freshOutline(page, "item | first");
+  await row(page, "item").locator(".note").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("second");
+  await expect(row(page, "item").locator(".note")).toHaveText("first\nsecond");
+  await expectOutline(page, "item");
+});
+
 test("the menu does not say the outline is stored only in this browser while it syncs", async ({ page }) => {
   const server = await startSyncServer();
   try {
