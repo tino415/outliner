@@ -99,6 +99,11 @@ value in both.
    an item field like any other (ADR 0012). Decide whether it should stay
    shared or be kept per device, like the Columns switch; check what
    WorkFlowy and Dynalist do.
+7. **A Nix package for the CLI**, so `outline` installs on other machines
+   (the Mac, other NixOS hosts) without this repo's container. The bundle
+   in `dist-node/outline.mjs` needs only Node; the package would wrap it
+   with `OUTLINE_SERVER` and `OUTLINE_TOKEN` read from the environment or a
+   config file, never baked in.
 
 ## Part 2: sync and a CLI
 
