@@ -25,10 +25,18 @@ export function propertiesOf(note: string): Map<string, string> {
 }
 
 function linesOutsideCode(note: string): string[] {
+  const lines = note.split("\n");
+  const outside = isOutsideCode(lines);
+  return lines.filter((_, index) => outside[index]);
+}
+
+/** For each line, whether it is ordinary note text rather than a ``` fence or a line inside one. */
+function isOutsideCode(lines: string[]): boolean[] {
   let inCode = false;
-  return note.split("\n").filter((line) => {
-    if (/^\s*```/.test(line)) inCode = !inCode;
-    return !inCode && !/^\s*```/.test(line);
+  return lines.map((line) => {
+    const fence = /^\s*```/.test(line);
+    if (fence) inCode = !inCode;
+    return !inCode && !fence;
   });
 }
 
@@ -36,7 +44,8 @@ function linesOutsideCode(note: string): string[] {
 export function setProperty(note: string, key: string, value: string): string {
   const wanted = key.toLowerCase();
   const lines = note === "" ? [] : note.split("\n");
-  const index = lines.findLastIndex((line) => propertyLine(line)?.key === wanted);
+  const outside = isOutsideCode(lines);
+  const index = lines.findLastIndex((line, i) => outside[i] && propertyLine(line)?.key === wanted);
   const written = `:${key}: ${value.trim()}`;
   if (value.trim() === "") return lines.filter((_, i) => i !== index).join("\n");
   if (index === -1) return [...lines, written].join("\n");
@@ -77,11 +86,15 @@ function numberFrom(digits: string): number {
 
 export function formatAmount(amount: Amount): string {
   if (amount.kind === "duration") {
-    const hours = Math.floor(amount.minutes / 60);
-    const minutes = amount.minutes % 60;
-    if (amount.clock) return `${hours % 24}:${String(minutes).padStart(2, "0")}`;
-    if (hours === 0) return `${minutes}m`;
-    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+    if (amount.clock) {
+      const ofDay = ((amount.minutes % 1440) + 1440) % 1440;
+      return `${Math.floor(ofDay / 60)}:${String(ofDay % 60).padStart(2, "0")}`;
+    }
+    const sign = amount.minutes < 0 ? "-" : "";
+    const hours = Math.floor(Math.abs(amount.minutes) / 60);
+    const minutes = Math.abs(amount.minutes) % 60;
+    if (hours === 0) return `${sign}${minutes}m`;
+    return sign + (minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`);
   }
   const value = Number.isInteger(amount.value) ? String(amount.value) : String(Math.round(amount.value * 100) / 100);
   return amount.unit ? `${value} ${amount.unit}` : value;
@@ -97,6 +110,8 @@ export interface Column {
   /** A computed column (doc/adr/0022): what fills the rows below the page that have no value of their own. */
   formula?: Formula | FormulaError;
   formulaSource?: string;
+  /** The page whose `:columns:` holds the formula: it and what is above it keep their own values. */
+  declaredOn?: ItemId;
 }
 
 const SUMMARIES: Record<string, Summary> = { "+": "sum", ":": "sum", sum: "sum", min: "min", max: "max", mean: "mean", avg: "mean" };
@@ -124,7 +139,7 @@ function formulaOrError(source: string): Formula | FormulaError {
 export function declaredColumns(doc: Doc, page: ItemId): Column[] | null {
   for (const id of [page, ...ancestors(doc, page).reverse()]) {
     const spec = propertiesOf(doc.items[id].note).get("columns");
-    if (spec) return parseColumns(spec);
+    if (spec) return parseColumns(spec).map((column) => (column.formula ? { ...column, declaredOn: id } : column));
   }
   return null;
 }
@@ -188,7 +203,8 @@ export function columnCells(
   const freshValue = (id: ItemId, key: string): Value => {
     const column = byKey.get(key) ?? { key, summary: "sum" as Summary };
     const raw = propertiesOf(doc.items[id].note).get(key);
-    if (column.formula && raw === undefined && id !== top) return computed(id, column.formula);
+    const formulaApplies = column.formula && raw === undefined && id !== (column.declaredOn ?? top) && !isAbove(id, column.declaredOn);
+    if (formulaApplies) return computed(id, column.formula!);
     const fromChildren = () => children(id).flatMap((child) => valueOf(child, key).amount ?? []);
     const summary = column.formula ? null : summarize(fromChildren(), column.summary);
     if (summary) return { amount: summary, cell: { text: formatAmount(summary), rolled: true } };
@@ -208,15 +224,24 @@ export function columnCells(
     }
   };
 
+  const isAbove = (id: ItemId, page: ItemId | undefined) => page !== undefined && ancestors(doc, page).includes(id);
+
+  /** A value a formula reads; a dependency in error makes the formula an error too. */
+  const amountOf = (id: ItemId, key: string): Amount | null => {
+    const value = valueOf(id, key);
+    if (value.cell?.error) throw new FormulaError(`${key} is an error: ${value.cell.error}`);
+    return value.amount;
+  };
+
   const scopeOf = (id: ItemId): Scope => {
     const parent = doc.items[id].parent;
     const siblings = parent ? children(parent) : [id];
     const earlier = siblings.slice(0, siblings.indexOf(id));
-    const amounts = (ids: ItemId[], key: string) => ids.flatMap((other) => valueOf(other, key).amount ?? []);
+    const amounts = (ids: ItemId[], key: string) => ids.flatMap((other) => amountOf(other, key) ?? []);
     return {
       value: (of, key) => {
         const target = of === "self" ? id : of === "parent" ? parent : (earlier.at(-1) ?? null);
-        return target ? valueOf(target, key).amount : null;
+        return target ? amountOf(target, key) : null;
       },
       before: (key) => amounts(earlier, key),
       children: (key) => amounts(children(id), key),
