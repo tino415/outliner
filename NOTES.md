@@ -51,6 +51,39 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 3 (2026-10-09 00:28, about four hours)
+
+Tasks came from the backlog below and from the outline itself
+(Outliner/TODO and Outliner/Comments). Martin's answers, 00:40:
+
+- Big features: my pick, about four hours.
+- Folding: keep it shared across devices (backlog item 6 closed, no code).
+- Properties `:key: value`: the existing `key::` lines in the live outline
+  may be thrown out, so the old form is not kept.
+- Allowed without asking: push a branch and open a draft PR, publish to
+  `~/srv/pub/outliner-lab/`, restart `sync` if the server changes.
+
+Order of work, small first:
+
+1. Keyboard: Ctrl-E to the end of the item; Ctrl-F / Ctrl-B a character
+   forward and back; zoom keys off the browser's history keys; one fold
+   toggle on Ctrl-.; Ctrl-N / Ctrl-P in the Ctrl-K list.
+2. Ctrl-K also runs commands, each shown with its shortcut.
+3. The "Stored only in this browser" line in the menu while syncing.
+4. CLI `--before` / `--after`; a Nix package for the CLI.
+5. Properties as `:key: value`, with key completion on `:`.
+6. Tags as chips, completion from existing tags, a shortcut to add one.
+7. Code blocks.
+8. Formulas in columns.
+9. Capture templates, plus a PWA shortcut and share target into capture.
+10. References and mirrors, if time is left.
+11. Design notes only: plugins and scripting, encrypted nodes.
+
+Assumptions (Martin away):
+
+- Emacs-style keys stay the model; no vim mode (the comment in the outline
+  prefers Emacs and asks for vim only if conflicts pile up).
+
 ## Backlog (from Martin, 2026-10-08)
 
 1. ~~**Phone usage.**~~ Done (ADR 0016): a fold target the height of the row
