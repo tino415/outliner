@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { caret, clickEnd, editor, expectOutline, freshOutline, outlineText, row } from "./helpers";
+import { startSyncServer } from "./sync-server";
 
 async function selectDown(page: import("@playwright/test").Page, from: string, steps: number) {
   await clickEnd(page, from);
@@ -299,4 +300,23 @@ test("undo that removes the zoomed item goes home and updates the address", asyn
   await page.keyboard.press("ControlOrMeta+z");
   await expect(page.locator("#title")).toHaveText("Test");
   expect(new URL(page.url()).hash).toBe("#/");
+});
+
+test("the menu does not say the outline is stored only in this browser while it syncs", async ({ page }) => {
+  const server = await startSyncServer();
+  try {
+    await freshOutline(page, "a");
+    await page.locator("#menu-button").click();
+    await expect(page.locator("#build-info")).toContainText("Stored only in this browser");
+    await page.getByRole("button", { name: "Sync…" }).click();
+    await page.locator("#sync-server").fill(server.url);
+    await page.locator("#sync-token").fill(server.token);
+    await page.getByRole("button", { name: "Connect" }).click();
+    await expect(page.locator("#sync-dialog")).toBeHidden();
+    await page.locator("#menu-button").click();
+    await expect(page.locator("#build-info")).not.toContainText("Stored only in this browser");
+    await expect(page.locator("#build-info")).toContainText(`Synced with ${server.url}`);
+  } finally {
+    await server.stop();
+  }
 });
