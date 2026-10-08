@@ -10,6 +10,7 @@ const TOKEN = new RegExp(
     String.raw`(?<code>\x60[^\x60\n]+\x60)`,
     String.raw`(?<bold>\*\*[^*\n]+\*\*)`,
     String.raw`(?<italic>(?<![\w*])\*[^*\s](?:[^*\n]*[^*\s])?\*(?![\w*]))`,
+    String.raw`(?<ref>\[\[[^\[\]\n]+\](?:\[[^\[\]\n]+\])?\])`,
     String.raw`(?<mdlink>\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))`,
     String.raw`(?<url>https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"])`,
     String.raw`(?<tag>(?<![\p{L}\p{N}_#])#[\p{L}\p{N}_-]*[\p{L}\p{N}_])`,
@@ -32,6 +33,12 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
   if (groups.code) return wrapped("code", raw, 1);
   if (groups.bold) return wrapped("strong", raw, 2);
   if (groups.italic) return wrapped("em", raw, 1);
+  if (groups.ref) {
+    const [, target, label] = /^\[\[([^\]]+)\](?:\[([^\]]+)\])?\]$/.exec(raw)!;
+    const opening = label === undefined ? "[[" : `[[${target}][`;
+    const shown = label ?? target;
+    return `${marker(opening)}<span class="ref" data-ref="${escape(target)}">${escape(shown)}</span>${marker("]]")}`;
+  }
   if (groups.mdlink) {
     const [, label, url] = /^\[([^\]]+)\]\((.+)\)$/.exec(raw)!;
     return `${marker("[")}<a class="link" href="${escape(url)}" target="_blank" rel="noopener">${escape(label)}</a>${marker(`](${url})`)}`;

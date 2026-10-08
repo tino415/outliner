@@ -66,6 +66,13 @@ parent's start. Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time.
 
+## Links between items
+
+Type `[[` or press Alt-Shift-L to link to another item: it writes
+`[[id:…][label]]`, as org mode does (doc/adr/0024). `[[Some text]]` links to
+the first item with that text. A click follows a link; a zoomed item lists
+what links to it under its title.
+
 ## Capture
 
 Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving
