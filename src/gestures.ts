@@ -4,12 +4,13 @@ import { openItemMenu, toastWithUndo } from "./chrome";
 import { flashRow } from "./render";
 
 /*
- * Swipes on rows for touch screens (doc/adr/0016): right completes, left
- * folds an item with children or opens the menu of one without.
+ * Swipes on rows for touch screens (doc/adr/0016, 0019): right completes; left
+ * folds an item with children, and further left opens the item menu.
  */
 
 const SLOP = 10;
 const THRESHOLD = 72;
+const FAR_THRESHOLD = 160;
 const SCREEN_EDGE = 24;
 
 type SwipeAction = "complete" | "reopen" | "collapse" | "expand" | "menu";
@@ -49,9 +50,10 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
       if (Math.abs(dx) < SLOP || Math.abs(dx) < 2 * Math.abs(dy)) return;
       band = showBand(item, row);
     }
-    action = dx > 0 ? (doc().items[id].completed ? "reopen" : "complete") : leftSwipeAction(id);
+    const previous = action;
+    action = dx > 0 ? (doc().items[id].completed ? "reopen" : "complete") : leftSwipeAction(id, -dx);
     const nowArmed = Math.abs(dx) >= THRESHOLD;
-    if (nowArmed && !armed) navigator.vibrate?.(8);
+    if (nowArmed && (!armed || action !== previous)) navigator.vibrate?.(8);
     armed = nowArmed;
     band.dataset.action = action;
     band.dataset.side = dx > 0 ? "left" : "right";
@@ -90,10 +92,14 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
   window.addEventListener("pointercancel", end);
 }
 
-function leftSwipeAction(id: ItemId): SwipeAction {
+function leftSwipeAction(id: ItemId, distance: number): SwipeAction {
   const item = doc().items[id];
-  if (item.children.length === 0) return "menu";
+  if (item.children.length === 0 || distance >= farThreshold()) return "menu";
   return item.collapsed ? "expand" : "collapse";
+}
+
+function farThreshold(): number {
+  return Math.min(FAR_THRESHOLD, window.innerWidth * 0.45);
 }
 
 function showBand(item: HTMLElement, row: HTMLElement): HTMLElement {

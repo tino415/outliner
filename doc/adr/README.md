@@ -28,3 +28,4 @@ session report; the records here hold the choices behind them.
 16. [Touch: a large fold target and swipes on rows](0016-touch-gestures-on-rows.md)
 17. [Properties in notes, and a column view with rollups](0017-properties-in-notes-and-a-column-view-with-rollups.md)
 18. [Tabs are replicas that share stored state](0018-tabs-are-replicas-that-share-stored-state.md)
+19. [A longer left swipe opens the item menu](0019-a-longer-left-swipe-opens-the-item-menu.md) (supersedes part of 16)

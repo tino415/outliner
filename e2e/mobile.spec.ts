@@ -108,6 +108,14 @@ test.describe("swipes on rows", () => {
     await expectOutline(page, "parent\n  child\nleaf");
   });
 
+  test("swiping further left on an item with children opens its menu instead of folding", async ({ page }) => {
+    await freshOutline(page, "parent\n  child");
+    await swipe(page, "parent", -200);
+    await expect(page.locator("#item-menu")).toBeVisible();
+    await expect(page.locator("#item-menu-title")).toHaveText("parent");
+    await expectOutline(page, "parent\n  child");
+  });
+
   test("swiping left on an item without children opens its menu", async ({ page }) => {
     await freshOutline(page, "leaf");
     await swipe(page, "leaf", -120);
