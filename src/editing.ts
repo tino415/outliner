@@ -418,6 +418,12 @@ export const actions = {
     wrapSelection(c, "`");
   },
 
+  addTag(c: EditorContext): void {
+    const text = c.editor.textContent ?? "";
+    select(c.editor, c.length);
+    document.execCommand("insertText", false, text === "" || /\s$/.test(text) ? "#" : " #");
+  },
+
   blur(c: EditorContext): void {
     c.editor.blur();
   },

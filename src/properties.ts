@@ -1,12 +1,12 @@
 import { Doc, ItemId, ViewFilter, ancestors, shownChildren } from "./model";
 
 /*
- * Properties are `key:: value` lines in an item's note (doc/adr/0017). This
+ * Properties are `:key: value` lines in an item's note (doc/adr/0017, 0020). This
  * module reads and writes them, understands their values as numbers or
  * durations, and computes the rollups a column view shows.
  */
 
-const PROPERTY_LINE = /^([\p{L}\p{N}_-]+)::[ \t]*(.*)$/u;
+const PROPERTY_LINE = /^:([\p{L}\p{N}_-]+):[ \t]*(.*)$/u;
 
 export function propertyLine(line: string): { key: string; value: string } | null {
   const match = PROPERTY_LINE.exec(line.trim());
@@ -28,7 +28,7 @@ export function setProperty(note: string, key: string, value: string): string {
   const wanted = key.toLowerCase();
   const lines = note === "" ? [] : note.split("\n");
   const index = lines.findLastIndex((line) => propertyLine(line)?.key === wanted);
-  const written = `${key}:: ${value.trim()}`;
+  const written = `:${key}: ${value.trim()}`;
   if (value.trim() === "") return lines.filter((_, i) => i !== index).join("\n");
   if (index === -1) return [...lines, written].join("\n");
   return lines.map((line, i) => (i === index ? written : line)).join("\n");

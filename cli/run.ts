@@ -32,7 +32,7 @@ commands:
   done ITEM / undone ITEM  complete or reopen an item
   move ITEM --under ITEM   move an item and everything under it; --before
                            or --after ITEM put it beside ITEM instead
-  set ITEM KEY VALUE       set a property (a "KEY:: VALUE" line in the note);
+  set ITEM KEY VALUE       set a property (a ":KEY: VALUE" line in the note);
                            an empty VALUE removes it
   rm ITEM                  delete an item and everything under it
   export [ITEM]            --md (default), --opml or --json
@@ -44,7 +44,7 @@ options:
   --json         print JSON instead of text
   --ids          show item ids in text output
   --columns      show: a table of properties, parents summing their
-                 children (columns from a "columns::" property, or all)
+                 children (columns from a ":columns:" property, or all)
   --depth N      show only N levels
   --under ITEM   where add puts the new item (default: the top)
   --first        add or move to the first place instead of the last

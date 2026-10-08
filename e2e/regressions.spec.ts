@@ -244,7 +244,7 @@ test("copying a selection without the clipboard API keeps the selection", async 
 });
 
 test("a column cell can be edited again after Escape or an unchanged Enter", async ({ page }) => {
-  await freshOutline(page, "Plan | columns:: effort\n  task | effort:: 1h");
+  await freshOutline(page, "Plan | :columns: effort\n  task | :effort: 1h");
   await row(page, "Plan").locator(".bullet").click();
   const cell = row(page, "task").locator('.cell[data-key="effort"]');
   await cell.click();
@@ -262,18 +262,18 @@ test("a column cell can be edited again after Escape or an unchanged Enter", asy
 });
 
 test("clicking a note's text while a property line is hidden types where clicked", async ({ page }) => {
-  await freshOutline(page, "Plan | columns:: effort\n  task | effort:: 1h; free text here");
+  await freshOutline(page, "Plan | :columns: effort\n  task | :effort: 1h; free text here");
   await row(page, "Plan").locator(".bullet").click();
   const note = row(page, "task").locator(".note");
   const box = (await note.boundingBox())!;
   await page.mouse.click(box.x + box.width - 2, box.y + box.height / 2);
   await page.keyboard.press("End");
   await page.keyboard.type("X");
-  await expect(note).toHaveText("effort:: 1h\nfree text hereX");
+  await expect(note).toHaveText(":effort: 1h\nfree text hereX");
 });
 
 test("clicking another item after editing a cell leaves the caret in that item", async ({ page }) => {
-  await freshOutline(page, "Plan | columns:: effort\n  Parent\n    Child | effort:: 1h");
+  await freshOutline(page, "Plan | :columns: effort\n  Parent\n    Child | :effort: 1h");
   await row(page, "Plan").locator(".bullet").click();
   await row(page, "Child").locator('.cell[data-key="effort"]').click();
   await page.keyboard.press("ControlOrMeta+a");

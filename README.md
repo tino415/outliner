@@ -33,18 +33,20 @@ dev-run npx playwright test         # desktop Chromium, phone, WebKit, Firefox
 
 ## Properties and columns
 
-A line `key:: value` in an item's note is a property (doc/adr/0017):
-`calories:: 350 kcal`, `effort:: 1h30m`, `effort:: 1:30`, `protein:: 12 g`.
+A line `:key: value` in an item's note is a property, as in org mode
+(doc/adr/0017, 0020): `:calories: 350 kcal`, `:effort: 1h30m`,
+`:effort: 1:30`, `:protein: 12 g`. Typing `:` at the start of a note line
+offers the keys already in use, and `#` offers the tags.
 ⋯ → Columns (Alt-Shift-C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
-roll up, put a `columns::` property on the page, as in org mode:
+roll up, put a `:columns:` property on the page, as in org mode:
 
 ```
-columns:: calories{+} protein{+} effort{max}
+:columns: calories{+} protein{+} effort{max}
 ```
 
 `{+}` sums (the default), `{min}`, `{max}` and `{mean}` take the least, most
-or average of the children. A page with `columns::`, and everything under
+or average of the children. A page with `:columns:`, and everything under
 it, opens in column view. Cells are editable; a click writes the property.
 
 ## Sync server

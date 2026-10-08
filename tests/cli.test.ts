@@ -149,7 +149,7 @@ describe("outline CLI", () => {
     expect(tree.children[0].children[0].properties).toEqual({ calories: "300 kcal" });
 
     await outline("set Monday/Breakfast/Coffee effort");
-    expect(await outline("show Monday/Breakfast/Coffee")).toBe("- Coffee\n  calories:: 20 kcal");
+    expect(await outline("show Monday/Breakfast/Coffee")).toBe("- Coffee\n  :calories: 20 kcal");
   });
 
   it("keeps the table aligned with wide characters", async () => {
