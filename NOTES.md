@@ -67,6 +67,34 @@ below; part 1's report follows it.
    declares columns like org's COLUMNS; CLI `set` and `show --columns`.
    Martin's two cases are the browser and unit tests: calories per meal,
    day and week, and effort summed on parents.
+3. ~~**Ctrl-N / Ctrl-P to the next and previous item.**~~ Done; bound to the
+   Ctrl key itself, so ⌘N and ⌘P stay the browser's.
+
+### Next session (from Martin, 2026-10-08 09:00)
+
+Per-node column mode already works through `columns::` (inherited by the
+nodes below); the Columns switch staying per device is fine, Martin sees
+value in both.
+
+1. **Code samples.** Something in place of fenced ``` blocks. Research how
+   WorkFlowy and Dynalist do it, pick the best fit and build it. (dotflowy
+   gives nodes a type, with a note being one type of child; a "code" type
+   would be trivial there. Not to be copied, only as a reference point.)
+2. **Formulas in columns.** A small spreadsheet on properties. Example: in
+   time planning, `start` on an item is the sum of the durations of the
+   items before it up to an ancestor (the Monday node), for time tracking.
+3. **Scripting and plugins.** Make the app extensible, along the lines of
+   Amplenote, where a note with embedded JavaScript becomes a plugin. Needs
+   discussion first. One idea to brainstorm: a small Lisp-like language
+   whose scripts can be checked statically (walk the AST, expand every
+   macro until only resource-access nodes remain, and sandbox on that).
+   Probably too much effort; worth a brainstorm.
+4. **Capture, as in org-capture.** Templates that file a new item at a set
+   place and ask for some properties.
+5. **A phone (and maybe Mac) shortcut straight into capture.** Options run
+   from a PWA shortcut or share target to a small companion app. A native
+   Mac app cannot be built on this Linux machine, so that one needs
+   infrastructure changes.
 
 ## Part 2: sync and a CLI
 
