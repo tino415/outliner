@@ -29,3 +29,52 @@ before writing and do not delete without being asked.
   `tests/`, committed first and shown failing.
 - New decisions get a record in `doc/adr`; accepted records are not edited,
   they are superseded.
+
+## Where the work is
+
+- All work so far is on branch `worktree-outliner`; `main` holds only the
+  empty first commit. Nothing is pushed; there is no remote.
+- `.env.sync` (the sync token) is gitignored and exists only in the checkout
+  that created it. Do not print it, commit it or regenerate it: a new token
+  disconnects every device.
+- The backlog for the next sessions is in NOTES.md, "Backlog".
+
+## Live services
+
+- The `sync` container holds Martin's real outline and is reached by his
+  phone and Mac. Browser and unit tests start their own server
+  (`e2e/sync-server.ts`); never point a test at the live one.
+- Rebuild and restart `sync` (`podman compose up -d --build sync`) only when
+  `server/` or the wire format in `src/sync/protocol.ts` changes, and say so
+  in the report. Changing what the server accepts needs the app and the
+  server to agree; old clients keep running on phones.
+- Publishing: build with `BUILD_COMMIT=<short sha>`, remove the old files in
+  `a static host directory`, then copy `dist/.` there. The commit shows at the
+  bottom of the ⋯ menu, which is how Martin checks what his phone runs.
+
+## Tests
+
+- Each Playwright project runs a subset picked by file name in
+  `playwright.config.ts` (`phone` runs only `mobile`, `screenshots` and
+  `columns` specs). A new spec file outside those names never runs on the
+  phone.
+- Real touch input goes through the Chrome DevTools protocol
+  (`Input.dispatchTouchEvent`), so touch tests skip outside Chromium.
+  Chrome itself swallows a tap that follows a fast swipe (it stops the
+  fling); swipe tests that tap afterwards use a slow, short swipe.
+- A test must fail against the old code before it counts. Check that it
+  exercises the broken path: a click-swallowing bug is invisible to a test
+  that only checks focus, which comes from pointerdown.
+- Running the suite rewrites `screenshots/`; commit them with the change
+  that altered the UI.
+
+## Conventions set so far
+
+- Commits: one plain line, no trailers; a bug fix is the failing test
+  committed alone as WIP, then the fix amended into it.
+- Settings that belong to the outline (column specs) live in the outline as
+  `key:: value` lines, so they sync and the CLI sees them; settings of one
+  device (theme, the Columns switch) live in `Prefs`.
+- "Mod" in `src/keys.ts` is Ctrl or ⌘ alike; "Ctrl" bindings are the Ctrl
+  key itself (Emacs habits on a Mac). Ctrl-N cannot be taken from Chrome on
+  Linux or Windows.
