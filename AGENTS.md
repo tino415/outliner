@@ -32,8 +32,9 @@ before writing and do not delete without being asked.
 
 ## Where the work is
 
-- All work so far is on branch `worktree-outliner`; `main` holds only the
-  empty first commit. Nothing is pushed; there is no remote.
+- The remote is `git@github.com:tino415/outliner.git` (private); `main` there
+  holds all work so far. Work on a branch and open a PR; do not push to
+  `main`.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
