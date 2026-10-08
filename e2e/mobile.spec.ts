@@ -124,6 +124,22 @@ test.describe("swipes on rows", () => {
     await expectOutline(page, "task\nparent");
   });
 
+  test("the swipe band lies under the row being swiped, not under its children", async ({ page }) => {
+    await freshOutline(page, "first\nsecond\n  child a\n  child b\nthird");
+    const box = (await editor(page, "second").boundingBox())!;
+    const point = { x: box.x + 30, y: box.y + box.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+    for (let step = 1; step <= 4; step++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: point.x + step * 10, y: point.y }] });
+    }
+    const band = (await page.locator(".swipe-band").boundingBox())!;
+    const swiped = (await row(page, "second").boundingBox())!;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    expect(Math.abs(band.y - swiped.y)).toBeLessThan(2);
+    expect(Math.abs(band.height - swiped.height)).toBeLessThan(2);
+  });
+
   test("a short swipe does nothing and a tap still edits", async ({ page }) => {
     await freshOutline(page, "task");
     await swipe(page, "task", 40);
