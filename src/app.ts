@@ -11,6 +11,7 @@ import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { isSyncing, startSync, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
+import { bindCapture, captureFromAddress } from "./capturing";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -76,6 +77,8 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
+  bindCapture();
+  captureFromAddress();
 }
 
 // ---- changing the document ------------------------------------------------

@@ -32,3 +32,4 @@ session report; the records here hold the choices behind them.
 20. [Properties written `:key: value`, as in org mode](0020-properties-written-as-org-drawer-lines.md) (supersedes part of 17)
 21. [Code blocks are ``` fenced lines in notes](0021-code-blocks-are-fenced-lines-in-notes.md)
 22. [Computed columns: a formula in the column spec](0022-computed-columns-with-formulas.md)
+23. [Capture templates live in the outline; shortcuts reach them by URL](0023-capture-templates-live-in-the-outline.md)

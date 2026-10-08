@@ -66,6 +66,31 @@ parent's start. Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time.
 
+## Capture
+
+Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving
+the page (doc/adr/0023). Any item with a `:capture:` property is a template,
+named by its text:
+
+```
+Meal
+  :capture: Food/{date}
+  :ask: kcal protein
+  :key: m
+  :at: top
+```
+
+`:capture:` is a path or an item id (`{date}` is today, missing pages are
+created), `:ask:` the properties to ask for, `:key:` the letter that picks
+the template, `:at: top` files at the top. Without templates, items go to
+`Inbox`.
+
+Straight into capture: long-press the installed app's icon → Capture, or
+share a page or text to the app on Android. Any device can open
+`<app>/?capture`, `?capture=Meal` or `?capture&text=…` (an iOS Shortcut, a
+bookmark). From a shell: `outline capture "Oats" --template Meal --set
+kcal=300`.
+
 ## Sync server
 
 The `sync` service keeps the outline for every device and the CLI

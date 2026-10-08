@@ -10,6 +10,7 @@ import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesF
 import { jumpToItem, setQuery, showZoom, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
+import { openCapture } from "./capturing";
 
 export function bindChrome(): void {
   bindSearchBox();
@@ -47,6 +48,7 @@ export const globalActions = {
   help: () => (ui.help.open ? ui.help.close() : ui.help.showModal()),
   toggleCompleted: () => menuActions["toggle-completed"](),
   toggleColumns: () => toggleColumnView(),
+  capture: () => openCapture(),
   undo: () => undo(),
   redo: () => redo(),
   clearSearch: (): boolean | void => {
@@ -68,7 +70,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editor ? editorContext(editor) : null), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "toggle-completed", "toggle-columns", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -141,6 +143,10 @@ const menuActions: Record<string, () => void> = {
   jump: () => {
     ui.menu.hidePopover();
     jumpToItem(paletteCommands());
+  },
+  capture: () => {
+    ui.menu.hidePopover();
+    openCapture();
   },
   "toggle-columns": () => toggleColumnView(),
   "toggle-completed": () => {
