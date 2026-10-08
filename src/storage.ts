@@ -10,7 +10,7 @@ export interface Prefs {
   theme: Theme;
   textSize: TextSize;
   showCompleted: boolean;
-  /** Pages whose column view was switched on or off by hand; others follow their `columns::` property. */
+  /** Pages whose column view was switched on or off by hand; others follow their `:columns:` property. */
   columnPages: Record<string, boolean>;
 }
 

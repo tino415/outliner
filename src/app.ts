@@ -10,6 +10,7 @@ import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { isSyncing, startSync, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
+import { bindCompletion } from "./completion";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -50,6 +51,7 @@ export function start(): void {
   state.zoom = zoomFromHash();
   applyAppearance();
   bindEditorEvents();
+  bindCompletion(doc);
   bindChrome();
   enableBulletHandles(ui.tree, {
     doc,
