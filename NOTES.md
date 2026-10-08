@@ -107,6 +107,13 @@ value in both.
 8. **CLI: place an item next to another.** `--before ITEM` and `--after ITEM`
    for `add` and `move`, putting it beside ITEM under ITEM's parent. Today
    only `--under` and `--first` exist.
+9. **Ctrl-E to the end of the item**, as in Emacs, instead of inserting
+   anything. A `Ctrl` binding in `src/keys.ts` (Ctrl-A would be its pair,
+   but it is Select all on Linux and Windows).
+10. **Properties written org-style as `:key: value`**, so typing `:` at the
+    start of a note line can offer autocomplete of known keys. Today they
+    are `key:: value` (ADR 0017, superseded by a new ADR). Notes and the CLI
+    already hold `key::` lines: read both forms or convert them.
 
 ## Part 2: sync and a CLI
 
