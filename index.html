@@ -79,6 +79,7 @@
         <button type="button" class="menu-item danger" data-action="clear-page"><span>Clear this page</span></button>
       </div>
       <div class="menu-section">
+        <button type="button" class="menu-item" data-action="capture"><span>Capture…</span></button>
         <button type="button" class="menu-item" data-action="sync"><span>Sync…</span></button>
       </div>
       <div class="menu-section">
@@ -140,6 +141,19 @@
         <div class="sync-actions">
           <button type="button" class="sync-disconnect" id="sync-disconnect">Turn sync off</button>
           <button type="submit" class="sync-connect">Connect</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="help capture-dialog" id="capture-dialog">
+      <header><h2>Capture</h2><button class="icon-button" id="capture-close" type="button" aria-label="Close">✕</button></header>
+      <form id="capture-form" class="sync-form">
+        <div class="capture-templates" id="capture-templates" role="radiogroup" aria-label="Template"></div>
+        <label>Text<input id="capture-text" type="text" autocomplete="off" required /></label>
+        <div id="capture-fields" class="capture-fields"></div>
+        <p class="sync-state" id="capture-target"></p>
+        <div class="sync-actions">
+          <button type="submit" class="sync-connect">Capture</button>
         </div>
       </form>
     </dialog>

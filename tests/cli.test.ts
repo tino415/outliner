@@ -96,6 +96,15 @@ describe("outline CLI", () => {
     expect(await outline("show")).toBe("- a\n  - b\n- c");
   });
 
+  it("captures with a template from the outline, or into an Inbox", async () => {
+    await outline('capture "call mum"');
+    await outline('add "Meal" --note ":capture: Food/Monday"');
+    await outline('set Meal ask "kcal"');
+    await outline('capture "Oats" --template meal --set "kcal=300 kcal"');
+    expect(await outline("show")).toBe("- Inbox\n  - call mum\n- Meal\n  :capture: Food/Monday\n  :ask: kcal\n- Food\n  - Monday\n    - Oats\n      :kcal: 300 kcal");
+    await expect(outline('capture "x" --template nope')).rejects.toThrow(/no capture template named nope; there are Meal/);
+  });
+
   it("reads indented lines from stdin", async () => {
     const ids = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n  - Tuesday\n- Notes"));
     expect(ids).toHaveLength(2);
