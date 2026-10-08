@@ -24,6 +24,7 @@ export const ui = {
   search: $<HTMLInputElement>("search"),
   searchSummary: $("search-summary"),
   columnsHead: $("columns-head"),
+  backlinks: $("backlinks"),
   menu: $("menu"),
   completedSwitch: $("completed-switch"),
   importFile: $<HTMLInputElement>("import-file"),

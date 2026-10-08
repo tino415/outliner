@@ -25,7 +25,8 @@ import {
 import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
 import { openPalette } from "./palette";
-import { itemLabel, renderInline, renderNote, shortLabel } from "./inline";
+import { itemLabel, plainText, renderInline, renderNote, shortLabel } from "./inline";
+import { referenceTo, resolveReference } from "./references";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -53,11 +54,13 @@ export function bindEditorEvents(): void {
     const value = editor.textContent ?? "";
     if (isNoteEditor(editor)) {
       commitShownEdit(setNote(doc(), id, value), id, caretBeforeInput, `${id}:note`);
-      return;
+    } else {
+      commitShownEdit(setText(doc(), id, value), id, caretBeforeInput, id);
+      if (id === state.zoom) document.title = titleFor(id);
+      editor.classList.toggle("empty", value === "");
     }
-    commitShownEdit(setText(doc(), id, value), id, caretBeforeInput, id);
-    if (id === state.zoom) document.title = titleFor(id);
-    editor.classList.toggle("empty", value === "");
+    const context = editorContext(editor);
+    if ((event as InputEvent).data === "[" && value.slice(0, context.start).endsWith("[[")) pickReference(context, 2);
   });
 
   document.addEventListener("focusout", (event) => {
@@ -110,7 +113,7 @@ export function bindEditorEvents(): void {
     }
     if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
-    if (target.closest("a.link, .tag")) event.preventDefault();
+    if (target.closest("a.link, .tag, .ref")) event.preventDefault();
     else if (isNoteEditor(editor) && editor.querySelector(".prop-line")) placeCaretBeforeLinesAppear(event, editor);
   });
 
@@ -120,11 +123,14 @@ export function bindEditorEvents(): void {
     if (!editor || document.activeElement === editor) return;
     const link = target.closest<HTMLAnchorElement>("a.link");
     const tag = target.closest<HTMLElement>(".tag");
+    const reference = target.closest<HTMLElement>(".ref");
     if (link) {
       event.preventDefault();
       window.open(link.href, "_blank", "noopener");
     } else if (tag) {
       setQuery(tag.dataset.tag!);
+    } else if (reference) {
+      followReference(reference.dataset.ref!);
     }
   });
 
@@ -456,6 +462,10 @@ export const actions = {
     wrapSelection(c, "`");
   },
 
+  insertReference(c: EditorContext): void {
+    pickReference(c, 0);
+  },
+
   addTag(c: EditorContext): void {
     const text = c.editor.textContent ?? "";
     select(c.editor, c.length);
@@ -502,6 +512,27 @@ export const actions = {
     startSelection(c.id, neighbourEditor(c.editor, 1)?.dataset.id ?? c.id);
   },
 };
+
+/** Picks an item and writes a reference to it at the caret, over the `typed` characters before it (the "[[" that asked). */
+function pickReference(c: EditorContext, typed: number): void {
+  const { editor, start, end } = c;
+  openPalette({
+    placeholder: "Link to…",
+    hint: "The link keeps working when the item is renamed",
+    candidates: (query) => findItems(doc(), query, 40, (id) => id === c.id),
+    choose: (target) => {
+      editor.focus();
+      select(editor, start - typed, end);
+      insertText(referenceTo(target.id, plainText(target.text)));
+    },
+  });
+}
+
+function followReference(target: string): void {
+  const id = resolveReference(doc(), target);
+  if (id) zoomTo(id);
+  else toast(`Nothing called “${target}” yet`);
+}
 
 /** True when the note text before the caret has opened a ``` fence and not closed it. */
 function isInCode(noteBefore: string): boolean {
