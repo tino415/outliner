@@ -264,6 +264,7 @@ function setStatus(next: Status, detail = ""): void {
   dot.title = lastSynced && next === "synced" ? `Synced at ${lastSynced.toLocaleTimeString()}` : detail || STATUS_TEXT[next];
   $("sync-state").textContent = dot.title;
   $("sync-dialog").dataset.connected = String(next !== "off");
+  $("storage-info").textContent = saved ? `Synced with ${saved.server}` : "Stored only in this browser";
 }
 
 function bindSyncDialog(): void {
