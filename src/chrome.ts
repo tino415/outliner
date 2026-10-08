@@ -86,7 +86,7 @@ type FocusTarget = "page" | "field" | "overlay" | "control";
 
 function focusTarget(target: EventTarget | null): FocusTarget {
   if (!(target instanceof Element) || target === document.body || target === document.documentElement) return "page";
-  if (target.closest("dialog, [popover]")) return "overlay";
+  if (target.closest("dialog[open], [popover]:popover-open")) return "overlay";
   if (target instanceof HTMLInputElement || editorOf(target)) return "field";
   return "control";
 }

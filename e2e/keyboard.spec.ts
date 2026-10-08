@@ -90,12 +90,13 @@ test.describe("Ctrl-K", () => {
     expect((await caret(page)).text).toBe("b");
   });
 
-  test("lists menu commands next to items", async ({ page }) => {
+  test("lists menu commands after the items, so Enter still jumps", async ({ page }) => {
     await freshOutline(page, "Collapse the garden\n  x");
     await page.keyboard.press("ControlOrMeta+k");
     await page.keyboard.type("collapse");
-    await expect(page.locator("#palette li").first()).toContainText("Collapse all");
-    await expect(page.locator("#palette li").last()).toContainText("Collapse the garden");
+    await expect(page.locator("#palette li").first()).toContainText("Collapse the garden");
+    await expect(page.locator("#palette li").last()).toContainText("Collapse all");
+    await page.keyboard.press("ArrowUp");
     await page.keyboard.press("Enter");
     await expectOutline(page, "Collapse the garden");
   });

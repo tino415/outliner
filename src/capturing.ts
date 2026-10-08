@@ -38,6 +38,7 @@ export function openCapture(templateName = "", prefill = ""): void {
   const named = templates.findIndex((template) => template.name.toLowerCase() === templateName.toLowerCase());
   chosen = Math.max(named, 0);
   text.value = prefill;
+  fields.innerHTML = "";
   paint();
   dialog.showModal();
   if (templates.length > 1 && named === -1 && !prefill) chooser.querySelector<HTMLElement>(".active")!.focus();
@@ -69,9 +70,8 @@ function paint(): void {
     )
     .join("");
   const kept = new Map([...fields.querySelectorAll<HTMLInputElement>("input")].map((input) => [input.dataset.key!, input.value]));
-  fields.innerHTML = template.ask
-    .map((key) => `<label>${escape(key)}<input type="text" autocomplete="off" data-key="${escape(key)}" value="${escape(kept.get(key) ?? "")}" /></label>`)
-    .join("");
+  fields.innerHTML = template.ask.map((key) => `<label>${escape(key)}<input type="text" autocomplete="off" data-key="${escape(key)}" /></label>`).join("");
+  for (const input of fields.querySelectorAll<HTMLInputElement>("input")) input.value = kept.get(input.dataset.key!) ?? "";
   target.textContent = `Goes to ${template.target}${template.atTop ? ", at the top" : ""}`;
 }
 
