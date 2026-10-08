@@ -85,7 +85,7 @@ function renderColumnsHead(): void {
   ui.tree.classList.toggle("with-columns", Boolean(columns?.columns.length));
   if (!columns) return;
   if (columns.columns.length === 0) {
-    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one to a note as <code>calories:: 350</code>.</p>`;
+    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one to a note as <code>:calories: 350</code>.</p>`;
     return;
   }
   hidePropertiesShownAsColumns(columns.columns);

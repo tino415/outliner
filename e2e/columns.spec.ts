@@ -2,22 +2,22 @@ import { Page, expect, test } from "@playwright/test";
 import { editor, freshOutline, row } from "./helpers";
 
 const WEEK = `
-Week 41 | columns:: calories{+} protein{+}
+Week 41 | :columns: calories{+} protein{+}
   Monday
     Breakfast
-      Oats | calories:: 300 kcal; protein:: 10 g
-      Coffee | calories:: 20 kcal
+      Oats | :calories: 300 kcal; :protein: 10 g
+      Coffee | :calories: 20 kcal
     Lunch
-      Soup | calories:: 250 kcal; protein:: 12 g
+      Soup | :calories: 250 kcal; :protein: 12 g
   Tuesday
-    Brunch | calories:: 400 kcal; protein:: 20 g
+    Brunch | :calories: 400 kcal; :protein: 20 g
 `;
 
 function cell(page: Page, text: string, key: string) {
   return row(page, text).locator(`.cell[data-key="${key}"]`);
 }
 
-test("a page with columns:: shows sums per meal, day and week", async ({ page }, info) => {
+test("a page with :columns: shows sums per meal, day and week", async ({ page }, info) => {
   await freshOutline(page, WEEK);
   await row(page, "Week 41").locator(".bullet").click();
   await expect(page.locator("#columns-head")).toBeVisible();
@@ -42,7 +42,7 @@ test("editing a cell writes the property and updates every total above it", asyn
   await expect(cell(page, "Coffee", "calories")).toHaveText("120 kcal");
   await expect(cell(page, "Breakfast", "calories")).toHaveText("420 kcal");
   await expect(page.locator("#columns-head .column-total").first()).toHaveText("1070 kcal");
-  await expect(row(page, "Coffee").locator(".note")).toHaveText("calories:: 120 kcal");
+  await expect(row(page, "Coffee").locator(".note")).toHaveText(":calories: 120 kcal");
 
   await cell(page, "Coffee", "protein").click();
   await page.keyboard.type("1 g");
@@ -59,13 +59,13 @@ test("typing a property into a note updates the columns when the note is left", 
   await editor(page, "Soup").click();
   await page.keyboard.press("Shift+Enter");
   await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.type("calories:: 300 kcal");
+  await page.keyboard.type(":calories: 300 kcal");
   await page.keyboard.press("Escape");
   await expect(cell(page, "Lunch", "calories")).toHaveText("300 kcal");
 });
 
 test("the menu switches columns on for any page, inferring them from properties", async ({ page }) => {
-  await freshOutline(page, "Project\n  Design | effort:: 1h30m\n  Build | effort:: 2d\nPlain");
+  await freshOutline(page, "Project\n  Design | :effort: 1h30m\n  Build | :effort: 2d\nPlain");
   await expect(page.locator("#columns-head")).toBeHidden();
   await page.locator("#menu-button").click();
   await page.getByRole("button", { name: "Columns" }).click();
@@ -77,9 +77,9 @@ test("the menu switches columns on for any page, inferring them from properties"
 });
 
 test("properties show as key and value outside editing", async ({ page }) => {
-  await freshOutline(page, "Oats | from the market; calories:: 300 kcal");
+  await freshOutline(page, "Oats | from the market; :calories: 300 kcal");
   const property = row(page, "Oats").locator(".prop");
   await expect(property.locator(".prop-key")).toHaveText("calories");
   await expect(property.locator(".prop-value")).toHaveText("300 kcal");
-  await expect(row(page, "Oats").locator(".note")).toHaveText("from the market\ncalories:: 300 kcal");
+  await expect(row(page, "Oats").locator(".note")).toHaveText("from the market\n:calories: 300 kcal");
 });

@@ -93,7 +93,7 @@ describe("renderInline", () => {
   });
 
   it("keeps a note's raw text while showing properties as key and value", () => {
-    const note = "Bought at the *market*\ncalories::  350 kcal\n  effort:: 1h";
+    const note = "Bought at the *market*\n:calories:  350 kcal\n  :effort: 1h";
     const html = renderNote(note);
     expect(textOf(html)).toBe(note);
     expect(html).toContain('<span class="prop-key">calories</span>');

@@ -37,7 +37,7 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
     return `${marker("[")}<a class="link" href="${escape(url)}" target="_blank" rel="noopener">${escape(label)}</a>${marker(`](${url})`)}`;
   }
   if (groups.url) return `<a class="link" href="${escape(raw)}" target="_blank" rel="noopener">${escape(raw)}</a>`;
-  if (groups.tag) return `<span class="tag" data-tag="${escape(raw.toLowerCase())}">${escape(raw)}</span>`;
+  if (groups.tag) return `<span class="tag" data-tag="${escape(raw.toLowerCase())}"><span class="tag-hash">#</span>${escape(raw.slice(1))}</span>`;
   return escape(raw);
 }
 
@@ -51,9 +51,9 @@ function marker(text: string): string {
   return `<span class="md">${escape(text)}</span>`;
 }
 
-const PROPERTY = /^(\s*)([\p{L}\p{N}_-]+)(::[ \t]*)(.*)$/u;
+const PROPERTY = /^(\s*)(:)([\p{L}\p{N}_-]+)(:[ \t]*)(.*)$/u;
 
-/** A note: like item text, but `key:: value` lines show as a key and a value (doc/adr/0017). */
+/** A note: like item text, but `:key: value` lines show as a key and a value (doc/adr/0020). */
 export function renderNote(note: string): string {
   const lines = note.split("\n");
   return lines
@@ -61,10 +61,10 @@ export function renderNote(note: string): string {
       const lineBreak = index < lines.length - 1 ? "\n" : "";
       const property = PROPERTY.exec(line);
       if (!property) return renderInline(line) + lineBreak;
-      const [, lead, key, separator, value] = property;
+      const [, lead, opening, key, separator, value] = property;
       return (
         `<span class="prop-line" data-key="${escape(key.toLowerCase())}">${escape(lead)}<span class="prop">` +
-        `<span class="prop-key">${escape(key)}</span>${marker(separator)}<span class="prop-value">${renderInline(value)}</span>` +
+        `${marker(opening)}<span class="prop-key">${escape(key)}</span>${marker(separator)}<span class="prop-value">${renderInline(value)}</span>` +
         `</span>${lineBreak}</span>`
       );
     })

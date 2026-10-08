@@ -16,7 +16,7 @@ function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
 }
 
-/** An outline whose notes come after a "|" on each line: "Lunch | calories:: 600". */
+/** An outline whose notes come after a "|" on each line: "Lunch | :calories: 600". */
 function outline(text: string): Doc {
   const lines = text.split("\n");
   let doc = parseIndentedText(lines.map((line) => line.split(" | ")[0]).join("\n"));
@@ -28,8 +28,8 @@ function outline(text: string): Doc {
 }
 
 describe("property lines", () => {
-  it("reads key:: value lines and ignores the rest of the note", () => {
-    const properties = propertiesOf("Bought at the market\nCalories:: 350 kcal\neffort::2h\nnot a: property");
+  it("reads :key: value lines and ignores the rest of the note", () => {
+    const properties = propertiesOf("Bought at the market\n:Calories: 350 kcal\n:effort:2h\nnot a: property");
     expect([...properties]).toEqual([
       ["calories", "350 kcal"],
       ["effort", "2h"],
@@ -37,14 +37,14 @@ describe("property lines", () => {
   });
 
   it("rewrites, appends and removes a property without touching other lines", () => {
-    expect(setProperty("", "effort", "2h")).toBe("effort:: 2h");
-    expect(setProperty("text\neffort:: 1h", "Effort", "3h")).toBe("text\nEffort:: 3h");
-    expect(setProperty("text", "effort", "1h")).toBe("text\neffort:: 1h");
-    expect(setProperty("text\neffort:: 1h\nmore", "effort", "")).toBe("text\nmore");
+    expect(setProperty("", "effort", "2h")).toBe(":effort: 2h");
+    expect(setProperty("text\n:effort: 1h", "Effort", "3h")).toBe("text\n:Effort: 3h");
+    expect(setProperty("text", "effort", "1h")).toBe("text\n:effort: 1h");
+    expect(setProperty("text\n:effort: 1h\nmore", "effort", "")).toBe("text\nmore");
   });
 
   it("rewrites the line whose value is the one in effect when a key is written twice", () => {
-    const note = setProperty("effort:: 1h\neffort:: 2h", "effort", "4h");
+    const note = setProperty(":effort: 1h\n:effort: 2h", "effort", "4h");
     expect(propertiesOf(note).get("effort")).toBe("4h");
   });
 });
@@ -81,13 +81,13 @@ describe("columns", () => {
   });
 
   it("finds columns declared on the page or the nearest ancestor", () => {
-    const doc = outline("Plan | columns:: effort{+}\n  Week\n    Task | effort:: 1h\nOther");
+    const doc = outline("Plan | :columns: effort{+}\n  Week\n    Task | :effort: 1h\nOther");
     expect(declaredColumns(doc, idOf(doc, "Week"))).toEqual([{ key: "effort", summary: "sum" }]);
     expect(declaredColumns(doc, idOf(doc, "Other"))).toBeNull();
   });
 
   it("infers columns from the properties under a page", () => {
-    const doc = outline("a | calories:: 1; protein:: 2\nb | effort:: 1h");
+    const doc = outline("a | :calories: 1; :protein: 2\nb | :effort: 1h");
     expect(inferredColumns(doc, ROOT).map((column) => column.key)).toEqual(["calories", "protein", "effort"]);
   });
 });
@@ -98,12 +98,12 @@ describe("rollups", () => {
       "Week 41",
       "  Monday",
       "    Breakfast",
-      "      Oats | calories:: 300 kcal",
-      "      Coffee | calories:: 20 kcal",
+      "      Oats | :calories: 300 kcal",
+      "      Coffee | :calories: 20 kcal",
       "    Lunch",
-      "      Soup | calories:: 250 kcal",
+      "      Soup | :calories: 250 kcal",
       "  Tuesday",
-      "    Brunch | calories:: 400 kcal",
+      "    Brunch | :calories: 400 kcal",
     ].join("\n"),
   );
   const calories = [{ key: "calories", summary: "sum" as const }];
@@ -119,7 +119,7 @@ describe("rollups", () => {
   });
 
   it("sums effort durations and takes means and maxima of children", () => {
-    const plan = outline("Project\n  Design | effort:: 1h30m\n  Build | effort:: 2d\n  Test | effort:: 45m");
+    const plan = outline("Project\n  Design | :effort: 1h30m\n  Build | :effort: 2d\n  Test | :effort: 45m");
     const project = idOf(plan, "Project");
     expect(columnCells(plan, ROOT, [{ key: "effort", summary: "sum" }]).get(project)!.get("effort")!.text).toBe("50h 15m");
     expect(columnCells(plan, ROOT, [{ key: "effort", summary: "max" }]).get(project)!.get("effort")!.text).toBe("48h");
@@ -136,7 +136,7 @@ describe("rollups", () => {
   });
 
   it("adds plain numbers to numbers with a unit, whatever their order", () => {
-    const doc = outline("Day\n  a | kcal:: 200\n  b | kcal:: 300 kcal");
+    const doc = outline("Day\n  a | :kcal: 200\n  b | :kcal: 300 kcal");
     expect(columnCells(doc, ROOT, [{ key: "kcal", summary: "sum" }]).get(idOf(doc, "Day"))!.get("kcal")!.text).toBe("500 kcal");
   });
 
@@ -147,7 +147,7 @@ describe("rollups", () => {
   });
 
   it("leaves hidden completed items out of the totals", () => {
-    let doc = outline("Plan\n  a | effort:: 1h\n  b | effort:: 5h");
+    let doc = outline("Plan\n  a | :effort: 1h\n  b | :effort: 5h");
     doc = { items: { ...doc.items, [idOf(doc, "b")]: { ...doc.items[idOf(doc, "b")], completed: true } } };
     const effort = [{ key: "effort", summary: "sum" as const }];
     expect(columnCells(doc, ROOT, effort, { showCompleted: false }).get(idOf(doc, "Plan"))!.get("effort")!.text).toBe("1h");
@@ -155,7 +155,7 @@ describe("rollups", () => {
   });
 
   it("shows text values as they are and leaves rows without values empty", () => {
-    const doc = outline("a | mood:: great\nb");
+    const doc = outline("a | :mood: great\nb");
     const cells = columnCells(doc, ROOT, [{ key: "mood", summary: "sum" }]);
     expect(cells.get(idOf(doc, "a"))!.get("mood")).toEqual({ text: "great", rolled: false });
     expect(cells.get(idOf(doc, "b"))!.get("mood")).toBeUndefined();
