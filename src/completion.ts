@@ -2,6 +2,7 @@ import { Doc } from "./model";
 import { propertiesOf } from "./properties";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
+import { insertText } from "./editing";
 
 /*
  * A small list under the caret that finishes what is being typed: property
@@ -121,7 +122,7 @@ function choose(index: number): void {
   const after = (target.textContent ?? "").slice(caret.end);
   select(target, typed.start, caret.end);
   closeCompletion();
-  document.execCommand("insertText", false, replacement.endsWith(" ") && /^\s/.test(after) ? replacement.trimEnd() : replacement);
+  insertText(replacement.endsWith(" ") && /^\s/.test(after) ? replacement.trimEnd() : replacement);
 }
 
 export function closeCompletion(): void {

@@ -16,11 +16,19 @@ export function propertyLine(line: string): { key: string; value: string } | nul
 /** Every property in a note, keyed in lower case; a key written twice keeps its last value. */
 export function propertiesOf(note: string): Map<string, string> {
   const properties = new Map<string, string>();
-  for (const line of note.split("\n")) {
+  for (const line of linesOutsideCode(note)) {
     const property = propertyLine(line);
     if (property) properties.set(property.key, property.value);
   }
   return properties;
+}
+
+function linesOutsideCode(note: string): string[] {
+  let inCode = false;
+  return note.split("\n").filter((line) => {
+    if (/^\s*```/.test(line)) inCode = !inCode;
+    return !inCode && !/^\s*```/.test(line);
+  });
 }
 
 /** The note with `key` set to `value`: the existing line is rewritten, a new one appended, an empty value removes it. */

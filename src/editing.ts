@@ -154,12 +154,33 @@ const keysMeantBy: Record<string, string> = {
 };
 
 function handledAsKey(event: InputEvent, editor: HTMLElement): boolean {
+  if (insertingText) return false;
   const keys = keysMeantBy[event.inputType];
   const binding = keys ? bindingForKeys(keys, "editor") : null;
   if (!binding) return false;
   const context = editorContext(editor);
   if (event.inputType === "insertLineBreak" && context.inNote) return false;
   return binding.run(context) !== false;
+}
+
+let insertingText = false;
+
+/**
+ * Types `text` at the caret the way the keyboard would, so it reaches the
+ * input handler. Chrome turns a "\n" inside inserted text into a new `<div>`,
+ * which `textContent` does not count, so line breaks go in as line breaks;
+ * they must not run the Shift-Enter binding on the way.
+ */
+export function insertText(text: string): void {
+  insertingText = true;
+  try {
+    text.split("\n").forEach((line, index) => {
+      if (index > 0) document.execCommand("insertLineBreak");
+      if (line) document.execCommand("insertText", false, line);
+    });
+  } finally {
+    insertingText = false;
+  }
 }
 
 export function editorOf(target: EventTarget | null): HTMLElement | null {
@@ -236,7 +257,9 @@ const onItem =
 export const actions = {
   enter(c: EditorContext): void {
     if (c.inNote) {
-      document.execCommand("insertLineBreak");
+      const before = (c.editor.textContent ?? "").slice(0, c.start);
+      const indentation = isInCode(before) ? /[ \t]*/.exec(before.slice(before.lastIndexOf("\n") + 1))![0] : "";
+      insertText("\n" + indentation);
       return;
     }
     if (c.isTitle) {
@@ -356,7 +379,22 @@ export const actions = {
     focusCaret(startOf(next.dataset.id!));
   },
 
-  indent: onItem((c) => commitAndRender(indent(doc(), c.id, filter()), keepCaret(c))),
+  indent: onItem((c) => {
+    if (c.inNote && isInCode((c.editor.textContent ?? "").slice(0, c.start))) insertText("  ");
+    else commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
+  }),
+
+  codeBlock: onItem((c) => {
+    if (!c.inNote) actions.toggleNote(c);
+    const note = editorFor(c.id, "note");
+    if (!note) return;
+    const text = note.textContent ?? "";
+    const at = c.inNote ? c.end : text.length;
+    const lead = at === 0 || text[at - 1] === "\n" ? "" : "\n";
+    select(note, at);
+    insertText(`${lead}\`\`\`\n\n\`\`\``);
+    select(note, at + lead.length + 4);
+  }),
 
   outdent: onItem((c) => commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c))),
 
@@ -421,7 +459,7 @@ export const actions = {
   addTag(c: EditorContext): void {
     const text = c.editor.textContent ?? "";
     select(c.editor, c.length);
-    document.execCommand("insertText", false, text === "" || /\s$/.test(text) ? "#" : " #");
+    insertText(text === "" || /\s$/.test(text) ? "#" : " #");
   },
 
   blur(c: EditorContext): void {
@@ -464,6 +502,11 @@ export const actions = {
     startSelection(c.id, neighbourEditor(c.editor, 1)?.dataset.id ?? c.id);
   },
 };
+
+/** True when the note text before the caret has opened a ``` fence and not closed it. */
+function isInCode(noteBefore: string): boolean {
+  return noteBefore.split("\n").filter((line) => /^\s*```/.test(line)).length % 2 === 1;
+}
 
 function keepCaret(c: EditorContext): Focus {
   return { id: c.id, offset: c.start, inNote: c.inNote };

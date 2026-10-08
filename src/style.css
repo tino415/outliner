@@ -884,8 +884,34 @@ code {
   font-size: inherit;
 }
 
-.note:not(:focus):has(.prop) {
+.note:not(:focus):has(.prop, .code-block) {
   -webkit-line-clamp: unset;
+}
+
+.code-block code {
+  display: block;
+  margin: 3px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--fg);
+  font: 0.92em / 1.5 var(--mono);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.note:focus .code-block code {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  white-space: pre-wrap;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.note:focus .code-block .md {
+  font-family: var(--mono);
 }
 
 :root {
