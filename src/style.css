@@ -1508,3 +1508,16 @@ body.dragging {
     transition: none !important;
   }
 }
+
+.palette-results li.palette-command {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.palette-shortcut {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+}

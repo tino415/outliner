@@ -16,6 +16,7 @@ interface Shortcut {
 interface EditorBinding extends Shortcut {
   context: "editor";
   run: (c: EditorContext) => boolean | void;
+  isCommand: boolean;
 }
 
 interface SelectionBinding extends Shortcut {
@@ -32,12 +33,22 @@ interface GlobalBinding extends Shortcut {
 type Binding = EditorBinding | SelectionBinding | GlobalBinding;
 type BindingIn<C extends Binding["context"]> = Extract<Binding, { context: C }>;
 
-const editor = (keys: string[], label: string, run: EditorBinding["run"], hidden = false): EditorBinding => ({
+const editor = (keys: string[], label: string, run: EditorBinding["run"]): EditorBinding => ({
+  context: "editor",
+  keys,
+  label,
+  run,
+  isCommand: true,
+});
+
+/** Keys that type or move the caret: in the shortcut list, but not commands of their own. */
+const typing = (keys: string[], label: string, run: EditorBinding["run"], hidden = false): EditorBinding => ({
   context: "editor",
   keys,
   label,
   run,
   hidden,
+  isCommand: false,
 });
 
 const selection = (keys: string[], run: SelectionBinding["run"]): SelectionBinding => ({
@@ -58,19 +69,20 @@ const global = (keys: string[], label: string, reach: Reach, run: GlobalBinding[
 });
 
 const bindings: Binding[] = [
-  editor(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
+  typing(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
   editor(["Tab"], "Indent", (c) => actions.indent(c)),
   editor(["Shift+Tab"], "Outdent", (c) => actions.outdent(c)),
-  editor(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
-  editor(["Delete"], "At the end: pull the next item up", (c) => actions.deleteForward(c), true),
+  typing(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
+  typing(["Delete"], "At the end: pull the next item up", (c) => actions.deleteForward(c), true),
   editor(["Shift+Enter"], "Add or leave a note", (c) => actions.toggleNote(c)),
   editor(["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
   editor(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
   editor(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),
+  editor(["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
   editor(["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
   editor(["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
-  editor(["Alt+ArrowRight", "Mod+]"], "Zoom in", (c) => actions.zoomIn(c)),
-  editor(["Alt+ArrowLeft", "Mod+["], "Zoom out", (c) => actions.zoomOut(c)),
+  editor(["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
+  editor(["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
   editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
   editor(["Alt+Shift+d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
   editor(["Alt+Shift+m"], "Move item to…", (c) => actions.moveToPicker(c)),
@@ -79,16 +91,20 @@ const bindings: Binding[] = [
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
   editor(["Mod+z"], "Undo", () => globalActions.undo()),
   editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
-  editor(["Escape"], "Stop editing", (c) => actions.blur(c)),
-  editor(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
-  editor(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
+  typing(["Escape"], "Stop editing", (c) => actions.blur(c)),
+  typing(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
+  typing(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
   editor(["Mod+a"], "Select all items (press twice)", (c) => actions.selectAll(c)),
-  editor(["Ctrl+n"], "Next item", (c) => actions.nextItem(c)),
-  editor(["Ctrl+p"], "Previous item", (c) => actions.previousItem(c)),
-  editor(["ArrowUp"], "", (c) => actions.arrowUp(c), true),
-  editor(["ArrowDown"], "", (c) => actions.arrowDown(c), true),
-  editor(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
-  editor(["ArrowRight"], "", (c) => actions.arrowRight(c), true),
+  typing(["Ctrl+n"], "Next item", (c) => actions.nextItem(c)),
+  typing(["Ctrl+p"], "Previous item", (c) => actions.previousItem(c)),
+  typing(["Ctrl+f"], "Forward a character", (c) => actions.forwardChar(c)),
+  typing(["Ctrl+b"], "Back a character", (c) => actions.backwardChar(c)),
+  typing(["Ctrl+a"], "Start of the item", (c) => actions.startOfItem(c)),
+  typing(["Ctrl+e"], "End of the item", (c) => actions.endOfItem(c)),
+  typing(["ArrowUp"], "", (c) => actions.arrowUp(c), true),
+  typing(["ArrowDown"], "", (c) => actions.arrowDown(c), true),
+  typing(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
+  typing(["ArrowRight"], "", (c) => actions.arrowRight(c), true),
 
   selection(["Shift+ArrowUp"], () => selectionActions.extend(-1)),
   selection(["Shift+ArrowDown"], () => selectionActions.extend(1)),
@@ -105,7 +121,7 @@ const bindings: Binding[] = [
   selection(["Mod+x"], () => selectionActions.cut()),
   selection(["Mod+a"], () => selectionActions.selectPage()),
 
-  global(["Mod+k"], "Jump to an item", "anywhere", () => globalActions.jump()),
+  global(["Mod+k"], "Jump to an item or run a command", "anywhere", () => globalActions.jump()),
   global(["/"], "Search", "outsideFields", () => globalActions.search()),
   global(["Mod+f"], "Search", "anywhere", () => globalActions.search()),
   global(["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
@@ -116,16 +132,31 @@ const bindings: Binding[] = [
   global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
   global(["Enter", "ArrowDown"], "Start editing", "onPage", () => globalActions.startEditing(), true),
-  global(["Alt+ArrowLeft", "Mod+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
+  global(["Ctrl+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
 ];
 
+/**
+ * "Mod" is Ctrl or ⌘ alike; "Ctrl" bindings are for the Ctrl key itself, as
+ * Emacs habits expect. On a Mac the Ctrl key is free, so its bindings come
+ * first. Elsewhere Ctrl is Mod, and a Ctrl binding only gets the keys no Mod
+ * binding wants, so Ctrl-F stays search and Ctrl-B bold.
+ */
 export function bindingFor<C extends Binding["context"]>(event: KeyboardEvent, context: C): BindingIn<C> | null {
-  return bindingForKeys(keyString(event), context) ?? (pressesCtrlItself(event) ? bindingForKeys(keyString(event).replace(/^Mod\+/, "Ctrl+"), context) : null);
+  const keys = keyString(event);
+  if (!pressesCtrlItself(event)) return bindingForKeys(keys, context);
+  const ctrlKeys = keys.replace(/^Mod\+/, "Ctrl+");
+  if (isMac) return bindingForKeys(ctrlKeys, context) ?? bindingForKeys(keys, context);
+  return isShadowed(ctrlKeys) ? bindingForKeys(keys, context) : (bindingForKeys(keys, context) ?? bindingForKeys(ctrlKeys, context));
 }
 
-/** "Mod" is Ctrl or ⌘ alike; "Ctrl" bindings are for the Ctrl key itself, as Emacs habits on a Mac expect. */
 function pressesCtrlItself(event: KeyboardEvent): boolean {
   return event.ctrlKey && !event.metaKey;
+}
+
+function isShadowed(keys: string): boolean {
+  if (isMac || !keys.startsWith("Ctrl+")) return false;
+  const asMod = keys.replace(/^Ctrl\+/, "Mod+");
+  return bindings.some((binding) => binding.keys.includes(asMod));
 }
 
 export function bindingForKeys<C extends Binding["context"]>(keys: string, context: C): BindingIn<C> | null {
@@ -183,10 +214,39 @@ function pretty(keys: string): string {
     .join("");
 }
 
+export interface Command {
+  label: string;
+  shortcut: string;
+  run: () => void;
+}
+
+/** What the palette can run: shortcuts that act on their own, with the item being edited if there is one. */
+export function keyCommands(editing: EditorContext | null): Command[] {
+  const commands = new Map<string, Command>();
+  for (const binding of bindings) {
+    if (binding.hidden || !binding.label || commands.has(binding.label)) continue;
+    const shortcut = shortcutFor(binding.label);
+    if (binding.context === "global") commands.set(binding.label, { label: binding.label, shortcut, run: () => binding.run() });
+    else if (binding.context === "editor" && binding.isCommand && editing) {
+      commands.set(binding.label, { label: binding.label, shortcut, run: () => binding.run(editing) });
+    }
+  }
+  return [...commands.values()];
+}
+
+function shortcutFor(label: string): string {
+  const keys = bindings.filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
+  return keys.length ? pretty(keys[0]) : "";
+}
+
+function usableKeys(binding: Binding): string[] {
+  return binding.keys.filter((keys) => !isShadowed(keys));
+}
+
 export function describeKeys(): string {
   const keysByLabel = new Map<string, string[]>();
-  for (const binding of bindings.filter((binding) => !binding.hidden && binding.label)) {
-    keysByLabel.set(binding.label, [...(keysByLabel.get(binding.label) ?? []), ...binding.keys]);
+  for (const binding of bindings.filter((binding) => !binding.hidden && binding.label && usableKeys(binding).length)) {
+    keysByLabel.set(binding.label, [...(keysByLabel.get(binding.label) ?? []), ...usableKeys(binding)]);
   }
   return [...keysByLabel]
     .map(

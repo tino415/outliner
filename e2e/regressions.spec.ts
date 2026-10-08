@@ -294,7 +294,7 @@ test("undo that removes the zoomed item goes home and updates the address", asyn
   await clickEnd(page, "a");
   await page.keyboard.press("Enter");
   await page.keyboard.type("new");
-  await page.keyboard.press("Alt+ArrowRight");
+  await page.keyboard.press("Control+]");
   await expect(page.locator("#title")).toHaveText("new");
   await page.keyboard.press("ControlOrMeta+z");
   await page.keyboard.press("ControlOrMeta+z");

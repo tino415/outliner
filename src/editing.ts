@@ -324,6 +324,24 @@ export const actions = {
     focusAtX(previous, caretX(c.editor), "bottom");
   },
 
+  forwardChar(c: EditorContext): void {
+    if (c.atEnd) actions.arrowRight(c);
+    else select(c.editor, Math.min(c.end + 1, c.length));
+  },
+
+  backwardChar(c: EditorContext): void {
+    if (c.atStart) actions.arrowLeft(c);
+    else select(c.editor, Math.max(c.start - 1, 0));
+  },
+
+  startOfItem(c: EditorContext): void {
+    select(c.editor, 0);
+  },
+
+  endOfItem(c: EditorContext): void {
+    select(c.editor, c.length);
+  },
+
   arrowLeft(c: EditorContext): boolean | void {
     if (c.inNote || !c.atStart) return false;
     const previous = neighbourEditor(c.editor, -1);
@@ -374,6 +392,10 @@ export const actions = {
     if (state.results) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
     animateOpening(c.id);
+  }),
+
+  toggleFold: onItem((c) => {
+    if (doc().items[c.id].children.length > 0) toggleFold(c.id);
   }),
 
   zoomIn: onItem((c) => zoomTo(c.id, { id: c.id, offset: c.start })),
