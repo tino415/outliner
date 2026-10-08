@@ -88,8 +88,39 @@ bin/outline help
 ```
 
 `bin/outline` runs the CLI in the `app` container, which has the token and
-the server address. Elsewhere, run `node dist-node/outline.mjs` with
-`OUTLINE_SERVER` and `OUTLINE_TOKEN` set.
+the server address. Elsewhere, install the `outline` package from the flake
+(Linux and macOS), or run `node dist-node/outline.mjs` (Node 22 or later).
+
+```sh
+nix profile install git+ssh://git@github.com/tino415/outliner.git#outline
+```
+
+In a nix-darwin or home-manager configuration, add the repository as a
+flake input and the package to the user's packages:
+
+```nix
+inputs.outliner.url = "git+ssh://git@github.com/tino415/outliner.git";
+# ...
+home.packages = [ inputs.outliner.packages.${pkgs.stdenv.hostPlatform.system}.outline ];
+```
+
+The package holds neither the server address nor the token. The CLI reads
+them from `OUTLINE_SERVER` and `OUTLINE_TOKEN`, or from
+`$XDG_CONFIG_HOME/outline/config` (`~/.config/outline/config` by default),
+which takes the same names as `KEY=value` lines; the environment wins over
+the file:
+
+```sh
+mkdir -p ~/.config/outline
+cat > ~/.config/outline/config <<'EOF'
+OUTLINE_SERVER=https://dev.taile622dc.ts.net:10001
+OUTLINE_TOKEN=<the token from .env.sync>
+EOF
+chmod 600 ~/.config/outline/config
+```
+
+After a change to `package-lock.json`, `nix build .#outline` fails with the
+new `npmDepsHash`; put it in `nix/outline.nix`.
 
 ## Publishing
 

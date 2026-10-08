@@ -54,6 +54,10 @@ options:
   --limit N      how many items find prints (default 20)
   --server URL   the sync server (default: $OUTLINE_SERVER)
   --token TOKEN  its token (default: $OUTLINE_TOKEN)
+
+OUTLINE_SERVER and OUTLINE_TOKEN can also be KEY=value lines in
+$XDG_CONFIG_HOME/outline/config (~/.config/outline/config); the
+environment wins over the file.
 `;
 
 export interface Outcome {
@@ -83,7 +87,7 @@ export async function run(argv: string[], env: Record<string, string | undefined
     const [command, ...args] = words;
     if (!command || command === "help" || argv.includes("--help")) return { output: USAGE, code: command ? 0 : 1 };
     const endpoint = { server: options.server ?? env.OUTLINE_SERVER ?? "", token: options.token ?? env.OUTLINE_TOKEN ?? "" };
-    if (!endpoint.server || !endpoint.token) return fail("set OUTLINE_SERVER and OUTLINE_TOKEN, or pass --server and --token");
+    if (!endpoint.server || !endpoint.token) return fail("set OUTLINE_SERVER and OUTLINE_TOKEN in the environment or ~/.config/outline/config, or pass --server and --token");
     const outline = await Outline.fetch(endpoint);
     const output = await perform(command, args, options, outline, stdin);
     return { output, code: 0 };
