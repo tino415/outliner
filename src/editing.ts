@@ -236,7 +236,7 @@ const onItem =
 export const actions = {
   enter(c: EditorContext): void {
     if (c.inNote) {
-      document.execCommand("insertText", false, "\n");
+      document.execCommand("insertLineBreak");
       return;
     }
     if (c.isTitle) {
