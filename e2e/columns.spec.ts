@@ -83,3 +83,16 @@ test("properties show as key and value outside editing", async ({ page }) => {
   await expect(property.locator(".prop-value")).toHaveText("300 kcal");
   await expect(row(page, "Oats").locator(".note")).toHaveText("from the market\n:calories: 300 kcal");
 });
+
+test("a computed column plans start times from the durations before each item", async ({ page }) => {
+  await freshOutline(page, "Monday | :start: 9:00; :columns: effort start{=parent.start + before(effort)}\n  Standup | :effort: 15m\n  Write | :effort: 1h30m\n  Lunch | :effort: 1h");
+  await row(page, "Monday").locator(".bullet").click();
+  await expect(cell(page, "Lunch", "start")).toHaveText("10:45");
+  await expect(cell(page, "Lunch", "start")).toHaveClass(/computed/);
+  await editor(page, "Standup").click();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type(":effort: 45m");
+  await page.keyboard.press("Escape");
+  await expect(cell(page, "Lunch", "start")).toHaveText("11:15");
+});

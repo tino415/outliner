@@ -125,12 +125,22 @@ function cellsOf(id: ItemId): string {
     columns.columns
       .map((column) => {
         const cell = row?.get(column.key);
-        const title = cell?.rolled ? ` title="${SUMMARY_LABELS[column.summary]} of the items below"` : "";
-        return `<button type="button" tabindex="-1" class="cell${cell?.rolled ? " rolled" : ""}" data-key="${escape(column.key)}"${title}>${escape(cell?.text ?? "")}</button>`;
+        return `<button type="button" tabindex="-1" class="${cellClasses(cell)}" data-key="${escape(column.key)}"${cellTitle(cell, column)}>${escape(cell?.text ?? "")}</button>`;
       })
       .join("") +
     `</div>`
   );
+}
+
+function cellClasses(cell: Cell | undefined): string {
+  return ["cell", cell?.rolled && "rolled", cell?.computed && "computed", cell?.error && "error"].filter(Boolean).join(" ");
+}
+
+function cellTitle(cell: Cell | undefined, column: Column): string {
+  if (cell?.error) return ` title="${escape(cell.error)}"`;
+  if (cell?.computed) return ` title="Computed: ${escape(column.formulaSource ?? "")}"`;
+  if (cell?.rolled) return ` title="${SUMMARY_LABELS[column.summary]} of the items below"`;
+  return "";
 }
 
 export function titleFor(id: ItemId): string {
