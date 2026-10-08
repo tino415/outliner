@@ -91,6 +91,7 @@ const bindings: Binding[] = [
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
   editor(["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
   editor(["Alt+Shift+t"], "Add a tag", (c) => actions.addTag(c)),
+  editor(["Alt+Shift+l"], "Link to an item", (c) => actions.insertReference(c)),
   editor(["Mod+z"], "Undo", () => globalActions.undo()),
   editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   typing(["Escape"], "Stop editing", (c) => actions.blur(c)),

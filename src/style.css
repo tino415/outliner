@@ -548,6 +548,35 @@ code {
   cursor: text;
 }
 
+.ref {
+  color: var(--accent);
+  border-bottom: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  cursor: pointer;
+}
+
+:focus .ref {
+  border-bottom: 0;
+  cursor: text;
+}
+
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.backlinks-label {
+  color: var(--muted);
+}
+
+.backlinks a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
 .tag {
   color: var(--tag);
   background: var(--tag-bg);

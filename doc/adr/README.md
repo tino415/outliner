@@ -33,3 +33,4 @@ session report; the records here hold the choices behind them.
 21. [Code blocks are ``` fenced lines in notes](0021-code-blocks-are-fenced-lines-in-notes.md)
 22. [Computed columns: a formula in the column spec](0022-computed-columns-with-formulas.md)
 23. [Capture templates live in the outline; shortcuts reach them by URL](0023-capture-templates-live-in-the-outline.md)
+24. [References are org links by id; mirrors wait](0024-references-are-org-links-mirrors-wait.md)

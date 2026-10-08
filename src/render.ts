@@ -4,6 +4,8 @@ import { escape, itemLabel, renderInline, renderNote, shortLabel } from "./inlin
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
+import { backlinks } from "./references";
+import { pathOf } from "./search";
 import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
 
@@ -55,6 +57,15 @@ function renderHead(): void {
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
   document.title = titleFor(item.id);
+  renderBacklinks();
+}
+
+function renderBacklinks(): void {
+  const linking = state.zoom === ROOT ? [] : backlinks(doc(), state.zoom);
+  ui.backlinks.hidden = linking.length === 0;
+  ui.backlinks.innerHTML =
+    `<span class="backlinks-label">Linked from</span>` +
+    linking.map((id) => `<a href="#/${encodeURIComponent(id)}" title="${escape(pathOf(doc(), id).join(" / "))}">${escape(itemLabel(doc().items[id].text, 40))}</a>`).join("");
 }
 
 // ---- the column view (doc/adr/0017) --------------------------------------------------------
