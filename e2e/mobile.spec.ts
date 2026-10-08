@@ -207,3 +207,21 @@ test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) 
   await page.locator(".crumb.home").tap();
   await expect(page.locator("#title")).toHaveText("Test");
 });
+
+test("capture from the menu files into the Inbox", async ({ page }) => {
+  await freshOutline(page, "a");
+  await page.locator("#menu-button").tap();
+  await page.getByRole("button", { name: "Capture…" }).tap();
+  await page.locator("#capture-text").fill("call the plumber");
+  await page.getByRole("button", { name: "Capture", exact: true }).tap();
+  await expectOutline(page, "a\nInbox\n  call the plumber");
+});
+
+test("a virtual keyboard's Enter in a note starts a new line", async ({ page }) => {
+  await freshOutline(page, "item | first");
+  await row(page, "item").locator(".note").tap();
+  await page.keyboard.press("End");
+  await virtualKey(page, "insertParagraph");
+  await page.keyboard.type("second");
+  await expect(row(page, "item").locator(".note")).toHaveText("first\nsecond");
+});
