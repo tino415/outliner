@@ -290,12 +290,12 @@ test.describe("zoom and search", () => {
   test("keyboard zoom keeps the caret on the item", async ({ page }) => {
     await freshOutline(page, "projects\n  garden");
     await clickEnd(page, "projects");
-    await page.keyboard.press("Alt+ArrowRight");
+    await page.keyboard.press("Control+]");
     await expect(page.locator("#title")).toHaveText("projects");
     expect((await caret(page)).text).toBe("projects");
     await page.keyboard.press("ArrowDown");
     expect((await caret(page)).text).toBe("garden");
-    await page.keyboard.press("Alt+ArrowLeft");
+    await page.keyboard.press("Control+[");
     await expect(page.locator("#title")).toHaveText("Test");
     expect((await caret(page)).text).toBe("projects");
   });

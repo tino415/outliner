@@ -2,7 +2,7 @@ import { ItemId, ROOT, appendChild, removeCompleted, setCollapsed, setCollapsedE
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
-import { Reach, bindingFor, describeKeys } from "./keys";
+import { Command, Reach, bindingFor, describeKeys, keyCommands } from "./keys";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
@@ -39,7 +39,7 @@ export function bindChrome(): void {
 // ---- keys that work everywhere ---------------------------------------------------
 
 export const globalActions = {
-  jump: () => jumpToItem(),
+  jump: () => jumpToItem(paletteCommands()),
   search: () => {
     ui.search.focus();
     ui.search.select();
@@ -62,6 +62,23 @@ export const globalActions = {
     if (state.zoom !== ROOT) zoomTo(doc().items[state.zoom].parent ?? ROOT);
   },
 };
+
+function paletteCommands(): Command[] {
+  const editor = editorOf(document.activeElement);
+  return [...keyCommands(editor ? editorContext(editor) : null), ...menuCommands()];
+}
+
+const menuEntriesWithShortcuts = new Set(["jump", "toggle-completed", "toggle-columns", "help"]);
+
+function menuCommands(): Command[] {
+  return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
+    .filter((button) => !menuEntriesWithShortcuts.has(button.dataset.action!))
+    .map((button) => {
+      const section = button.closest(".menu-section")?.querySelector(".menu-label")?.textContent;
+      const name = button.querySelector("span")!.textContent!;
+      return { label: section ? `${section}: ${name}` : name, shortcut: "", run: () => button.click() };
+    });
+}
 
 type FocusTarget = "page" | "field" | "overlay" | "control";
 
@@ -123,7 +140,7 @@ function bindSearchBox(): void {
 const menuActions: Record<string, () => void> = {
   jump: () => {
     ui.menu.hidePopover();
-    jumpToItem();
+    jumpToItem(paletteCommands());
   },
   "toggle-columns": () => toggleColumnView(),
   "toggle-completed": () => {

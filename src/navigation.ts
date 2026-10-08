@@ -1,6 +1,7 @@
 import { ItemId, ROOT, ancestors } from "./model";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
+import { Command } from "./keys";
 import { Focus, doc, filter, isUnder, state, ui } from "./app";
 import { render, replayAnimation } from "./render";
 
@@ -66,20 +67,32 @@ export function searchResults(focus: Focus | null): SearchResult | null {
   return results;
 }
 
-export function jumpToItem(): void {
+type JumpOption = { item: Candidate; text: string; path: string[] } | { command: Command; text: string; path: string[]; shortcut: string };
+
+export function jumpToItem(commands: Command[]): void {
+  const asOption = (item: Candidate): JumpOption => ({ item, text: item.text, path: item.path });
   const recent = (): Candidate[] =>
     state.recent
       .filter((id) => doc().items[id])
       .map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
-  openPalette({
-    placeholder: "Jump to…",
-    hint: "↑ ↓ to choose · Enter to open · Esc to close",
+  openPalette<JumpOption>({
+    placeholder: "Jump to…, or > for commands",
+    hint: "↑ ↓ or Ctrl N / P to choose · Enter to open · Esc to close",
     candidates: (query) => {
-      if (query.trim()) return findItems(doc(), query, 40);
+      if (query.startsWith(">")) return matchingCommands(commands, query.slice(1), Infinity);
+      if (query.trim()) return [...matchingCommands(commands, query, 5), ...findItems(doc(), query, 40).map(asOption)];
       const seen = new Set(state.recent);
-      return [...recent(), ...findItems(doc(), "", 30, (id) => seen.has(id))];
+      return [...recent(), ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption);
     },
-    choose: (candidate) => zoomTo(candidate.id),
+    choose: (option) => ("command" in option ? option.command.run() : zoomTo(option.item.id)),
   });
+}
+
+function matchingCommands(commands: Command[], query: string, limit: number): JumpOption[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return commands
+    .filter((command) => terms.every((term) => command.label.toLowerCase().includes(term)))
+    .slice(0, limit)
+    .map((command) => ({ command, text: command.label, path: [], shortcut: command.shortcut }));
 }
 
