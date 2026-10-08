@@ -57,7 +57,9 @@ below; part 1's report follows it.
    and wider than the chevron, always visible on touch; swipe right to
    complete or reopen, swipe left to fold or, without children, to open the
    item menu; Collapse / Expand in the item menu. Tested with real touch
-   input on the Pixel profile.
+   input on the Pixel profile. After Martin's first try: the swipe band was
+   drawn below its row (fixed), and a longer left swipe now opens the menu
+   on every item (ADR 0019).
 2. ~~**Properties and column view, as in org mode.**~~ Done (ADR 0017):
    `key:: value` lines in notes, shown as chips; a column view per page
    with rollups (sum, min, max, mean; numbers with units and durations),
