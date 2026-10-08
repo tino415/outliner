@@ -100,7 +100,6 @@ function showBand(item: HTMLElement, row: HTMLElement): HTMLElement {
   const band = document.createElement("div");
   band.className = "swipe-band";
   band.innerHTML = "<span></span>";
-  band.style.top = `${row.offsetTop}px`;
   band.style.height = `${row.offsetHeight}px`;
   item.prepend(band);
   return band;
