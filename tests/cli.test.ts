@@ -54,6 +54,48 @@ describe("outline CLI", () => {
     expect(await outline("show")).toBe("- Projects\n- Shopping\n  - ~~Buy tomato seeds~~");
   });
 
+  it("adds items before or after another, beside it", async () => {
+    await outline('add "Projects"');
+    await outline('add "Garden" --under Projects');
+    await outline('add "House" --under Projects');
+    await outline('add "Car" --before Projects/House');
+    await outline('add "Bike" --after Projects/House');
+    await outline('add "Inbox" --before Projects');
+    await outline("add - --after Projects/Garden", "- Shed\n  - Tools");
+    expect(await outline("show")).toBe(
+      "- Inbox\n- Projects\n  - Garden\n  - Shed\n    - Tools\n  - Car\n  - House\n  - Bike",
+    );
+  });
+
+  it("moves items before or after another, across parents and within one", async () => {
+    await outline('add "a"');
+    await outline('add "b"');
+    await outline('add "c"');
+    await outline('add "x" --under b');
+    await outline("move a --after c");
+    expect(await outline("show")).toBe("- b\n  - x\n- c\n- a");
+    await outline("move a --before b");
+    expect(await outline("show")).toBe("- a\n- b\n  - x\n- c");
+    await outline("move c --before b/x");
+    expect(await outline("show")).toBe("- a\n- b\n  - c\n  - x");
+    await outline("move b/x --after a");
+    expect(await outline("show")).toBe("- a\n- x\n- b\n  - c");
+  });
+
+  it("refuses places that contradict each other or the item itself", async () => {
+    await outline('add "a"');
+    await outline('add "b" --under a');
+    await outline('add "c"');
+    await expect(outline("add d --before c --after c")).rejects.toThrow(/either --before or --after/);
+    await expect(outline("add d --before c --under a")).rejects.toThrow(/cannot go with --under or --first/);
+    await expect(outline("move c --after a --first")).rejects.toThrow(/cannot go with --under or --first/);
+    await expect(outline("add d --after /")).rejects.toThrow(/no place beside it/);
+    await expect(outline("move a --before a")).rejects.toThrow(/beside itself/);
+    await expect(outline("move a --after a/b")).rejects.toThrow(/under itself/);
+    await expect(outline("move c")).rejects.toThrow(/needs --under, --before or --after/);
+    expect(await outline("show")).toBe("- a\n  - b\n- c");
+  });
+
   it("reads indented lines from stdin", async () => {
     const ids = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n  - Tuesday\n- Notes"));
     expect(ids).toHaveLength(2);
