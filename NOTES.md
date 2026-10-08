@@ -83,6 +83,35 @@ Assumptions (Martin away):
 
 - Emacs-style keys stay the model; no vim mode (the comment in the outline
   prefers Emacs and asks for vim only if conflicts pile up).
+- Emacs Ctrl keys (A, E, F, B) work on a Mac, where Ctrl is not ⌘. On Linux
+  and Windows Ctrl is the command key, so Ctrl-F stays search, Ctrl-B bold,
+  Ctrl-E inline code and Ctrl-A select all; the shortcut list there leaves
+  the Emacs ones out. Ctrl-N/P and Ctrl-. work everywhere.
+- Zoom moved to Ctrl-] / Ctrl-[ (the Ctrl key itself, also on a Mac);
+  ⌘[ ⌘] and ⌥← ⌥→ are the browser's again. Browser back still zooms out,
+  because zooming changes the address.
+- Ctrl-K lists matching commands above matching items; `>` lists commands
+  only. Commands are the shortcuts that act on their own plus the ⋯ menu.
+- The tag shortcut is Alt-Shift-T (org's `C-c C-q` collides with copy):
+  it adds `#` at the end of the item and opens the tag list.
+- The capture shortcut is Alt-Shift-N; links are Alt-Shift-L.
+- `9:00` written as a value is a time of day and shows as `9:00`; before, it
+  showed as `9h`. `1:30` therefore shows as `1:30`, still summed as 1h 30m.
+
+Blocked:
+
+- Converting the three `key::` lines in the live outline (Food plan /
+  Monday, musly, greek yoghurt) to `:key:` was refused by Claude Code's
+  permission check ("Modify Shared Resources"), so they still read
+  `key::` and no longer count as properties. Either retype them, or run:
+
+  ```sh
+  bin/outline note y7d6mzbd0tdb ":columns: kcal"
+  bin/outline note k5lsnycuwxdq ":kcal: 230"
+  bin/outline note jn5h8esweha4 ":kcal: 120"
+  ```
+
+  (`+kcal` in the old `columns::` line was read as the key `kcal`.)
 
 ## Backlog (from Martin, 2026-10-08)
 
@@ -109,41 +138,41 @@ Per-node column mode already works through `columns::` (inherited by the
 nodes below); the Columns switch staying per device is fine, Martin sees
 value in both.
 
-1. **Code samples.** Something in place of fenced ``` blocks. Research how
+1. ~~**Code samples.**~~ Done (ADR 21). Something in place of fenced ``` blocks. Research how
    WorkFlowy and Dynalist do it, pick the best fit and build it. (dotflowy
    gives nodes a type, with a note being one type of child; a "code" type
    would be trivial there. Not to be copied, only as a reference point.)
-2. **Formulas in columns.** A small spreadsheet on properties. Example: in
+2. ~~**Formulas in columns.**~~ Done (ADR 22). A small spreadsheet on properties. Example: in
    time planning, `start` on an item is the sum of the durations of the
    items before it up to an ancestor (the Monday node), for time tracking.
-3. **Scripting and plugins.** Make the app extensible, along the lines of
+3. **Scripting and plugins.** A design note for discussion: doc/design/plugins-and-scripting.md. Make the app extensible, along the lines of
    Amplenote, where a note with embedded JavaScript becomes a plugin. Needs
    discussion first. One idea to brainstorm: a small Lisp-like language
    whose scripts can be checked statically (walk the AST, expand every
    macro until only resource-access nodes remain, and sandbox on that).
    Probably too much effort; worth a brainstorm.
-4. **Capture, as in org-capture.** Templates that file a new item at a set
+4. ~~**Capture, as in org-capture.**~~ Done (ADR 23). Templates that file a new item at a set
    place and ask for some properties.
-5. **A phone (and maybe Mac) shortcut straight into capture.** Options run
+5. ~~**A phone (and maybe Mac) shortcut straight into capture.**~~ Done as a PWA shortcut, a share target, `?capture` links and `outline capture` (ADR 23); no companion app. Options run
    from a PWA shortcut or share target to a small companion app. A native
    Mac app cannot be built on this Linux machine, so that one needs
    infrastructure changes.
-6. **Folding syncs across devices, which surprised Martin.** `collapsed` is
+6. ~~**Folding syncs across devices, which surprised Martin.**~~ Martin, 2026-10-09: keep it shared. `collapsed` is
    an item field like any other (ADR 0012). Decide whether it should stay
    shared or be kept per device, like the Columns switch; check what
    WorkFlowy and Dynalist do.
-7. **A Nix package for the CLI**, so `outline` installs on other machines
+7. ~~**A Nix package for the CLI**~~ Done: `flake.nix`, built on dev; untested on the Mac. So `outline` installs on other machines
    (the Mac, other NixOS hosts) without this repo's container. The bundle
    in `dist-node/outline.mjs` needs only Node; the package would wrap it
    with `OUTLINE_SERVER` and `OUTLINE_TOKEN` read from the environment or a
    config file, never baked in.
-8. **CLI: place an item next to another.** `--before ITEM` and `--after ITEM`
+8. ~~**CLI: place an item next to another.**~~ Done. `--before ITEM` and `--after ITEM`
    for `add` and `move`, putting it beside ITEM under ITEM's parent. Today
    only `--under` and `--first` exist.
-9. **Ctrl-E to the end of the item**, as in Emacs, instead of inserting
+9. ~~**Ctrl-E to the end of the item**~~ Done, on a Mac (see session 3 assumptions). As in Emacs, instead of inserting
    anything. A `Ctrl` binding in `src/keys.ts` (Ctrl-A would be its pair,
    but it is Select all on Linux and Windows).
-10. **Properties written org-style as `:key: value`**, so typing `:` at the
+10. ~~**Properties written org-style as `:key: value`**~~ Done (ADR 20). So typing `:` at the
     start of a note line can offer autocomplete of known keys. Today they
     are `key:: value` (ADR 0017, superseded by a new ADR). Notes and the CLI
     already hold `key::` lines: read both forms or convert them.
