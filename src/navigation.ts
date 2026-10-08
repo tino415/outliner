@@ -80,7 +80,7 @@ export function jumpToItem(commands: Command[]): void {
     hint: "↑ ↓ or Ctrl N / P to choose · Enter to open · Esc to close",
     candidates: (query) => {
       if (query.startsWith(">")) return matchingCommands(commands, query.slice(1), Infinity);
-      if (query.trim()) return [...matchingCommands(commands, query, 5), ...findItems(doc(), query, 40).map(asOption)];
+      if (query.trim()) return [...findItems(doc(), query, 40).map(asOption), ...matchingCommands(commands, query, 5)];
       const seen = new Set(state.recent);
       return [...recent(), ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption);
     },

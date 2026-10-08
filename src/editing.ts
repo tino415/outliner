@@ -364,11 +364,11 @@ export const actions = {
   },
 
   startOfItem(c: EditorContext): void {
-    select(c.editor, 0);
+    select(c.editor, lineAround(c).start);
   },
 
   endOfItem(c: EditorContext): void {
-    select(c.editor, c.length);
+    select(c.editor, lineAround(c).end);
   },
 
   arrowLeft(c: EditorContext): boolean | void {
@@ -385,24 +385,28 @@ export const actions = {
     focusCaret(startOf(next.dataset.id!));
   },
 
-  indent: onItem((c) => {
-    if (c.inNote && isInCode((c.editor.textContent ?? "").slice(0, c.start))) insertText("  ");
-    else commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
-  }),
+  indent(c: EditorContext): void {
+    if (inCodeBlock(c)) insertText("  ");
+    else if (!c.isTitle) commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
+  },
 
-  codeBlock: onItem((c) => {
+  outdent(c: EditorContext): void {
+    if (inCodeBlock(c)) takeBackIndentation(c);
+    else if (!c.isTitle) commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
+  },
+
+  codeBlock(c: EditorContext): void {
     if (!c.inNote) actions.toggleNote(c);
     const note = editorFor(c.id, "note");
     if (!note) return;
     const text = note.textContent ?? "";
     const at = c.inNote ? c.end : text.length;
     const lead = at === 0 || text[at - 1] === "\n" ? "" : "\n";
+    const trail = at === text.length || text[at] === "\n" ? "" : "\n";
     select(note, at);
-    insertText(`${lead}\`\`\`\n\n\`\`\``);
+    insertText(`${lead}\`\`\`\n\n\`\`\`${trail}`);
     select(note, at + lead.length + 4);
-  }),
-
-  outdent: onItem((c) => commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c))),
+  },
 
   moveUp: onItem((c) => commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c))),
 
@@ -532,6 +536,27 @@ function followReference(target: string): void {
   const id = resolveReference(doc(), target);
   if (id) zoomTo(id);
   else toast(`Nothing called “${target}” yet`);
+}
+
+function inCodeBlock(c: EditorContext): boolean {
+  return c.inNote && isInCode((c.editor.textContent ?? "").slice(0, c.start));
+}
+
+/** The line the caret is on: in a note one line of it, in item text the whole text. */
+function lineAround(c: EditorContext): { start: number; end: number } {
+  const text = c.editor.textContent ?? "";
+  if (!c.inNote) return { start: 0, end: text.length };
+  const end = text.indexOf("\n", c.start);
+  return { start: text.lastIndexOf("\n", c.start - 1) + 1, end: end === -1 ? text.length : end };
+}
+
+function takeBackIndentation(c: EditorContext): void {
+  const { start } = lineAround(c);
+  const spaces = /^ {1,2}/.exec((c.editor.textContent ?? "").slice(start))?.[0].length ?? 0;
+  if (spaces === 0) return;
+  select(c.editor, start, start + spaces);
+  document.execCommand("delete");
+  select(c.editor, Math.max(start, c.start - spaces));
 }
 
 /** True when the note text before the caret has opened a ``` fence and not closed it. */
