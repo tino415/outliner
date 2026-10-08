@@ -95,6 +95,10 @@ value in both.
    from a PWA shortcut or share target to a small companion app. A native
    Mac app cannot be built on this Linux machine, so that one needs
    infrastructure changes.
+6. **Folding syncs across devices, which surprised Martin.** `collapsed` is
+   an item field like any other (ADR 0012). Decide whether it should stay
+   shared or be kept per device, like the Columns switch; check what
+   WorkFlowy and Dynalist do.
 
 ## Part 2: sync and a CLI
 
