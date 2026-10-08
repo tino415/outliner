@@ -1071,6 +1071,37 @@ code {
   line-height: 1.5;
 }
 
+.capture-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capture-templates button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.capture-templates button.active {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.capture-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.capture-fields:empty {
+  display: none;
+}
+
 .sync-form label {
   display: grid;
   gap: 4px;

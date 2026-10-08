@@ -14,6 +14,7 @@ import {
 } from "../src/model";
 import { exportJson, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems } from "../src/search";
+import { capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns, propertiesOf, setProperty } from "../src/properties";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
@@ -34,6 +35,8 @@ commands:
                            or --after ITEM put it beside ITEM instead
   set ITEM KEY VALUE       set a property (a ":KEY: VALUE" line in the note);
                            an empty VALUE removes it
+  capture TEXT             file TEXT with a capture template (--template NAME,
+                           the first by default) and --set KEY=VALUE properties
   rm ITEM                  delete an item and everything under it
   export [ITEM]            --md (default), --opml or --json
 
@@ -51,6 +54,8 @@ options:
   --before ITEM  add or move to just before ITEM, beside it
   --after ITEM   add or move to just after ITEM, beside it
   --note TEXT    a note for the item add creates
+  --template T   the capture template named T
+  --set K=V      a property for capture; repeat for more
   --limit N      how many items find prints (default 20)
   --server URL   the sync server (default: $OUTLINE_SERVER)
   --token TOKEN  its token (default: $OUTLINE_TOKEN)
@@ -75,6 +80,8 @@ interface Options {
   before?: string;
   after?: string;
   note?: string;
+  template?: string;
+  set: string[];
   limit: number;
   format: "md" | "opml" | "json";
   server?: string;
@@ -144,6 +151,16 @@ async function perform(command: string, args: string[], options: Options, outlin
       if (!key || !/^[\p{L}\p{N}_-]+$/u.test(key)) throw new Error("set needs ITEM KEY VALUE; KEY is letters, digits, - or _");
       return changeItem(outline, args, (next, id) => setNote(next, id, setProperty(next.items[id].note, key, words.join(" "))));
     }
+    case "capture": {
+      const text = args.join(" ");
+      if (!text) throw new Error("capture needs some text");
+      const templates = captureTemplates(doc);
+      const template = options.template ? templates.find((each) => each.name.toLowerCase() === options.template!.toLowerCase()) : templates[0];
+      if (!template) throw new Error(`no capture template named ${options.template}; there are ${templates.map((each) => each.name).join(", ")}`);
+      const result = capture(doc, template, text, propertiesFrom(options.set), new Date());
+      await outline.save(result.doc);
+      return options.json ? json({ id: result.id, under: result.target }) : result.id;
+    }
     case "rm":
       return changeItem(outline, args, (next, id) => remove(next, id));
     case "export": {
@@ -187,6 +204,16 @@ async function changeItem(outline: Outline, args: string[], change: (doc: Doc, i
   if (id === ROOT) throw new Error("that is the top of the outline, not an item");
   await outline.save(change(outline.doc, id));
   return id;
+}
+
+function propertiesFrom(assignments: string[]): Record<string, string> {
+  return Object.fromEntries(
+    assignments.map((assignment) => {
+      const match = /^([\p{L}\p{N}_-]+)=(.*)$/u.exec(assignment);
+      if (!match) throw new Error(`--set needs KEY=VALUE, not ${assignment}`);
+      return [match[1], match[2]];
+    }),
+  );
 }
 
 function requireText(args: string[], command: string): string {
@@ -351,7 +378,7 @@ function fail(message: string): Outcome {
 // ---- arguments ---------------------------------------------------------------------------
 
 function parseArguments(argv: string[]): { words: string[]; options: Options } {
-  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, format: "md" };
+  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, format: "md", set: [] };
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -371,6 +398,8 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
     else if (arg === "--after") options.after = value();
     else if (arg === "--note") options.note = value();
     else if (arg === "--limit") options.limit = Number(value());
+    else if (arg === "--template") options.template = value();
+    else if (arg === "--set") options.set.push(value());
     else if (arg === "--server") options.server = value();
     else if (arg === "--token") options.token = value();
     else if (arg === "--help") continue;
