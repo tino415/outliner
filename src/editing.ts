@@ -312,6 +312,18 @@ export const actions = {
     focusAtX(next, caretX(c.editor), "top");
   },
 
+  nextItem(c: EditorContext): boolean | void {
+    const next = neighbourEditor(c.editor, 1);
+    if (!next) return false;
+    focusAtX(next, caretX(c.editor), "top");
+  },
+
+  previousItem(c: EditorContext): boolean | void {
+    const previous = neighbourEditor(c.editor, -1);
+    if (!previous) return false;
+    focusAtX(previous, caretX(c.editor), "bottom");
+  },
+
   arrowLeft(c: EditorContext): boolean | void {
     if (c.inNote || !c.atStart) return false;
     const previous = neighbourEditor(c.editor, -1);

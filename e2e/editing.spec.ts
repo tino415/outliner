@@ -81,6 +81,19 @@ test.describe("keyboard editing", () => {
     expect(await caret(page)).toEqual({ text: "three", offset: 0 });
   });
 
+  test("Ctrl-N and Ctrl-P walk to the next and previous item, as in Emacs", async ({ page }) => {
+    await freshOutline(page, "one\n  two\nthree");
+    await clickEnd(page, "one");
+    await page.keyboard.press("Control+n");
+    expect((await caret(page)).text).toBe("two");
+    await page.keyboard.press("Control+n");
+    expect((await caret(page)).text).toBe("three");
+    await page.keyboard.press("Control+p");
+    await page.keyboard.press("Control+p");
+    expect((await caret(page)).text).toBe("one");
+    await expectOutline(page, "one\n  two\nthree");
+  });
+
   test("items move with Alt-Shift-arrows and keep focus", async ({ page }) => {
     await freshOutline(page, "a\nb\nc");
     await clickEnd(page, "c");
