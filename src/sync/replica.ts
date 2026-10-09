@@ -1,7 +1,10 @@
 import { Doc, Item, ItemId, ROOT } from "../model";
 import { positionBetween } from "./position";
 
-export type Field = "text" | "note" | "parent" | "position" | "collapsed" | "completed" | "deleted";
+export type Field = "text" | "note" | "parent" | "position" | "collapsed" | "completed" | "deleted" | PropertyField;
+
+/** One property of an item, synced on its own (doc/adr/0032); null once removed. */
+export type PropertyField = `prop:${string}`;
 export type FieldValue = string | boolean | null;
 
 export interface Change {
@@ -57,6 +60,7 @@ export function diff(before: Doc, after: Doc, replica: Replica, stamp: () => str
     write(id, "note", item.note);
     write(id, "collapsed", item.collapsed);
     write(id, "completed", item.completed);
+    for (const key of propertyKeys(replica, id, item)) write(id, `prop:${key}`, item.properties[key] ?? null);
     if (id === ROOT) continue;
     write(id, "deleted", false);
     write(id, "parent", item.parent);
@@ -102,6 +106,25 @@ function read(replica: Replica, item: ItemId, field: Field): FieldValue | undefi
   return replica[item]?.[field]?.value;
 }
 
+/** Keys the item has now or had in the replica: a key it no longer has is written as removed. */
+function propertyKeys(replica: Replica, id: ItemId, item: Item): Set<string> {
+  const known = Object.keys(replica[id] ?? {}).filter((field) => field.startsWith("prop:")).map((field) => field.slice(5));
+  return new Set([...known, ...Object.keys(item.properties)]);
+}
+
+function propertiesIn(replica: Replica, id: ItemId): Record<string, string> {
+  const properties: Record<string, string> = {};
+  for (const [field, written] of Object.entries(replica[id] ?? {})) {
+    if (field.startsWith("prop:") && typeof written?.value === "string") properties[field.slice(5)] = written.value;
+  }
+  return properties;
+}
+
+function sameProperties(a: Readonly<Record<string, string>>, b: Readonly<Record<string, string>>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
 // ---- from a replica to a document ---------------------------------------------------
 
 /**
@@ -134,6 +157,7 @@ export function materialize(replica: Replica, previous?: Doc): Doc {
       children,
       collapsed: read(replica, id, "collapsed") === true,
       completed: read(replica, id, "completed") === true,
+      properties: propertiesIn(replica, id),
       updated: 0,
     });
     for (const child of children) visit(child, id);
@@ -176,6 +200,7 @@ function reuse(previous: Item | undefined, next: Item): Item {
     previous.parent === next.parent &&
     previous.collapsed === next.collapsed &&
     previous.completed === next.completed &&
+    sameProperties(previous.properties, next.properties) &&
     previous.children.length === next.children.length &&
     previous.children.every((child, i) => child === next.children[i]);
   return same ? previous : next;

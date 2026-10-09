@@ -71,8 +71,16 @@ list.addEventListener("click", (event) => {
   if (option) choose(Number(option.dataset.index));
 });
 
+/** A tap that opened the palette (the toolbar acts on pointerup) ends in a click on the backdrop; only a press that began there closes it. */
+let pressedOnBackdrop = false;
+
+dialog.addEventListener("pointerdown", (event) => {
+  pressedOnBackdrop = event.target === dialog;
+});
+
 dialog.addEventListener("click", (event) => {
-  if (event.target === dialog) dismiss();
+  if (event.target === dialog && pressedOnBackdrop) dismiss();
+  pressedOnBackdrop = false;
 });
 
 function refresh(): void {
@@ -127,4 +135,7 @@ function restoreCaret(): void {
   select(saved.editor, saved.start, saved.end);
 }
 
-dialog.addEventListener("close", restoreCaret);
+/** The close event comes a task later; when a choice opened the palette again for a next step, the caret stays put. */
+dialog.addEventListener("close", () => {
+  if (!dialog.open) restoreCaret();
+});

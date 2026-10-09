@@ -32,7 +32,7 @@ export function loadDoc(): Doc | null {
 export function parseDoc(raw: string): Doc {
   const parsed = JSON.parse(raw) as Doc;
   if (!parsed?.items?.[ROOT]) throw new Error("not an outline: no root item");
-  return parsed;
+  return { items: Object.fromEntries(Object.entries(parsed.items).map(([id, item]) => [id, { ...item, properties: item.properties ?? {} }])) };
 }
 
 let pendingSave: number | undefined;

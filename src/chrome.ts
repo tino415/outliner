@@ -13,6 +13,7 @@ import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from 
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
 import { bindBoard, boardShown, toggleBoard } from "./board";
+import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
@@ -25,6 +26,7 @@ export function bindChrome(): void {
   endSelectionWhenSomethingTakesFocus();
   bindColumnCells();
   bindBoard();
+  bindPropertyChips();
 
   window.addEventListener("hashchange", showZoom);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
@@ -265,6 +267,7 @@ const toolbarActions: Record<string, keyof typeof actions> = {
   "move-down": "moveDown",
   complete: "complete",
   note: "toggleNote",
+  property: "setProperty",
   done: "blur",
 };
 
@@ -325,6 +328,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   duplicate: (c) => actions.duplicate(c),
   move: (c) => actions.moveToPicker(c),
   attach: (c) => actions.attachFile(c),
+  property: (c) => actions.setProperty(c),
   private: (c) => actions.makePrivate(c),
   copy: (c) => {
     copyItems([c.id]);
@@ -333,7 +337,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   delete: (c) => actions.deleteItem(c),
 };
 
-const itemActionsThatType = new Set(["note", "move"]);
+const itemActionsThatType = new Set(["note", "move", "property"]);
 
 function bindItemMenu(): void {
   $("item-menu").addEventListener("click", (event) => {

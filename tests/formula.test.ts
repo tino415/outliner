@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT, setNote } from "../src/model";
+import { Doc, ItemId, ROOT } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { columnCells, declaredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
@@ -149,8 +150,8 @@ describe("computed columns, smaller fixes", () => {
   });
 
   it("computes before() over thousands of siblings in linear time", () => {
-    const rows = Array.from({ length: 3000 }, (_, i) => `  task ${i} | :effort: 10m`);
-    const doc = outline(["Day | :start: 9:00; :columns: effort start{=clock(parent.start + before(effort))}", ...rows].join("\n"));
+    const rows = Array.from({ length: 3000 }, (_, i) => `  - task ${i}\n    :effort: 10m`);
+    const doc = parseIndentedText(["- Day", "  :start: 9:00", "  :columns: effort start{=clock(parent.start + before(effort))}", ...rows].join("\n"));
     const started = performance.now();
     const cells = column(doc, "Day", "start");
     expect(performance.now() - started).toBeLessThan(400);

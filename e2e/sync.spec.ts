@@ -104,6 +104,26 @@ test("the CLI and the app see each other's changes", async ({ browser }) => {
   expect(shown.output).toBe("- Inbox\n  - ~~from the CLI~~");
 });
 
+test("a property set from the CLI shows as a chip, and one set in the app reaches the CLI", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
+  expect((await run(["set", "Soup", "kcal", "250 kcal"], env)).code).toBe(0);
+  await syncNow(one);
+  await expect(row(one, "Soup").locator(".prop-chip")).toHaveText("kcal 250 kcal");
+  await clickEnd(one, "Soup");
+  await one.keyboard.press("ControlOrMeta+;");
+  await one.keyboard.type("effort");
+  await one.keyboard.press("Enter");
+  await one.keyboard.type("15m");
+  await one.keyboard.press("Enter");
+  await expect(row(one, "Soup").locator(".prop-chip")).toHaveText(["effort 15m", "kcal 250 kcal"]);
+  await synced(one);
+  const shown = JSON.parse((await run(["show", "--json"], env)).output);
+  expect(shown.children[0].properties).toEqual({ kcal: "250 kcal", effort: "15m" });
+});
+
 test("a server whose items were all deleted takes this device's outline instead of an empty one", async ({ browser }) => {
   const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
   const id = (await run(["add", "test item"], env)).output;

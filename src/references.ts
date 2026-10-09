@@ -1,5 +1,5 @@
-import { Doc, ItemId, ROOT } from "./model";
-import { privateKeyOf, withoutCode } from "./notes";
+import { Doc, ItemId, ROOT, privateKeyOf } from "./model";
+import { withoutCode } from "./notes";
 
 /*
  * References between items (doc/adr/0024), written as org links:
@@ -27,7 +27,7 @@ export function privateHolderOf(doc: Doc, target: string): ItemId | null {
   const parts = target.slice(3).split("~");
   for (let length = parts.length - 1; length > 0; length--) {
     const holder = parts.slice(0, length).join("~");
-    if (doc.items[holder] && privateKeyOf(doc.items[holder].note) !== null) return holder;
+    if (doc.items[holder] && privateKeyOf(doc.items[holder]) !== null) return holder;
   }
   return null;
 }

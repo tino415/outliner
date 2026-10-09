@@ -1,0 +1,50 @@
+import { expect, test } from "@playwright/test";
+import { caret, clickEnd, editor, freshOutline, row } from "./helpers";
+
+test("Ctrl-; sets a property by key and value, and the caret stays where it was", async ({ page }, info) => {
+  await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
+  await clickEnd(page, "Soup");
+  await page.keyboard.press("ControlOrMeta+;");
+  await expect(page.locator("#palette li").first()).toHaveText("kcal");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#palette li").first()).toHaveText("300 kcal");
+  await page.keyboard.type("250 kcal");
+  await expect(page.locator("#palette li").first()).toHaveText("Set to 250 kcal");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 250 kcal");
+  expect(await caret(page)).toEqual({ text: "Soup", offset: 4 });
+  await expect(row(page, "Soup").locator(".note")).toBeHidden();
+  await page.screenshot({ path: `screenshots/${info.project.name}-properties.png` });
+});
+
+test("a new key is offered as typed", async ({ page }) => {
+  await freshOutline(page, "Task");
+  await clickEnd(page, "Task");
+  await page.keyboard.press("ControlOrMeta+;");
+  await page.keyboard.type("effort");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("45m");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Task").locator(".prop-chip")).toHaveText("effort 45m");
+});
+
+test("a click on a chip changes or removes its value", async ({ page }) => {
+  await freshOutline(page, "Task | :effort: 1h");
+  await row(page, "Task").locator(".prop-chip").click();
+  await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "effort: 1h");
+  await page.keyboard.type("2h");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Task").locator(".prop-chip")).toHaveText("effort 2h");
+  await row(page, "Task").locator(".prop-chip").click();
+  await page.keyboard.type("remove");
+  await page.locator("#palette li", { hasText: "Remove effort" }).click();
+  await expect(row(page, "Task").locator(".prop-chip")).toHaveCount(0);
+  await expect(editor(page, "Task")).toBeVisible();
+});
+
+test("settings of a page show as muted chips under its title", async ({ page }) => {
+  await freshOutline(page, "Plan | :columns: effort\n  Task | :effort: 1h");
+  await row(page, "Plan").locator(".bullet").click();
+  await expect(page.locator("#title-props .prop-chip.setting")).toHaveText("columns effort");
+  await expect(row(page, "Task").locator(".prop-chip")).toHaveCount(0);
+});

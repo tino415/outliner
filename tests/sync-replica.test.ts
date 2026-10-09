@@ -12,6 +12,8 @@ import {
   outdent,
   remove,
   setFlags,
+  setItemProperty,
+  setNote,
   setText,
   split,
 } from "../src/model";
@@ -106,6 +108,23 @@ describe("concurrent edits", () => {
     two.receive(one.outbox);
     expect(shape(one.doc)).toBe(shape(two.doc));
     expect(shape(one.doc)).toBe("\n  a from one\n  b from two\n  c from two");
+  });
+
+  it("keeps a property set on one device and the note or another property edited on the other", () => {
+    const shared = seedChanges("a");
+    const one = new Device(new Clock("one"), shared);
+    const two = new Device(new Clock("two"), shared);
+    const a = one.doc.items[ROOT].children[0];
+    one.edit((doc) => setItemProperty(doc, a, "effort", "1h"));
+    two.edit((doc) => setItemProperty(setNote(doc, a, "written on two"), a, "kcal", "300 kcal"));
+    one.receive(two.outbox);
+    two.receive(one.outbox);
+    for (const device of [one, two]) {
+      expect(device.doc.items[a]).toMatchObject({ note: "written on two", properties: { effort: "1h", kcal: "300 kcal" } });
+    }
+    two.edit((doc) => setItemProperty(doc, a, "effort", ""));
+    one.receive(two.outbox);
+    expect(one.doc.items[a].properties).toEqual({ kcal: "300 kcal" });
   });
 
   it("lets the later edit of the same text win on both devices", () => {

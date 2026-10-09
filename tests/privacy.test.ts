@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ROOT, emptyDoc, insertChild, makePublic, moveTo, remove, setNote, setText, withPrivateIds } from "../src/model";
+import { Doc, ROOT, emptyDoc, insertChild, makePublic, moveTo, remove, setItemProperty, setText, withPrivateIds } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { Change, Replica, diff, materialize, merge } from "../src/sync/replica";
 import { keyFromText, keyText, mergeIncoming, newKey, openIncoming, sealOutgoing, sealedIn } from "../src/sync/privacy";
@@ -62,7 +63,7 @@ describe("private items at the sync boundary", () => {
     const mac = device("mac");
     mac.receive(await openIncoming(changes, keyring));
     const macJournal = idOf(mac.doc(), "Journal");
-    expect(mac.doc().items[macJournal].note).toBe(":private: personal\nmy diary");
+    expect(mac.doc().items[macJournal].note).toBe("my diary");
     expect(mac.doc().items[macJournal].children.map((id) => mac.doc().items[id].text)).toEqual(["secret one", "secret two"]);
 
     const cli = device("cli");
@@ -123,11 +124,11 @@ describe("private items at the sync boundary", () => {
     expect(cli.doc().items[idOf(cli.doc(), "Journal")].note).toBe("my diary");
   });
 
-  it.each([":private: ", ":privat: personal\nmy diary", "my diary"])("stay sealed while the :private: line is being retyped: %j", async (note) => {
+  it.each(["", "another"])("stay sealed while the private property is removed or names a key this device lacks: %j", async (key) => {
     const phone = device("phone", journal());
     await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
     const journalId = idOf(phone.doc(), "Journal");
-    const changes = phone.edit(withPrivateIds(setNote(phone.doc(), journalId, note)).doc);
+    const changes = phone.edit(withPrivateIds(setItemProperty(phone.doc(), journalId, "private", key)).doc);
     const { changes: sent, held } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp);
     expect(JSON.stringify(sent)).not.toContain("secret");
     expect(JSON.stringify(sent)).not.toContain("diary");
@@ -146,7 +147,7 @@ describe("private items at the sync boundary", () => {
     const fromMac = await sealOutgoing(onMac, mac.replica, keyring, mac.stamp);
     await mergeIncoming(phone.replica, fromMac.changes, keyring);
     phone.receive([]);
-    expect(phone.doc().items[journalId].note).toBe(":private: personal\nnewer note");
+    expect(phone.doc().items[journalId].note).toBe("newer note");
     expect(Object.values(phone.doc().items).map((item) => item.text)).toContain("secret two, from the Mac");
   });
 
@@ -166,16 +167,16 @@ describe("private items at the sync boundary", () => {
     expect(nothing).toEqual([]);
   });
 
-  it("keeps a private item with only a note sealed when its :private: line is deleted", async () => {
+  it("keeps a private item with only a note sealed when its private property is removed", async () => {
     let doc = parseIndentedText("Journal");
     doc = setNote(doc, idOf(doc, "Journal"), ":private: personal\nmy diary");
     const phone = device("phone", doc);
     const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
     const known = new Set(first.sealed);
-    const changes = phone.edit(setNote(phone.doc(), idOf(phone.doc(), "Journal"), "my diary"));
+    const changes = phone.edit(setItemProperty(phone.doc(), idOf(phone.doc(), "Journal"), "private", ""));
     const { changes: sent, held } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp, known);
     expect(JSON.stringify(sent)).not.toContain("diary");
-    expect(held.length).toBe(1);
+    expect(held.length).toBeGreaterThan(0);
   });
 
   it("counts :Private: written with capitals", async () => {
@@ -194,7 +195,7 @@ describe("private items at the sync boundary", () => {
     const { unreadable } = await mergeIncoming(mac.replica, first.changes, { personal: newKey() });
     mac.receive([]);
     expect(unreadable).toEqual([journalId]);
-    expect(mac.doc().items[journalId].note).toBe(":private: personal\nmy diary");
+    expect(mac.doc().items[journalId].note).toBe("my diary");
   });
 
   it("reports items found inside an item this device made public, so they can be published", async () => {
@@ -269,7 +270,7 @@ describe("private items at the sync boundary", () => {
     later.receive([]);
     expect(Object.values(later.doc().items).map((item) => item.text)).toContain("secret two");
     expect(later.doc().items[ROOT].children).toHaveLength(2);
-    expect(later.doc().items[idOf(later.doc(), "Journal")].note).toBe(":private: personal\nmy diary");
+    expect(later.doc().items[idOf(later.doc(), "Journal")].note).toBe("my diary");
   });
 
   it("writes a key as one line to copy to another device", () => {

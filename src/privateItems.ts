@@ -1,6 +1,5 @@
 import { $, commitAndRender, doc } from "./app";
-import { ItemId, makePublic, setNote } from "./model";
-import { privateKeyOf, setProperty } from "./notes";
+import { ItemId, makePublic, privateKeyOf, setItemProperty } from "./model";
 import { PaletteOption, openPalette } from "./palette";
 import { addKey, keys } from "./keyring";
 import { keyFromText, keyText, newKey } from "./sync/privacy";
@@ -65,7 +64,7 @@ interface KeyChoice extends PaletteOption {
 
 /** Asks which key to seal the item with, or makes it public again. */
 export function choosePrivacy(id: ItemId): void {
-  const current = privateKeyOf(doc().items[id].note);
+  const current = privateKeyOf(doc().items[id]);
   openPalette<KeyChoice>({
     placeholder: "Make private with the key…",
     hint: "The item stays readable; its note and everything under it are encrypted when synced",
@@ -79,7 +78,7 @@ export function choosePrivacy(id: ItemId): void {
     choose: ({ key }) => {
       if (key && !keys()[key]) addKey(key, newKey());
       if (!key) forgetPrivate(id);
-      commitAndRender(key ? setNote(doc(), id, setProperty(doc().items[id].note, "private", key)) : makePublic(doc(), id), { id, offset: 0 });
+      commitAndRender(key ? setItemProperty(doc(), id, "private", key) : makePublic(doc(), id), { id, offset: 0 });
       toast(key ? `Private with the key ${key}. Copy the key to your other devices in ⋯ → Private keys.` : "Public again");
     },
   });

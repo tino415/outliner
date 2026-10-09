@@ -1,6 +1,6 @@
 import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
-import { Doc, ItemId, ROOT, ViewFilter, isDescendant, withPrivateIds } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant, liftNoteProperties, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
 import { SearchResult } from "./search";
@@ -20,6 +20,7 @@ export const $ = <T extends HTMLElement>(id: string) => document.getElementById(
 export const ui = {
   crumbs: $("crumbs"),
   title: $("title"),
+  titleProps: $("title-props"),
   titleNote: $("title-note"),
   tree: $<HTMLUListElement>("tree"),
   board: $("board"),
@@ -81,10 +82,17 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
+  liftPropertiesWrittenInNotes();
   bindAttachments(syncEndpoint);
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();
   captureFromAddress();
+}
+
+/** Properties written as `:key: value` note lines, before they had a field of their own or by an older build, become properties (doc/adr/0032). */
+function liftPropertiesWrittenInNotes(): void {
+  const lifted = liftNoteProperties(doc());
+  if (lifted !== doc()) commitAndRender(lifted, null);
 }
 
 // ---- changing the document ------------------------------------------------

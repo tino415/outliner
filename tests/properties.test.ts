@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT, setNote } from "../src/model";
+import { Doc, ItemId, ROOT, setItemProperty } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import {
   columnCells,
@@ -9,7 +10,7 @@ import {
   parseAmount,
   parseColumns,
 } from "../src/properties";
-import { propertiesOf, setProperty } from "../src/notes";
+import { propertiesOf, splitPropertyLines } from "../src/notes";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -39,26 +40,28 @@ describe("property lines", () => {
     expect([...propertiesOf("```yaml\n:key: in code\n```\n:real: 1")]).toEqual([["real", "1"]]);
   });
 
-  it("leaves a property-looking line inside a code block alone when setting the property", () => {
-    const written = setProperty(":effort: 1h\n```\n:effort: 5h\n```", "effort", "2h");
-    expect(propertiesOf(written).get("effort")).toBe("2h");
-    expect(written).toContain("```\n:effort: 5h\n```");
+  it("lifts property lines out of a note, leaving code blocks and the other lines alone", () => {
+    const { properties, rest } = splitPropertyLines("text\n:Effort: 1h\n```\n:effort: 5h\n```\nmore\n:effort: 2h\n");
+    expect([...properties]).toEqual([["effort", "2h"]]);
+    expect(rest).toBe("text\n```\n:effort: 5h\n```\nmore");
+  });
+});
+
+describe("properties of an item", () => {
+  const base = parseIndentedText("item");
+  const id = base.items[ROOT].children[0];
+
+  it("sets, changes and removes one property, keys in lower case", () => {
+    const set = setItemProperty(base, id, "Effort", " 2h ");
+    expect(set.items[id].properties).toEqual({ effort: "2h" });
+    expect(setItemProperty(set, id, "effort", "2h")).toBe(set);
+    expect(setItemProperty(set, id, "effort", "3h").items[id].properties).toEqual({ effort: "3h" });
+    expect(setItemProperty(set, id, "effort", "").items[id].properties).toEqual({});
   });
 
-  it("does not write a property into a code block that only shows one", () => {
-    expect(propertiesOf(setProperty("```\n:effort: 5h\n```", "effort", "2h")).get("effort")).toBe("2h");
-  });
-
-  it("rewrites, appends and removes a property without touching other lines", () => {
-    expect(setProperty("", "effort", "2h")).toBe(":effort: 2h");
-    expect(setProperty("text\n:effort: 1h", "Effort", "3h")).toBe("text\n:Effort: 3h");
-    expect(setProperty("text", "effort", "1h")).toBe("text\n:effort: 1h");
-    expect(setProperty("text\n:effort: 1h\nmore", "effort", "")).toBe("text\nmore");
-  });
-
-  it("rewrites the line whose value is the one in effect when a key is written twice", () => {
-    const note = setProperty(":effort: 1h\n:effort: 2h", "effort", "4h");
-    expect(propertiesOf(note).get("effort")).toBe("4h");
+  it("takes typed property lines from the note when it is left", () => {
+    const typed = setNote(base, id, "remember\n:kcal: 300 kcal");
+    expect(typed.items[id]).toMatchObject({ note: "remember", properties: { kcal: "300 kcal" } });
   });
 });
 

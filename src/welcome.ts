@@ -15,7 +15,7 @@ Welcome to your outline
   Search with **/** or Ctrl F, or click a tag like #ideas
   **Ctrl K** jumps to any item by name
   Press **?** for every shortcut
-  Write :calories: 350 or :effort: 2h in a note, then ⋯ → Columns adds them up on every parent
+  **Ctrl ;** sets a property like calories: 350 or effort: 2h; ⋯ → Columns then adds them up on every parent
   Ready to start? The ⋯ menu has **Clear this page**
 Things to try
   Plan the week #planning
