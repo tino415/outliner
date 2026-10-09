@@ -90,7 +90,7 @@ describe("attachments", () => {
   const bytes = new TextEncoder().encode("a small screenshot");
   const hash = createHash("sha256").update(bytes).digest("hex");
   const auth = { Authorization: `Bearer ${token}` };
-  const put = (name: string, body: Uint8Array, headers: Record<string, string> = auth) =>
+  const put = (name: string, body: Uint8Array<ArrayBuffer>, headers: Record<string, string> = auth) =>
     fetch(`${base}/files/${name}`, { method: "PUT", headers: { "Content-Type": "image/png", ...headers }, body });
 
   it("stores a file under its SHA-256 and hands it back with its type", async () => {
