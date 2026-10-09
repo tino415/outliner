@@ -31,6 +31,16 @@ podman compose exec app npx playwright test         # desktop Chromium, phone, W
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.
 
+## Keyboard
+
+Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
+with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
+it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
+P property, K kind, L link, A attach, X private, M move to, D duplicate,
+B board, C columns, N capture, and J again to jump to an item. Pausing
+after it shows what can follow. The Alt-Shift letters do the same until
+the next release; ? lists every shortcut.
+
 ## Properties and columns
 
 An item's properties are `key: value` pairs such as `calories: 350 kcal`,
@@ -42,7 +52,7 @@ asks for a key, then a value, offering the ones in use; a click on a chip
 changes or removes it. Each property syncs on its own. Typing a line
 `:calories: 350 kcal` into a note still works: it becomes a property when
 the note is left. Exports write properties as such lines, as org mode does.
-⋯ → Columns (Alt-Shift-C) shows the page's properties as columns, each
+⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
 roll up, put a `columns` property on the page, as in org mode:
 
@@ -68,7 +78,7 @@ Each item then starts when the items above it are done, counted from the
 parent's start. An item with its own `:start:` keeps it; the items after
 it still count from the parent's start.
 A formula that cannot be computed shows `error`, the reason on hover.
-⋯ → Formula help (or Ctrl-K, `>formula`) lists the syntax below, with
+⋯ → Formula help (or Ctrl-K, `formula`) lists the syntax below, with
 example pages it adds to the current page.
 Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
@@ -81,7 +91,7 @@ in different units do not add.
 
 ## Boards
 
-Alt-Shift-B (or ⋯ → Board) shows the page as a Kanban board: its children
+Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children
 are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
 property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item;
@@ -93,7 +103,7 @@ it to the next column. The buttons add cards and columns.
 An item that starts with one to three capitalised words of letters and a
 colon, as `Question: …` or `Needs you: …`, shows them as a dark badge
 (doc/adr/0027). Typing at the start of an item offers the kinds in use;
-Alt-Shift-K sets or removes the kind from anywhere in the item and leaves
+Ctrl-J K sets or removes the kind from anywhere in the item and leaves
 the caret where it was. A click on a badge searches for it. The text stays
 plain, so the CLI and search read `Question:` as written.
 
@@ -108,14 +118,14 @@ Alt-Shift-Enter adds a first child to any item.
 
 ## Links between items
 
-Type `[[` or press Alt-Shift-L to link to another item: it writes
+Type `[[` or press Ctrl-J L to link to another item: it writes
 `[[id:…][label]]`, as org mode does (doc/adr/0024). `[[Some text]]` links to
 the first item with that text. A click follows a link; a zoomed item lists
 what links to it under its title.
 
 ## Attachments
 
-Paste an image into an item, drop files on it, or press Alt-Shift-A (also
+Paste an image into an item, drop files on it, or press Ctrl-J A (also
 in the item menu) to attach files (doc/adr/0028). Each becomes a line in
 the note, `![glitch.png](att:<sha256>)`; images show as pictures. Files are
 kept in the browser and uploaded to the sync server on the next sync. From
@@ -128,10 +138,10 @@ bin/outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
 
 ## Private items
 
-Alt-Shift-P (or Make private… in the item menu) sets the item's `private`
+Ctrl-J X (or Make private… in the item menu) sets the item's `private`
 property to a key: its note, properties and everything under it are
-encrypted with that key before they are synced (doc/adr/0029). The headline stays readable.
-Devices without the key, the server and the CLI see only the headline and
+encrypted with that key before they are synced (doc/adr/0029). The
+headline stays readable. Devices without the key, the server and the CLI see only the headline and
 a lock; the CLI refuses to write into it. Keys live in each browser: ⋯ →
 Private keys makes one and shows it as a line to copy to your other
 devices, where Add opens what is already there. There is no recovery: keep
@@ -168,7 +178,7 @@ has the key `trust` (Make it trusted, then copy it with ⋯ → Private keys).
 
 ## Capture
 
-Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving
+Ctrl-J N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving
 the page (doc/adr/0023). Any item with a `:capture:` property is a template,
 named by its text:
 

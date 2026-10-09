@@ -3,12 +3,12 @@ import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
 import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml } from "./formulaHelp";
-import { Command, Reach, bindingFor, describeKeys, keyCommands } from "./keys";
+import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlone, isPrefix, keyCommands, keysAfterPrefix, prefixLabel, sequenceAfterPrefix } from "./keys";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
-import { jumpToItem, setQuery, showZoom, zoomTo } from "./navigation";
+import { searchEverything, setQuery, showZoom, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
@@ -50,7 +50,9 @@ export function bindChrome(): void {
 // ---- keys that work everywhere ---------------------------------------------------
 
 export const globalActions = {
-  jump: () => jumpToItem(paletteCommands()),
+  jump: () => searchEverything(paletteCommands()),
+  jumpToItem: () => searchEverything(paletteCommands(), "Items"),
+  runCommand: () => searchEverything(paletteCommands(), "Commands"),
   search: () => {
     ui.search.focus();
     ui.search.select();
@@ -110,6 +112,7 @@ function reaches(reach: Reach, target: FocusTarget): boolean {
 }
 
 function bindGlobalKeys(): void {
+  document.addEventListener("keydown", (event) => runPrefixedKeys(event), true);
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
     const target = focusTarget(event.target);
@@ -121,6 +124,69 @@ function bindGlobalKeys(): void {
     const binding = bindingFor(event, "global");
     if (binding && reaches(binding.reach, target) && binding.run() !== false) event.preventDefault();
   });
+}
+
+// ---- the prefix key: ⌘J / Ctrl-J, then a letter ------------------------------------------
+
+let waitingAfterPrefix = false;
+let panelTimer: number | undefined;
+
+function runPrefixedKeys(event: KeyboardEvent): void {
+  if (event.isComposing || (waitingAfterPrefix && isModifierAlone(event))) return;
+  if (!waitingAfterPrefix && !(isPrefix(event) && focusTarget(event.target) !== "overlay")) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (!waitingAfterPrefix) return waitAfterPrefix();
+  stopWaitingAfterPrefix();
+  if (event.key !== "Escape") runSequence(sequenceAfterPrefix(event), event.target);
+}
+
+function waitAfterPrefix(): void {
+  waitingAfterPrefix = true;
+  panelTimer = window.setTimeout(showKeysAfterPrefix, 400);
+}
+
+function stopWaitingAfterPrefix(): void {
+  waitingAfterPrefix = false;
+  window.clearTimeout(panelTimer);
+  prefixPanel().hidden = true;
+}
+
+function runSequence(keys: string, target: EventTarget | null): void {
+  const editor = editorOf(document.activeElement);
+  const forItem = bindingForKeys(keys, "editor");
+  if (forItem && editor) {
+    forItem.run(editorContext(editor));
+    return;
+  }
+  const forPage = bindingForKeys(keys, "global");
+  if (forPage && reaches(forPage.reach, focusTarget(target))) forPage.run();
+  else if (forItem) toast(`${forItem.label} works while editing an item`);
+  else toast(`Nothing follows ${isMac ? "⌘J" : "Ctrl J"} with ${keys.slice(keys.indexOf(" ") + 1)}; pause after ${isMac ? "⌘J" : "Ctrl J"} to see what does`);
+}
+
+function showKeysAfterPrefix(): void {
+  const editing = Boolean(editorOf(document.activeElement));
+  const panel = prefixPanel();
+  panel.innerHTML =
+    `<div class="prefix-title">${prefixLabel()} then</div>` +
+    keysAfterPrefix()
+      .map(({ key, label, needsItem }) => `<div class="prefix-key${needsItem && !editing ? " unavailable" : ""}">${key}<span>${escape(label)}</span></div>`)
+      .join("");
+  panel.hidden = false;
+}
+
+function prefixPanel(): HTMLElement {
+  let panel = document.getElementById("prefix-keys");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "prefix-keys";
+    panel.className = "prefix-keys";
+    panel.setAttribute("role", "status");
+    panel.hidden = true;
+    document.body.append(panel);
+  }
+  return panel;
 }
 
 function runSelectionKey(event: KeyboardEvent): boolean {
@@ -153,7 +219,7 @@ function bindSearchBox(): void {
 const menuActions: Record<string, () => void> = {
   jump: () => {
     ui.menu.hidePopover();
-    jumpToItem(paletteCommands());
+    searchEverything(paletteCommands());
   },
   capture: () => {
     ui.menu.hidePopover();

@@ -89,18 +89,18 @@ const bindings: Binding[] = [
   editor(["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
   editor(["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
   editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
-  editor(["Alt+Shift+d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
-  editor(["Alt+Shift+m"], "Move item to…", (c) => actions.moveToPicker(c)),
+  editor(["Mod+j d", "Mod+Shift+d", "Alt+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
+  editor(["Mod+j m", "Alt+Shift+m"], "Move item to…", (c) => actions.moveToPicker(c)),
   editor(["Mod+b"], "Bold", (c) => actions.bold(c)),
   editor(["Mod+i"], "Italic", (c) => actions.italic(c)),
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
   editor(["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
-  editor(["Alt+Shift+t"], "Add a tag", (c) => actions.addTag(c)),
-  editor(["Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
-  editor(["Alt+Shift+k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
-  editor(["Alt+Shift+l"], "Link to an item", (c) => actions.insertReference(c)),
-  editor(["Alt+Shift+a"], "Attach a file…", (c) => actions.attachFile(c)),
-  editor(["Alt+Shift+p"], "Make private…", (c) => actions.makePrivate(c)),
+  editor(["Mod+j t", "Alt+Shift+t"], "Add a tag", (c) => actions.addTag(c)),
+  editor(["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
+  editor(["Mod+j k", "Alt+Shift+k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
+  editor(["Mod+j l", "Alt+Shift+l"], "Link to an item", (c) => actions.insertReference(c)),
+  editor(["Mod+j a", "Alt+Shift+a"], "Attach a file…", (c) => actions.attachFile(c)),
+  editor(["Mod+j x", "Alt+Shift+p"], "Make private…", (c) => actions.makePrivate(c)),
   editor(["Mod+z"], "Undo", () => globalActions.undo()),
   editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   typing(["Escape"], "Stop editing", (c) => actions.blur(c)),
@@ -133,15 +133,17 @@ const bindings: Binding[] = [
   selection(["Mod+x"], () => selectionActions.cut()),
   selection(["Mod+a"], () => selectionActions.selectPage()),
 
-  global(["Mod+k"], "Jump to an item or run a command", "anywhere", () => globalActions.jump()),
+  global(["Mod+k"], "Search items and commands", "anywhere", () => globalActions.jump()),
+  global(["Mod+Shift+k"], "Run a command", "anywhere", () => globalActions.runCommand()),
+  global(["Mod+j j"], "Jump to an item", "anywhere", () => globalActions.jumpToItem()),
   global(["/"], "Search", "outsideFields", () => globalActions.search()),
   global(["Mod+f"], "Search", "anywhere", () => globalActions.search()),
   global(["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
   global(["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
   global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
-  global(["Alt+Shift+c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
-  global(["Alt+Shift+b"], "Show this page as a board", "anywhere", () => toggleBoard()),
-  global(["Alt+Shift+n"], "Capture…", "anywhere", () => globalActions.capture()),
+  global(["Mod+j c", "Alt+Shift+c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
+  global(["Mod+j b", "Alt+Shift+b"], "Show this page as a board", "anywhere", () => toggleBoard()),
+  global(["Mod+j n", "Alt+Shift+n"], "Capture…", "anywhere", () => globalActions.capture()),
   global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
@@ -205,7 +207,41 @@ function baseKey(event: KeyboardEvent): string {
   return event.key;
 }
 
+// ---- the prefix: ⌘J or Ctrl-J, then a key, as C-x in Emacs ----------------------------
+
+export const PREFIX = "Mod+j";
+
+export function isPrefix(event: KeyboardEvent): boolean {
+  return keyString(event) === PREFIX;
+}
+
+export function isModifierAlone(event: KeyboardEvent): boolean {
+  return ["Shift", "Control", "Meta", "Alt", "AltGraph", "CapsLock"].includes(event.key);
+}
+
+/** The prefix and the key pressed after it; holding ⌘ or Ctrl for that key too means the same, as C-x C-s does. */
+export function sequenceAfterPrefix(event: KeyboardEvent): string {
+  return `${PREFIX} ${keyString(event).replace(/^Mod\+/, "")}`;
+}
+
+/** What can follow the prefix, for the panel shown while it waits. */
+export function keysAfterPrefix(): { key: string; label: string; needsItem: boolean }[] {
+  return bindings.flatMap((binding) =>
+    binding.keys
+      .filter((keys) => keys.startsWith(`${PREFIX} `))
+      .map((keys) => ({ key: pretty(keys.slice(PREFIX.length + 1)), label: binding.label, needsItem: binding.context === "editor" })),
+  );
+}
+
+export function prefixLabel(): string {
+  return pretty(PREFIX);
+}
+
 function pretty(keys: string): string {
+  return keys.split(" ").map(prettyChord).join(" ");
+}
+
+function prettyChord(keys: string): string {
   return keys
     .split("+")
     .map((part) => {
