@@ -1,5 +1,5 @@
 import { Page, expect, test } from "@playwright/test";
-import { editor, expectOutline, freshOutline } from "./helpers";
+import { editor, expectOutline, freshOutline, row } from "./helpers";
 
 const PLUGIN = [
   "Tools | :plugin: tools",
@@ -43,3 +43,41 @@ test("a plugin runs only once a trusted device approves it, sandboxed and limite
   await expect(page.locator("#toast")).toContainText("can only reach the item it runs on");
   await expectOutline(page, "Tools\nHELLO");
 });
+
+const HELPER = [
+  "Helper | :plugin: helper",
+  "```js",
+  'outline.command("Hello", (item) => { outline.add(item, "Hello world") })',
+  'outline.command("Rate", async (item) => { const read = await outline.item(item); outline.toast("effort " + read.properties.effort); await outline.setProperty(item, "status", "rated") })',
+  'outline.command("Broken", () => { outline.setText("nope", "x") })',
+  'outline.command("Escalate", async (item) => outline.setProperty(item, "private", "mine"))',
+  "```",
+].join("; ");
+
+test("plugin calls take an item or its id, read and set properties, and report errors they were not awaited for", async ({ page }) => {
+  await freshOutline(page, `${HELPER}\ntask | :effort: 2h`);
+  await approveAll(page);
+
+  await runCommand(page, "task", "helper: hello");
+  await expectOutline(page, "Helper\ntask\n  Hello world");
+
+  await runCommand(page, "task", "helper: rate");
+  await expect(page.locator("#toast")).toContainText("helper: effort 2h");
+  await expect(row(page, "task").locator(".prop-chip")).toHaveText(["effort 2h", "status rated"]);
+
+  await runCommand(page, "task", "helper: broken");
+  await expect(page.locator("#toast")).toContainText("helper: no item nope");
+
+  await runCommand(page, "task", "helper: escalate");
+  await expect(page.locator("#toast")).toContainText("helper: a plugin cannot change the private setting");
+});
+
+async function approveAll(page: Page) {
+  await page.locator("#menu-button").click();
+  await page.getByRole("button", { name: "Plugins…" }).click();
+  const dialog = page.locator("#plugins-dialog");
+  await dialog.getByRole("button", { name: "Make it trusted" }).click();
+  await dialog.getByRole("button", { name: "Approve this code" }).click();
+  await expect(dialog).toContainText("Approved, running here");
+  await page.keyboard.press("Escape");
+}
