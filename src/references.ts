@@ -7,7 +7,7 @@ import { withoutCode } from "./properties";
  * `[[Some text]]` points at the first item with that text, as in Logseq.
  */
 
-const REFERENCE = /\[\[([^[\]\n]+)\](?:\[[^[\]\n]+\])?\]/g;
+const REFERENCE = /\[\[([^[\]\n]+)\](?:\[([^[\]\n]+)\])?\]/g;
 
 export function referenceTo(id: ItemId, text: string): string {
   const label = text.replace(/[[\]\n]/g, " ").replace(/\s+/g, " ").trim() || "Untitled";
@@ -19,6 +19,14 @@ export function resolveReference(doc: Doc, target: string): ItemId | null {
   const wanted = target.trim().toLowerCase();
   const found = inReadingOrder(doc).find((id) => doc.items[id].text.trim().toLowerCase() === wanted);
   return found ?? null;
+}
+
+export function linksAsLabels(doc: Doc, text: string): string {
+  return text.replace(REFERENCE, (_, target: string, label: string | undefined) => {
+    if (label) return label;
+    const found = resolveReference(doc, target);
+    return found ? doc.items[found].text : target;
+  });
 }
 
 /** Items whose text or note refers to `id`, in reading order. */

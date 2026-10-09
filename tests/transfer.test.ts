@@ -22,6 +22,29 @@ describe("export", () => {
   });
 });
 
+describe("links in exports", () => {
+  const doc = (() => {
+    const base = parseIndentedText("Garden\nSee [[id:GARDEN][the garden]] and [[Garden]]");
+    const [garden, see] = base.items[ROOT].children;
+    const linked = setFlags(base, see, { note: "also [[id:missing][gone]]\n```\n[[id:kept][raw]]\n```" });
+    return { ...linked, items: { ...linked.items, [see]: { ...linked.items[see], text: linked.items[see].text.replace("GARDEN", garden) } } };
+  })();
+
+  it("writes each link as its label in Markdown, and leaves code blocks alone", () => {
+    expect(exportMarkdown(doc, ROOT)).toBe("- Garden\n- See the garden and Garden\n  also gone\n  ```\n  [[id:kept][raw]]\n  ```\n");
+  });
+
+  it("writes each link as its label in OPML", () => {
+    const opml = exportOpml(doc, ROOT);
+    expect(opml).toContain('text="See the garden and Garden"');
+    expect(opml).toContain('_note="also gone&#10;```&#10;[[id:kept][raw]]&#10;```"');
+  });
+
+  it("keeps links raw when copying items, so pasting them back keeps the link", () => {
+    expect(subtreesAsText(doc, doc.items[ROOT].children)).toContain("[[id:");
+  });
+});
+
 describe("round trips", () => {
   it("keeps line breaks in OPML notes", () => {
     const base = parseIndentedText("item");

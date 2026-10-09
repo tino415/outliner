@@ -1,5 +1,7 @@
-import { Doc, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote } from "./model";
+import { Doc, Item, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote } from "./model";
 import { escape } from "./inline";
+import { linksAsLabels } from "./references";
+import { mapLinesOutsideCode } from "./properties";
 import { parseDoc } from "./storage";
 
 export function exportJson(doc: Doc): string {
@@ -8,7 +10,7 @@ export function exportJson(doc: Doc): string {
 
 export function exportOpml(doc: Doc, top: ItemId): string {
   const outline = (id: ItemId, depth: number): string => {
-    const item = doc.items[id];
+    const item = readable(doc, doc.items[id]);
     const pad = "  ".repeat(depth);
     const attributes = [
       `text="${attribute(item.text)}"`,
@@ -34,17 +36,22 @@ function attribute(text: string): string {
 }
 
 export function exportMarkdown(doc: Doc, top: ItemId): string {
-  return subtreesAsText(doc, doc.items[top].children) + "\n";
+  return subtreesAsText(doc, doc.items[top].children, readable) + "\n";
+}
+
+/** Links written as their labels, for readers outside the app; code blocks stay as written. */
+function readable(doc: Doc, item: Item): Item {
+  return { ...item, text: linksAsLabels(doc, item.text), note: mapLinesOutsideCode(item.note, (line) => linksAsLabels(doc, line)) };
 }
 
 /**
  * A Markdown list: completed items struck through, notes as indented lines
  * without a bullet. `parseIndentedText` reads the same shape back.
  */
-export function subtreesAsText(doc: Doc, roots: ItemId[]): string {
+export function subtreesAsText(doc: Doc, roots: ItemId[], written = (_: Doc, item: Item) => item): string {
   const lines: string[] = [];
   const walk = (id: ItemId, depth: number) => {
-    const item = doc.items[id];
+    const item = written(doc, doc.items[id]);
     const pad = "  ".repeat(depth);
     lines.push(`${pad}- ${item.completed ? `~~${item.text}~~` : item.text}`);
     for (const noteLine of item.note.split("\n").filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
