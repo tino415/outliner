@@ -1,5 +1,5 @@
 import { $, commitAndRender, doc } from "./app";
-import { ItemId, setNote } from "./model";
+import { ItemId, makePublic, setNote } from "./model";
 import { privateKeyOf, setProperty } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { addKey, keys } from "./keyring";
@@ -78,7 +78,7 @@ export function choosePrivacy(id: ItemId): void {
     },
     choose: ({ key }) => {
       if (key && !keys()[key]) addKey(key, newKey());
-      commitAndRender(setNote(doc(), id, setProperty(doc().items[id].note, "private", key)), { id, offset: 0 });
+      commitAndRender(key ? setNote(doc(), id, setProperty(doc().items[id].note, "private", key)) : makePublic(doc(), id), { id, offset: 0 });
       toast(key ? `Private with the key ${key}. Copy the key to your other devices in ⋯ → Private keys.` : "Public again");
     },
   });

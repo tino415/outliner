@@ -28,10 +28,17 @@ AES-GCM under the key, with the item's id as associated data. The server,
 the protocol and the CLI see an ordinary note.
 
 **A device with the key opens the sealed note back into fields**
-(`openIncoming`) and merges them by clock like any other change. Two
-devices editing different items inside a private item therefore both keep
-their edits; the sealed note's own last-writer-wins on the server does not
-lose them, because each device seals what it has merged.
+(`mergeIncoming`) and merges them by their own clocks like any other
+change. When what arrived lacks something the device has newer, it seals
+again, so two devices editing different items inside both end up with
+both edits, on the server too, although the server keeps only the latest
+sealed note.
+
+**An item stays private while its note has a `:private:` line, with any
+value, or it still holds items with its `~` ids.** Retyping or breaking the
+line therefore holds what is inside on the device (with a status message)
+instead of publishing it. Only Make public again, which gives everything
+inside fresh public ids, publishes it; so does moving an item out.
 
 **A device without the key keeps the sealed note.** The app shows the item
 with a locked line in place of the note, not editable; the CLI prints it
@@ -73,5 +80,12 @@ wrong.
   delete or move a private item, or overwrite its sealed note.
 - Nested private items are not supported: the inner one is sealed inside
   the outer one's note as text.
+- Undoing Make private while its first round trip is in flight can leave
+  the restored items blank, since the server already blanked their old
+  ids; redo, or retype them.
+- A review before release found six ways plaintext or edits could slip
+  through (retyping the line, an older seal's note winning, a seal
+  superseded on the server, parent cycles, text written before marking,
+  renamed ids); each has a test in tests/privacy.test.ts.
 - Keys sit in localStorage, readable by any script on the app's origin;
   plugins must not run there (doc/design/plugins-and-scripting.md).

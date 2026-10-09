@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ROOT, emptyDoc, setNote, setText, withPrivateIds } from "../src/model";
+import { Doc, ROOT, emptyDoc, makePublic, moveTo, setNote, setText, withPrivateIds } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 import { Change, Replica, diff, materialize, merge } from "../src/sync/replica";
-import { keyFromText, keyText, newKey, openIncoming, sealOutgoing, sealedIn } from "../src/sync/privacy";
+import { keyFromText, keyText, mergeIncoming, newKey, openIncoming, sealOutgoing, sealedIn } from "../src/sync/privacy";
 
 function idOf(doc: Doc, text: string) {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -113,12 +113,93 @@ describe("private items at the sync boundary", () => {
 
   it("publish everything inside when the item is made public again", async () => {
     const phone = device("phone", journal());
-    await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
-    const changes = phone.edit(setNote(phone.doc(), idOf(phone.doc(), "Journal"), "my diary"));
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const changes = phone.edit(makePublic(phone.doc(), idOf(phone.doc(), "Journal")));
     const { changes: sent } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp);
     const cli = device("cli");
+    cli.receive(first.changes);
     cli.receive(sent);
     expect(Object.values(cli.doc().items).map((item) => item.text)).toEqual(expect.arrayContaining(["secret one", "secret two"]));
+    expect(cli.doc().items[idOf(cli.doc(), "Journal")].note).toBe("my diary");
+  });
+
+  it.each([":private: ", ":privat: personal\nmy diary", "my diary"])("stay sealed while the :private: line is being retyped: %j", async (note) => {
+    const phone = device("phone", journal());
+    await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const journalId = idOf(phone.doc(), "Journal");
+    const changes = phone.edit(withPrivateIds(setNote(phone.doc(), journalId, note)).doc);
+    const { changes: sent, held } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp);
+    expect(JSON.stringify(sent)).not.toContain("secret");
+    expect(JSON.stringify(sent)).not.toContain("diary");
+    expect(held.length).toBeGreaterThan(0);
+  });
+
+  it("keep a newer note of the private item when an older seal arrives", async () => {
+    const phone = device("phone", journal());
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const mac = device("mac");
+    await mergeIncoming(mac.replica, first.changes, keyring);
+    mac.receive([]);
+    const journalId = idOf(phone.doc(), "Journal");
+    phone.edit(setNote(phone.doc(), journalId, ":private: personal\nnewer note"));
+    const onMac = mac.edit(setText(mac.doc(), idOf(mac.doc(), "secret two"), "secret two, from the Mac"));
+    const fromMac = await sealOutgoing(onMac, mac.replica, keyring, mac.stamp);
+    await mergeIncoming(phone.replica, fromMac.changes, keyring);
+    phone.receive([]);
+    expect(phone.doc().items[journalId].note).toBe(":private: personal\nnewer note");
+    expect(Object.values(phone.doc().items).map((item) => item.text)).toContain("secret two, from the Mac");
+  });
+
+  it("asks to seal again when a seal arrives without what this device has newer", async () => {
+    const phone = device("phone", journal());
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const mac = device("mac");
+    await mergeIncoming(mac.replica, first.changes, keyring);
+    mac.receive([]);
+    const onMac = mac.edit(setText(mac.doc(), idOf(mac.doc(), "secret one"), "secret one, from the Mac"));
+    await sealOutgoing(onMac, mac.replica, keyring, mac.stamp);
+    const onPhone = phone.edit(setText(phone.doc(), idOf(phone.doc(), "secret two"), "secret two, from the phone"));
+    const fromPhone = await sealOutgoing(onPhone, phone.replica, keyring, phone.stamp);
+    const { reseal } = await mergeIncoming(mac.replica, fromPhone.changes, keyring);
+    expect(reseal).toEqual([idOf(mac.doc(), "Journal")]);
+    const { reseal: nothing } = await mergeIncoming(phone.replica, fromPhone.changes, keyring);
+    expect(nothing).toEqual([]);
+  });
+
+  it("does not loop on a parent cycle left by crossing moves", async () => {
+    const replica: Replica = {};
+    merge(replica, [
+      { item: "a", field: "parent", value: "b", clock: "1" },
+      { item: "b", field: "parent", value: "a", clock: "1" },
+      { item: "a", field: "text", value: "x", clock: "2" },
+    ]);
+    const { changes } = await sealOutgoing([{ item: "a", field: "text", value: "x", clock: "2" }], replica, keyring, stamper("cycle"));
+    expect(changes).toHaveLength(1);
+  });
+
+  it("does not send what was written under an item before it was made private", async () => {
+    const base = parseIndentedText("Journal\n  written offline");
+    const phone = device("phone");
+    const before = phone.edit(base);
+    const made = withPrivateIds(setNote(base, idOf(base, "Journal"), ":private: personal")).doc;
+    const after = phone.edit(made);
+    const { changes } = await sealOutgoing([...before, ...after], phone.replica, keyring, phone.stamp);
+    expect(JSON.stringify(changes)).not.toContain("written offline");
+  });
+
+  it("blanks the old id of an item moved from one private item into another", async () => {
+    let doc = parseIndentedText("Journal\n  kept\nWork");
+    doc = withPrivateIds(setNote(doc, idOf(doc, "Journal"), ":private: personal")).doc;
+    const phone = device("phone", doc);
+    await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const kept = idOf(phone.doc(), "kept");
+    const out = phone.edit(withPrivateIds(moveTo(phone.doc(), kept, ROOT, 0)).doc);
+    await sealOutgoing(out, phone.replica, keyring, phone.stamp);
+    const publicId = idOf(phone.doc(), "kept");
+    const work = idOf(phone.doc(), "Work");
+    const into = phone.edit(withPrivateIds(moveTo(setNote(phone.doc(), work, ":private: personal"), publicId, work, 0)).doc);
+    const { changes } = await sealOutgoing(into, phone.replica, keyring, phone.stamp);
+    expect(changes).toContainEqual(expect.objectContaining({ item: publicId, field: "text", value: "" }));
   });
 
   it("finds the sealed notes in a replica to open once a key is added", async () => {
@@ -126,7 +207,8 @@ describe("private items at the sync boundary", () => {
     const { changes } = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
     const later = device("later");
     later.receive(await openIncoming(changes, {}));
-    later.receive(await openIncoming(sealedIn(later.replica), keyring));
+    await mergeIncoming(later.replica, sealedIn(later.replica), keyring);
+    later.receive([]);
     expect(Object.values(later.doc().items).map((item) => item.text)).toContain("secret two");
     expect(later.doc().items[ROOT].children).toHaveLength(2);
     expect(later.doc().items[idOf(later.doc(), "Journal")].note).toBe(":private: personal\nmy diary");
