@@ -75,6 +75,7 @@ export function bindEditorEvents(): void {
       clearFocusedRow();
     }
     const editor = editorOf(event.target);
+    if (editor && isNoteEditor(editor)) dropTrailingBlankLines(editor.dataset.id!);
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item) return;
     editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
@@ -190,6 +191,13 @@ function pickFiles(): Promise<File[]> {
     input.addEventListener("change", () => resolve([...(input.files ?? [])]));
     input.click();
   });
+}
+
+function dropTrailingBlankLines(id: ItemId): void {
+  const note = doc().items[id]?.note;
+  if (note === undefined) return;
+  const trimmed = note.replace(/(\n[ \t]*)+$/, "").replace(/^[ \t]+$/, "");
+  if (trimmed !== note) commitShownEdit(setNote(doc(), id, trimmed), id, null);
 }
 
 /**

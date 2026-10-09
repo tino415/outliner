@@ -474,3 +474,37 @@ test("on a Mac Ctrl-A and Ctrl-E in a note go to the start and end of the line",
   await page.keyboard.press("Escape");
   await expect(row(page, "item").locator(".note")).toHaveText("one\n>two<\nthree");
 });
+
+test("a note of only properties shown as columns takes no room, even with a blank line at its end", async ({ page }) => {
+  const item = (id: string, text: string, note: string, parent: string | null, children: string[]) => ({ id, text, note, parent, children, collapsed: false, completed: false, updated: 0 });
+  const doc = {
+    items: {
+      root: item("root", "Test", "", null, ["plan"]),
+      plan: item("plan", "Plan", ":columns: effort\n", "root", ["a", "b"]),
+      a: item("a", "Friday", ":effort: 1h\n", "plan", []),
+      b: item("b", "Saturday", ":effort: 2h", "plan", []),
+    },
+  };
+  await page.addInitScript((seed) => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "yes");
+    localStorage.clear();
+    localStorage.setItem("outliner-lab:doc:v1", seed);
+  }, JSON.stringify(doc));
+  await page.goto("./#/plan");
+  await expect(row(page, "Saturday")).toBeVisible();
+  const friday = (await row(page, "Friday").boundingBox())!.height;
+  const saturday = (await row(page, "Saturday").boundingBox())!.height;
+  expect(friday).toBe(saturday);
+});
+
+test("leaving a note drops the blank lines at its end", async ({ page }) => {
+  await freshOutline(page, "item");
+  await editor(page, "item").click();
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("a note");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  await expect.poll(() => row(page, "item").locator(".note").evaluate((note) => note.textContent)).toBe("a note");
+});

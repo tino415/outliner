@@ -122,7 +122,7 @@ function renderColumnsHead(): void {
 function noteShownAsColumns(note: string): boolean {
   if (!columns || note === "") return false;
   const keys = new Set(columns.columns.map((column) => column.key));
-  return note.split("\n").every((line) => keys.has(propertyLine(line)?.key ?? ""));
+  return note.split("\n").filter((line) => line.trim() !== "").every((line) => keys.has(propertyLine(line)?.key ?? ""));
 }
 
 /** A property already shown in a cell is not repeated in the note, unless the note is being edited. */
