@@ -14,7 +14,7 @@ import {
 } from "../src/model";
 import { exportJson, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems } from "../src/search";
-import { capture, captureTemplates } from "../src/capture";
+import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns, propertiesOf, setProperty } from "../src/properties";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
@@ -54,7 +54,7 @@ options:
   --before ITEM  add or move to just before ITEM, beside it
   --after ITEM   add or move to just after ITEM, beside it
   --note TEXT    a note for the item add creates
-  --template T   the capture template named T
+  --template T   the capture template named T, or with :key: T
   --set K=V      a property for capture; repeat for more
   --limit N      how many items find prints (default 20)
   --server URL   the sync server (default: $OUTLINE_SERVER)
@@ -155,7 +155,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       const text = args.join(" ");
       if (!text) throw new Error("capture needs some text");
       const templates = captureTemplates(doc);
-      const template = options.template ? templates.find((each) => each.name.toLowerCase() === options.template!.toLowerCase()) : templates[0];
+      const template = options.template ? templateNamed(templates, options.template) : templates[0];
       if (!template) throw new Error(`no capture template named ${options.template}; there are ${templates.map((each) => each.name).join(", ")}`);
       const result = capture(doc, template, text, propertiesFrom(options.set), new Date());
       await outline.save(result.doc);
@@ -204,6 +204,11 @@ async function changeItem(outline: Outline, args: string[], change: (doc: Doc, i
   if (id === ROOT) throw new Error("that is the top of the outline, not an item");
   await outline.save(change(outline.doc, id));
   return id;
+}
+
+function templateNamed(templates: Template[], wanted: string): Template | undefined {
+  const name = wanted.toLowerCase();
+  return templates.find((template) => template.name.toLowerCase() === name) ?? templates.find((template) => template.key === name);
 }
 
 function propertiesFrom(assignments: string[]): Record<string, string> {

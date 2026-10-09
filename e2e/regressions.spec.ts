@@ -331,6 +331,21 @@ test("the menu does not say the outline is stored only in this browser while it 
   }
 });
 
+test("inside a code block [[ and : are code, not a link picker or key completion", async ({ page }) => {
+  await freshOutline(page, "Garden\nsnippet | :kind: x; ```; ```");
+  await row(page, "snippet").locator(".note").click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("a = [[1]]");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(":k");
+  await expect(page.locator("#palette")).toBeHidden();
+  await expect(page.locator(".completion")).toBeHidden();
+  await expect(row(page, "snippet").locator(".note")).toHaveText(":kind: x\n```\na = [[1]]\n:k\n```");
+});
+
 test("jumping by typing an item's first word and Enter opens the item, not a command of that name", async ({ page }) => {
   await freshOutline(page, "Delete old photos\nother");
   await clickEnd(page, "other");

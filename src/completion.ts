@@ -1,5 +1,5 @@
 import { Doc } from "./model";
-import { propertiesOf } from "./properties";
+import { isInCode, propertiesOf, withoutCode } from "./properties";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
 import { insertText } from "./editing";
@@ -65,6 +65,7 @@ export function offerCompletion(target: HTMLElement, current: Doc): void {
 }
 
 function typedAt(before: string, inNote: boolean): Typed | null {
+  if (inNote && isInCode(before)) return null;
   const key = inNote ? KEY_BEING_TYPED.exec(before) : null;
   if (key) return { start: before.length - key[3].length - 1, prefix: key[3], finish: finishKey };
   const tag = TAG_BEING_TYPED.exec(before);
@@ -80,7 +81,7 @@ function keysIn(doc: Doc): string[] {
 }
 
 function tagsIn(doc: Doc): string[] {
-  return byUse(Object.values(doc.items).flatMap((item) => [...`${item.text}\n${item.note}`.matchAll(TAG)].map((match) => match[1])));
+  return byUse(Object.values(doc.items).flatMap((item) => [...`${item.text}\n${withoutCode(item.note)}`.matchAll(TAG)].map((match) => match[1])));
 }
 
 /** Most used first; a word written in several cases keeps its most common spelling. */

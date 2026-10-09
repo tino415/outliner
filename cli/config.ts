@@ -5,7 +5,8 @@ import { join } from "node:path";
 type Env = Record<string, string | undefined>;
 
 export function withConfigFile(env: Env): Env {
-  return { ...readConfig(configPath(env)), ...env };
+  const set = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== undefined && value !== ""));
+  return { ...env, ...readConfig(configPath(env)), ...set };
 }
 
 export function configPath(env: Env): string {
@@ -17,8 +18,9 @@ function readConfig(path: string): Env {
   try {
     return parseConfig(readFileSync(path, "utf8"));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
-    throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return {};
+    throw new Error(`cannot read ${path}: ${code ?? (error as Error).message}`);
   }
 }
 
@@ -36,5 +38,5 @@ function parseLine(line: string): [string, string] | undefined {
 
 function unquote(value: string): string {
   const quoted = /^(["'])(.*)\1$/.exec(value);
-  return quoted ? quoted[2] : value;
+  return quoted ? quoted[2] : value.replace(/\s+#.*$/, "");
 }

@@ -47,6 +47,15 @@ describe("capturing", () => {
     expect(subtreesAsText(doc, [idOf(doc, "Journal")])).toBe("- Journal\n  - 2026-10-09\n    - second\n    - first");
   });
 
+  it("does not file under a template whose name is its own target", () => {
+    const base = parseIndentedText("Inbox");
+    const doc = setNote(base, idOf(base, "Inbox"), ":capture: Inbox");
+    const [inbox] = captureTemplates(doc);
+    const result = capture(doc, inbox, "call mum", {}, DAY);
+    expect(result.target).not.toBe(idOf(doc, "Inbox"));
+    expect(subtreesAsText(result.doc, result.doc.items[ROOT].children)).toBe("- Inbox\n  :capture: Inbox\n- Inbox\n  - call mum");
+  });
+
   it("files into an Inbox it creates", () => {
     const result = capture(parseIndentedText("a"), INBOX, "call mum", {}, DAY);
     expect(result.doc.items[result.target].text).toBe("Inbox");

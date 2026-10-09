@@ -123,6 +123,12 @@ describe("computed columns, review round", () => {
     expect(row.get("b")?.text).toBe("error");
   });
 
+  it("reads a minus between a key and a number as subtraction; a hyphen joins words only", () => {
+    const doc = outline("P | :columns: effort left{=effort-15m} spent{=time-spent}\n  x | :effort: 1h; :time-spent: 20m");
+    expect(column(doc, "P", "left")).toEqual({ x: "45m" });
+    expect(column(doc, "P", "spent")).toEqual({ x: "20m" });
+  });
+
   it.each(["parent.start + 1h 30m", "effort + 1H", "price + 5 Kč"])("reads amounts written as property values are: %s", (source) => {
     expect(() => parseFormula(source)).not.toThrow();
   });

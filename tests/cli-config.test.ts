@@ -35,6 +35,26 @@ describe("CLI config file", () => {
     expect(env.OUTLINE_TOKEN).toBe("from-env");
   });
 
+  it("drops a comment after a value, but keeps a # inside one", () => {
+    expect(parseConfig("OUTLINE_SERVER=https://a.example  # the tailnet\nOUTLINE_TOKEN=ab#cd")).toEqual({
+      OUTLINE_SERVER: "https://a.example",
+      OUTLINE_TOKEN: "ab#cd",
+    });
+  });
+
+  it("is not overridden by a variable the environment sets to nothing", () => {
+    const configHome = mkdtempSync(join(tmpdir(), "outline-config-"));
+    mkdirSync(join(configHome, "outline"));
+    writeFileSync(join(configHome, "outline", "config"), "OUTLINE_SERVER=http://file\n");
+    expect(withConfigFile({ XDG_CONFIG_HOME: configHome, OUTLINE_SERVER: "" }).OUTLINE_SERVER).toBe("http://file");
+  });
+
+  it("says which file it could not read, instead of failing with a stack trace", () => {
+    const configHome = mkdtempSync(join(tmpdir(), "outline-config-"));
+    mkdirSync(join(configHome, "outline", "config"), { recursive: true });
+    expect(() => withConfigFile({ XDG_CONFIG_HOME: configHome })).toThrow(new RegExp(`^cannot read ${join(configHome, "outline", "config")}: EISDIR$`));
+  });
+
   it("is optional", () => {
     expect(withConfigFile({ XDG_CONFIG_HOME: "/nonexistent" })).toEqual({ XDG_CONFIG_HOME: "/nonexistent" });
   });

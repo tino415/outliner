@@ -105,6 +105,14 @@ describe("outline CLI", () => {
     await expect(outline('capture "x" --template nope')).rejects.toThrow(/no capture template named nope; there are Meal/);
   });
 
+  it("picks a capture template by its key letter too", async () => {
+    await outline('add "Meal" --note ":capture: Food"');
+    await outline("set Meal key m");
+    await outline('add "Idea" --note ":capture: Ideas"');
+    await outline('capture "Oats" --template m');
+    expect(await outline("show Food")).toBe("- Food\n  - Oats");
+  });
+
   it("reads indented lines from stdin", async () => {
     const ids = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n  - Tuesday\n- Notes"));
     expect(ids).toHaveLength(2);
