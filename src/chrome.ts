@@ -333,7 +333,7 @@ export function applyAppearance(): void {
 
 let toastTimer: number | undefined;
 
-export function toast(message: string, action?: { label: string; run: () => void }): void {
+export function toast(message: string, action?: { label: string; run: () => void }, { stays = false } = {}): void {
   window.clearTimeout(toastTimer);
   ui.toast.innerHTML = `<span>${escape(message)}</span>`;
   if (action) {
@@ -347,7 +347,7 @@ export function toast(message: string, action?: { label: string; run: () => void
     ui.toast.append(button);
   }
   ui.toast.hidden = false;
-  toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 5000);
+  if (!stays) toastTimer = window.setTimeout(() => (ui.toast.hidden = true), 5000);
 }
 
 export function toastWithUndo(message: string): void {
