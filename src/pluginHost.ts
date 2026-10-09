@@ -1,5 +1,6 @@
 import { $, commitAndRender, doc, state } from "./app";
 import { ItemId, insertChild, isDescendant, newChildIndex, setItemProperty, setNote, setText } from "./model";
+import { propertyKey } from "./notes";
 import { Plugin, TRUST_KEY, approvalOf, isApproved, pluginsIn } from "./plugins";
 import { addKey, keys } from "./keyring";
 import { newKey } from "./sync/privacy";
@@ -105,6 +106,9 @@ function answer(event: MessageEvent): void {
   }
 }
 
+/** Settings that would let a plugin seal items, start another plugin or vouch for one. */
+const GUARDED_SETTINGS = new Set(["private", "plugin", "approved"]);
+
 function perform(call: Call, plugin: Plugin): unknown {
   const active = call.run === null ? undefined : runs.get(call.run);
   const scope = active?.plugin === plugin.id ? active.target : undefined;
@@ -117,7 +121,15 @@ function perform(call: Call, plugin: Plugin): unknown {
   switch (call.method) {
     case "item": {
       const item = doc().items[reachable(call.args[0])];
-      return { id: item.id, text: item.text, note: item.note, children: item.children };
+      return { id: item.id, text: item.text, note: item.note, properties: { ...item.properties }, children: item.children };
+    }
+    case "setProperty": {
+      const id = reachable(call.args[0]);
+      const key = propertyKey(text(call.args[1]));
+      if (!key) throw new Error("a property key is up to 64 letters, digits, - or _");
+      if (GUARDED_SETTINGS.has(key)) throw new Error(`a plugin cannot change the ${key} setting`);
+      commitAndRender(setItemProperty(doc(), id, key, text(call.args[2])), null);
+      return null;
     }
     case "setText": {
       const id = reachable(call.args[0]);
@@ -159,12 +171,17 @@ function sandboxPage(code: string): string {
         commands.set(String(label), action);
         parent.postMessage({ type: "commands", labels: [...commands.keys()] }, "*");
       },
-      item: (id) => call("item", id),
-      setText: (id, text) => call("setText", id, text),
-      setNote: (id, note) => call("setNote", id, note),
-      add: (parent, text) => call("add", parent, text),
+      item: (item) => call("item", idOf(item)),
+      setText: (item, text) => call("setText", idOf(item), text),
+      setNote: (item, note) => call("setNote", idOf(item), note),
+      setProperty: (item, key, value) => call("setProperty", idOf(item), key, value),
+      add: (parent, text) => call("add", idOf(parent), text),
       toast: (message) => call("toast", message),
     };
+    const idOf = (item) => (item && typeof item === "object" ? item.id : item);
+    addEventListener("unhandledrejection", (event) => {
+      parent.postMessage({ type: "failed", run, error: String(event.reason && event.reason.message || event.reason) }, "*");
+    });
     addEventListener("message", async ({ data }) => {
       if (data.type === "result") {
         const pending = waiting.get(data.id);
