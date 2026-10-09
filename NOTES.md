@@ -127,6 +127,11 @@ Continued at 04:40 (the session had run out of budget at 01:40):
   a formula); the clock flag follows the left operand (`effort +
   parent.start` shows as a duration); number + number keeps the left unit
   (`5 kg + 3 lb` is `8 kg`); exports write `[[id:…][label]]` raw.
+- Checks at 05:00: 161 unit tests and 208 browser tests pass (12 skipped
+  on engines without the touch tooling). In one of three full runs "the
+  CLI and the app see each other's changes" (e2e/sync.spec.ts) hit its
+  30-second timeout; it passed 36 runs in 36 on its own and the next full
+  run was clean. Probably load in the shared container; not investigated.
 
 Blocked:
 
