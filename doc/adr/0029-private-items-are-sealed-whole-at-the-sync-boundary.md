@@ -34,11 +34,18 @@ again, so two devices editing different items inside both end up with
 both edits, on the server too, although the server keeps only the latest
 sealed note.
 
-**An item stays private while its note has a `:private:` line, with any
-value, or it still holds items with its `~` ids.** Retyping or breaking the
-line therefore holds what is inside on the device (with a status message)
-instead of publishing it. Only Make public again, which gives everything
-inside fresh public ids, publishes it; so does moving an item out.
+**An item stays private while its note has a `:private:` line (any value,
+any case), it still holds items with its `~` ids, or this device has
+sealed or opened it.** That last part is kept in the device's sync state.
+Retyping or deleting the line therefore holds the item on the device
+(with a status message) instead of publishing it. Only Make public again,
+which gives everything inside fresh public ids and forgets the item here,
+publishes it; so does moving an item out. A device that receives items
+inside an item it made public publishes them too.
+
+**A sealed note this device cannot open with its own key of that name is
+refused**, with a status message, instead of being taken as text: two keys
+made separately under one name must not overwrite each other's notes.
 
 **A device without the key keeps the sealed note.** The app shows the item
 with a locked line in place of the note, not editable; the CLI prints it
@@ -86,6 +93,8 @@ wrong.
 - A review before release found six ways plaintext or edits could slip
   through (retyping the line, an older seal's note winning, a seal
   superseded on the server, parent cycles, text written before marking,
-  renamed ids); each has a test in tests/privacy.test.ts.
+  renamed ids), and a second review three more (a note-only private item,
+  two keys of one name, making public while another device adds inside);
+  each has a test in tests/privacy.test.ts.
 - Keys sit in localStorage, readable by any script on the app's origin;
   plugins must not run there (doc/design/plugins-and-scripting.md).

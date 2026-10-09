@@ -1,4 +1,4 @@
-import { Doc, ROOT, appendOutline, emptyDoc } from "./model";
+import { Doc, ROOT, appendOutline, emptyDoc, makePublic } from "./model";
 import { Clock, newDeviceId } from "./sync/clock";
 import { Endpoint, SyncError, exchange } from "./sync/client";
 import { MAX_TEXT } from "./sync/protocol";
@@ -10,7 +10,7 @@ import { render } from "./render";
 import { saveDocSoon } from "./storage";
 import { toast } from "./chrome";
 import { uploadPendingFiles } from "./attachments";
-import { Outgoing, mergeIncoming, sealOutgoing, sealedIn } from "./sync/privacy";
+import { Merged, Outgoing, mergeIncoming, sealOutgoing, sealedIn } from "./sync/privacy";
 import { privateKeyOf } from "./notes";
 import { keys } from "./keyring";
 
@@ -31,6 +31,8 @@ interface Saved extends Endpoint {
   seq: number;
   replica: Replica;
   pending: Change[];
+  /** Items this device has sealed or opened, private until made public here (doc/adr/0029). */
+  privateItems?: string[];
 }
 
 type Status = "off" | "synced" | "pending" | "offline" | "refused" | "rejected";
@@ -106,7 +108,8 @@ async function roundTrip(): Promise<void> {
   const current = saved!;
   const taken = current.pending.filter(fitsOnServer);
   try {
-    const outgoing = await sealOutgoing(taken, current.replica, keys(), () => clock!.tick());
+    const outgoing = await sealOutgoing(taken, current.replica, keys(), () => clock!.tick(), knownPrivate(current));
+    rememberPrivate(current, outgoing.sealed);
     const sent = outgoing.changes.filter(fitsOnServer);
     const response = await exchange(current, { since: current.seq, changes: sent });
     if (saved !== current) return;
@@ -115,15 +118,15 @@ async function roundTrip(): Promise<void> {
     const done = taken.filter((change) => (sealedTooLong ? sent.includes(change) : !outgoing.held.includes(change)));
     current.pending = current.pending.filter((change) => !done.some((each) => sameChange(each, change)));
     for (const change of response.changes) clock!.observe(change.clock);
-    const merged = await mergeIncoming(current.replica, response.changes, keys());
-    const fromServer = merged.accepted;
-    queueReseal(current, merged.reseal);
+    const merged = await mergeIncoming(current.replica, response.changes, keys(), knownPrivate(current));
+    afterMerging(current, merged);
     current.seq = Math.max(current.seq, response.seq);
     write();
-    if (fromTabs.length + fromServer.length > 0) showRemoteChanges();
+    if (fromTabs.length + merged.accepted.length > 0) showRemoteChanges();
+    publishStranded(merged.stranded);
     lastSynced = new Date();
     void uploadPendingFiles();
-    showQueueStatus(outgoing);
+    showQueueStatus(outgoing, merged.unreadable);
   } catch (error) {
     if (!(error instanceof SyncError) || error.status === undefined) setStatus("offline");
     else if (error.status === 401) setStatus("refused");
@@ -131,12 +134,13 @@ async function roundTrip(): Promise<void> {
   }
 }
 
-function showQueueStatus(outgoing: Outgoing = { changes: [], held: [] }): void {
+function showQueueStatus(outgoing: Outgoing = { changes: [], held: [], sealed: [] }, unreadable: string[] = []): void {
   const tooLong = saved!.pending.filter((change) => !fitsOnServer(change)).length;
   const privateTooLong = outgoing.changes.some((change) => !fitsOnServer(change));
   const missingKeys = [...new Set(outgoing.held.map((change) => privateKeyNeededFor(change)).filter(Boolean))];
   if (tooLong > 0) setStatus("rejected", `${tooLong === 1 ? "A note or item is" : `${tooLong} notes or items are`} over ${MAX_TEXT.toLocaleString()} characters, too long to sync; shorten it to send it`);
   else if (privateTooLong) setStatus("rejected", "A private item is too large to sync; move some of what is under it out");
+  else if (unreadable.length > 0) setStatus("rejected", "A private item arrived sealed with a different key of the same name; it was not opened. Copy the key from the device that made it in ⋯ → Private keys");
   else if (missingKeys.length > 0) setStatus("rejected", `This device has no key named ${missingKeys.join(", ")}; private items using it stay here until it is added in ⋯ → Private keys`);
   else if (outgoing.held.length > 0) setStatus("rejected", "A private item has lost its :private: line; what is in it stays on this device until the line is back, or until it is made public");
   else setStatus(saved!.pending.length > 0 ? "pending" : "synced");
@@ -149,6 +153,34 @@ function privateKeyNeededFor(change: Change): string | null {
     if (key) return key;
   }
   return null;
+}
+
+function knownPrivate(state: Saved): Set<string> {
+  return new Set(state.privateItems ?? []);
+}
+
+function rememberPrivate(state: Saved, items: string[]): void {
+  if (items.length > 0) state.privateItems = [...new Set([...(state.privateItems ?? []), ...items])];
+}
+
+/** After "Make public again" here: the item no longer stays private by itself. */
+export function forgetPrivate(item: string): void {
+  if (!saved?.privateItems) return;
+  saved.privateItems = saved.privateItems.filter((each) => each !== item);
+  write();
+}
+
+/** Keeps track of what is private here: opened items join; one whose plain note arrived was made public elsewhere. */
+function afterMerging(state: Saved, merged: Merged): void {
+  rememberPrivate(state, merged.opened);
+  const madePublic = merged.accepted.filter((change) => change.field === "note" && typeof change.value === "string" && privateKeyOf(change.value) === null);
+  if (madePublic.length > 0) state.privateItems = (state.privateItems ?? []).filter((item) => !madePublic.some((change) => change.item === item));
+  queueReseal(state, merged.reseal);
+}
+
+/** Items this device made public that came back with items inside from a device that did not know yet. */
+function publishStranded(items: string[]): void {
+  for (const item of items) if (doc().items[item]) commitAndRender(makePublic(doc(), item), caretNow());
 }
 
 /** Puts private items back in the queue so the next round seals what this device has merged into them. */
@@ -164,8 +196,9 @@ function queueReseal(state: Saved, roots: string[]): void {
 export async function openWithNewKeys(): Promise<void> {
   if (!saved) return;
   const current = saved;
-  const { accepted: opened, reseal } = await mergeIncoming(current.replica, sealedIn(current.replica), keys());
-  queueReseal(current, reseal);
+  const merged = await mergeIncoming(current.replica, sealedIn(current.replica), keys(), knownPrivate(current));
+  afterMerging(current, merged);
+  const opened = merged.accepted;
   if (saved !== current || opened.length === 0) return;
   write();
   showRemoteChanges();
@@ -243,7 +276,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
   const fresh: Saved = { ...endpoint, device: newDeviceId(), seq: response.seq, replica: {}, pending: [] };
   const newClock = clockFor(fresh);
   for (const change of response.changes) newClock.observe(change.clock);
-  queueReseal(fresh, (await mergeIncoming(fresh.replica, response.changes, keys())).reseal);
+  afterMerging(fresh, await mergeIncoming(fresh.replica, response.changes, keys()));
   const serverHasOutline = materialize(fresh.replica).items[ROOT].children.length > 0;
   const mine = doc();
   if (!serverHasOutline) {

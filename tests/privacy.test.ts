@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ROOT, emptyDoc, makePublic, moveTo, setNote, setText, withPrivateIds } from "../src/model";
+import { Doc, ROOT, emptyDoc, insertChild, makePublic, moveTo, remove, setNote, setText, withPrivateIds } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 import { Change, Replica, diff, materialize, merge } from "../src/sync/replica";
 import { keyFromText, keyText, mergeIncoming, newKey, openIncoming, sealOutgoing, sealedIn } from "../src/sync/privacy";
@@ -164,6 +164,64 @@ describe("private items at the sync boundary", () => {
     expect(reseal).toEqual([idOf(mac.doc(), "Journal")]);
     const { reseal: nothing } = await mergeIncoming(phone.replica, fromPhone.changes, keyring);
     expect(nothing).toEqual([]);
+  });
+
+  it("keeps a private item with only a note sealed when its :private: line is deleted", async () => {
+    let doc = parseIndentedText("Journal");
+    doc = setNote(doc, idOf(doc, "Journal"), ":private: personal\nmy diary");
+    const phone = device("phone", doc);
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const known = new Set(first.sealed);
+    const changes = phone.edit(setNote(phone.doc(), idOf(phone.doc(), "Journal"), "my diary"));
+    const { changes: sent, held } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp, known);
+    expect(JSON.stringify(sent)).not.toContain("diary");
+    expect(held.length).toBe(1);
+  });
+
+  it("counts :Private: written with capitals", async () => {
+    let doc = parseIndentedText("Journal");
+    doc = setNote(doc, idOf(doc, "Journal"), ":Private: personal\nmy diary");
+    const phone = device("phone", doc);
+    const { changes } = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    expect(JSON.stringify(changes)).not.toContain("diary");
+  });
+
+  it("refuses a sealed note it cannot open with its own key of that name, instead of taking it as text", async () => {
+    const phone = device("phone", journal());
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const mac = device("mac", phone.doc());
+    const journalId = idOf(mac.doc(), "Journal");
+    const { unreadable } = await mergeIncoming(mac.replica, first.changes, { personal: newKey() });
+    mac.receive([]);
+    expect(unreadable).toEqual([journalId]);
+    expect(mac.doc().items[journalId].note).toBe(":private: personal\nmy diary");
+  });
+
+  it("reports items found inside an item this device made public, so they can be published", async () => {
+    const phone = device("phone", journal());
+    const first = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const mac = device("mac");
+    await mergeIncoming(mac.replica, first.changes, keyring);
+    mac.receive([]);
+    const journalId = idOf(phone.doc(), "Journal");
+    phone.edit(makePublic(phone.doc(), journalId));
+    const added = mac.edit(insertChild(mac.doc(), journalId, 0, "added on the Mac").doc);
+    const fromMac = await sealOutgoing(added, mac.replica, keyring, mac.stamp);
+    const { stranded } = await mergeIncoming(phone.replica, fromMac.changes, keyring, new Set());
+    expect(stranded).toEqual([journalId]);
+  });
+
+  it("does not blank an item deleted after it was moved out of a private item", async () => {
+    let doc = parseIndentedText("Journal\n  kept");
+    doc = withPrivateIds(setNote(doc, idOf(doc, "Journal"), ":private: personal")).doc;
+    const phone = device("phone", doc);
+    await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const out = phone.edit(withPrivateIds(moveTo(phone.doc(), idOf(phone.doc(), "kept"), ROOT, 0)).doc);
+    await sealOutgoing(out, phone.replica, keyring, phone.stamp);
+    const kept = idOf(phone.doc(), "kept");
+    const gone = phone.edit(remove(phone.doc(), kept));
+    const { changes } = await sealOutgoing(gone, phone.replica, keyring, phone.stamp);
+    expect(changes).not.toContainEqual(expect.objectContaining({ item: kept, field: "text", value: "" }));
   });
 
   it("does not loop on a parent cycle left by crossing moves", async () => {
