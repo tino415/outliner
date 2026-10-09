@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, setNote } from "../src/model";
+import { Doc, ItemId, ROOT, setNote } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 import { columnCells, declaredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
+import { FORMULA_EXAMPLES } from "../src/formulaHelp";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -154,6 +155,28 @@ describe("computed columns, smaller fixes", () => {
     const cells = column(doc, "Day", "start");
     expect(performance.now() - started).toBeLessThan(400);
     expect(cells["task 2999"]).toBe("4:50");
+  });
+});
+
+describe("the examples in the formula help", () => {
+  it.each(FORMULA_EXAMPLES.map((example) => [example.title, example] as const))("%s computes every cell", (_, example) => {
+    const doc = parseIndentedText(example.outline);
+    const page = doc.items[ROOT].children[0];
+    const columns = declaredColumns(doc, page)!;
+    const cells = columnCells(doc, page, columns);
+    for (const row of doc.items[page].children) {
+      for (const column of columns.filter((column) => column.formula)) {
+        const cell = cells.get(row)?.get(column.key);
+        expect(cell?.error, `${doc.items[row].text} ${column.key}`).toBeUndefined();
+        expect(cell?.text, `${doc.items[row].text} ${column.key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("plans the example day", () => {
+    const doc = parseIndentedText(FORMULA_EXAMPLES[0].outline);
+    expect(column(doc, "Example: Monday", "start").Lunch).toBe("11:15");
+    expect(column(doc, "Example: Monday", "end").Lunch).toBe("12:15");
   });
 });
 

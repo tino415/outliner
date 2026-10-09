@@ -911,6 +911,75 @@ code {
   margin: 0 5px;
 }
 
+.formula-help {
+  width: min(680px, calc(100vw - 32px));
+  overflow-y: auto;
+}
+
+.formula-help-body {
+  padding: 0 24px 24px;
+  font-size: 14px;
+}
+
+.formula-help h3 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.formula-reference {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.formula-reference dd {
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .formula-reference {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .formula-reference dd {
+    margin-bottom: 8px;
+  }
+}
+
+.formula-help code,
+.formula-help pre {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--code-bg);
+  border-radius: 5px;
+}
+
+.formula-help code {
+  padding: 1px 5px;
+}
+
+.formula-help pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+
+.formula-example h4 {
+  margin: 14px 0 2px;
+  font-size: 14px;
+}
+
+.formula-example p {
+  margin: 0;
+  color: var(--muted);
+}
+
 /* ---- properties and the column view ------------------------------------------ */
 
 .prop {

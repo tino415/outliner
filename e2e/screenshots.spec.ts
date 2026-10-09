@@ -64,6 +64,11 @@ for (const theme of ["light", "dark"] as const) {
       await page.keyboard.press("?");
       await page.waitForTimeout(200);
       await shot("help");
+      await page.keyboard.press("Escape");
+      await page.locator("#menu-button").click();
+      await page.getByRole("button", { name: "Formula help" }).click();
+      await page.waitForTimeout(200);
+      await shot("formula-help");
     }
   });
 }

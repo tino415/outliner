@@ -149,7 +149,7 @@ function cellClasses(cell: Cell | undefined): string {
 }
 
 function cellTitle(cell: Cell | undefined, column: Column): string {
-  if (cell?.error) return ` title="${escape(cell.error)}"`;
+  if (cell?.error) return ` title="${escape(`${cell.error}. See ⋯ → Formula help`)}"`;
   if (cell?.computed) return ` title="Computed: ${escape(column.formulaSource ?? "")}"`;
   if (cell?.rolled) return ` title="${SUMMARY_LABELS[column.summary]} of the items below"`;
   return "";

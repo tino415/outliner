@@ -92,6 +92,7 @@
       </div>
       <div class="menu-section">
         <button type="button" class="menu-item" data-action="help"><span>Keyboard shortcuts</span><kbd>?</kbd></button>
+        <button type="button" class="menu-item" data-action="formula-help"><span>Formula help</span></button>
       </div>
       <div class="menu-footer" id="build-info"><span id="storage-info">Stored only in this browser</span> · build <span id="build-commit"></span></div>
       <input type="file" id="import-file" accept=".json,.opml,.xml,.txt,.md,application/json,text/xml,text/plain" hidden />
@@ -123,6 +124,11 @@
       <button type="button" data-action="undo" aria-label="Undo"><svg viewBox="0 0 20 20"><path d="M7.5 4.5L4 8l3.5 3.5M4 8h7.5a4.5 4.5 0 010 9H9" /></svg></button>
       <button type="button" data-action="done" aria-label="Done editing"><svg viewBox="0 0 20 20"><path d="M4 7l6 6 6-6" /></svg></button>
     </div>
+
+    <dialog class="help formula-help" id="formula-help">
+      <header><h2>Formulas in columns</h2><button class="icon-button" data-close-dialog aria-label="Close">✕</button></header>
+      <div class="formula-help-body" id="formula-help-body"></div>
+    </dialog>
 
     <dialog class="help" id="help">
       <header><h2>Keyboard shortcuts</h2><button class="icon-button" id="help-close" aria-label="Close">✕</button></header>
