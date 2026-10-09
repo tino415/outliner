@@ -3,10 +3,12 @@ import { isInCode, propertiesOf, withoutCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
 import { insertText } from "./editing";
+import { kindsIn } from "./kinds";
 
 /*
  * A small list under the caret that finishes what is being typed: property
- * keys after a `:` at the start of a note line (doc/adr/0020), tags after `#`.
+ * keys after a `:` at the start of a note line (doc/adr/0020), tags after `#`,
+ * kinds at the start of an item (doc/adr/0027).
  * Choosing replaces the typed part through the browser's own text insertion,
  * so the edit goes through the input event like any typing and can be undone.
  */
@@ -15,9 +17,11 @@ interface Typed {
   start: number;
   prefix: string;
   finish: (word: string) => string;
+  words: (doc: Doc) => string[];
 }
 
 const KEY_BEING_TYPED = /(^|\n)([ \t]*:)([\p{L}\p{N}_-]*)$/u;
+const KIND_BEING_TYPED = /^\p{Lu}\p{L}*(?: \p{L}+){0,2}$/u;
 const TAG_BEING_TYPED = /(^|[^\p{L}\p{N}_#])#([\p{L}\p{N}_-]*)$/u;
 const TAG = /(?<![\p{L}\p{N}_#])#([\p{L}\p{N}_-]*[\p{L}\p{N}_])/gu;
 const LIMIT = 8;
@@ -55,7 +59,7 @@ export function offerCompletion(target: HTMLElement, current: Doc): void {
   typed = caret && caret.start === caret.end ? typedAt(text.slice(0, caret.start), target.classList.contains("note")) : null;
   if (!typed) return closeCompletion();
   const prefix = typed.prefix.toLowerCase();
-  const words = typed.finish === finishKey ? keysIn(current) : tagsIn(current);
+  const words = typed.words(current);
   shown = words.filter((word) => word.toLowerCase().startsWith(prefix) && word.toLowerCase() !== prefix).slice(0, LIMIT);
   if (shown.length === 0) return closeCompletion();
   editor = target;
@@ -67,14 +71,17 @@ export function offerCompletion(target: HTMLElement, current: Doc): void {
 function typedAt(before: string, inNote: boolean): Typed | null {
   if (inNote && isInCode(before)) return null;
   const key = inNote ? KEY_BEING_TYPED.exec(before) : null;
-  if (key) return { start: before.length - key[3].length - 1, prefix: key[3], finish: finishKey };
+  if (key) return { start: before.length - key[3].length - 1, prefix: key[3], finish: finishKey, words: keysIn };
+  const kind = inNote ? null : KIND_BEING_TYPED.exec(before);
+  if (kind) return { start: 0, prefix: kind[0], finish: finishKind, words: kindsIn };
   const tag = TAG_BEING_TYPED.exec(before);
-  if (tag) return { start: before.length - tag[2].length - 1, prefix: tag[2], finish: finishTag };
+  if (tag) return { start: before.length - tag[2].length - 1, prefix: tag[2], finish: finishTag, words: tagsIn };
   return null;
 }
 
 const finishKey = (key: string) => `:${key}: `;
 const finishTag = (tag: string) => `#${tag} `;
+const finishKind = (kind: string) => `${kind}: `;
 
 function keysIn(doc: Doc): string[] {
   return byUse(Object.values(doc.items).flatMap((item) => [...propertiesOf(item.note).keys()]));

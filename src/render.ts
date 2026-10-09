@@ -1,7 +1,7 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
 import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./properties";
 import { propertyLine } from "./notes";
-import { escape, itemLabel, renderInline, renderNote, shortLabel } from "./inline";
+import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
@@ -53,7 +53,7 @@ function renderHead(): void {
   const item = doc().items[state.zoom];
   ui.title.dataset.id = item.id;
   ui.titleNote.dataset.id = item.id;
-  if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderInline(item.text);
+  if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderItemText(item.text);
   ui.title.classList.toggle("empty", item.text === "");
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
@@ -259,7 +259,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
-    `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderInline(item.text)}</div>` +
+    `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
     `<div class="note${noteAsColumns ? " as-columns" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;

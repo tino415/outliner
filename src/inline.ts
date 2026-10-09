@@ -5,6 +5,8 @@
  * in the rendered and the raw form.
  */
 
+import { kindOf } from "./kinds";
+
 const TOKEN = new RegExp(
   [
     String.raw`(?<code>\x60[^\x60\n]+\x60)`,
@@ -27,6 +29,14 @@ export function renderInline(text: string): string {
     last = match.index! + match[0].length;
   }
   return html + escape(text.slice(last));
+}
+
+/** An item's own text: its kind as a badge (doc/adr/0027), then the rest inline. */
+export function renderItemText(text: string): string {
+  const kind = kindOf(text);
+  if (kind === null) return renderInline(text);
+  const badge = `<span class="kind" data-kind="${escape(kind)}">${escape(kind)}${marker(":")}</span>`;
+  return badge + renderInline(text.slice(kind.length + 1));
 }
 
 function renderToken(groups: Record<string, string | undefined>, raw: string): string {

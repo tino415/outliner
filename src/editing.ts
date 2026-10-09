@@ -25,8 +25,9 @@ import {
 } from "./model";
 import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
-import { openPalette } from "./palette";
-import { itemLabel, plainText, renderInline, renderNote, shortLabel } from "./inline";
+import { PaletteOption, openPalette } from "./palette";
+import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
+import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
@@ -74,7 +75,7 @@ export function bindEditorEvents(): void {
     const editor = editorOf(event.target);
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item) return;
-    editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderInline(item.text);
+    editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
     if (isNoteEditor(editor)) refreshAfterNoteEdit();
     if (isNoteEditor(editor) && item.note === "") {
       state.openNotes.delete(item.id);
@@ -116,7 +117,7 @@ export function bindEditorEvents(): void {
     }
     if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
-    if (target.closest("a.link, .tag, .ref")) event.preventDefault();
+    if (target.closest("a.link, .tag, .kind, .ref")) event.preventDefault();
     else if (isNoteEditor(editor) && editor.querySelector(".prop-line")) placeCaretBeforeLinesAppear(event, editor);
   });
 
@@ -126,10 +127,13 @@ export function bindEditorEvents(): void {
     if (!editor || document.activeElement === editor) return;
     const link = target.closest<HTMLAnchorElement>("a.link");
     const tag = target.closest<HTMLElement>(".tag");
+    const kind = target.closest<HTMLElement>(".kind");
     const reference = target.closest<HTMLElement>(".ref");
     if (link) {
       event.preventDefault();
       window.open(link.href, "_blank", "noopener");
+    } else if (kind) {
+      setQuery(`${kind.dataset.kind!}:`);
     } else if (tag) {
       setQuery(tag.dataset.tag!);
     } else if (reference) {
@@ -489,6 +493,28 @@ export const actions = {
     insertText(text === "" || /\s$/.test(text) ? "#" : " #");
   },
 
+  setKind: onItem((c) => {
+    if (c.inNote) return;
+    const { editor, start } = c;
+    const current = kindOf(editor.textContent ?? "");
+    openPalette({
+      placeholder: "Kind of this item…",
+      hint: "Shown as a badge at the start, as “Question: …”",
+      candidates: (query) => kindChoices(query, current),
+      choose: (choice) => {
+        const text = editor.textContent ?? "";
+        const before = kindPrefixLength(text);
+        const written = withKind(text, choice.kind);
+        const after = kindPrefixLength(written);
+        editor.focus();
+        select(editor, 0, text.length);
+        if (written) insertText(written);
+        else document.execCommand("delete");
+        select(editor, Math.max(after, start - before + after));
+      },
+    });
+  }),
+
   blur(c: EditorContext): void {
     c.editor.blur();
   },
@@ -543,6 +569,18 @@ function pickReference(c: EditorContext, typed: number): void {
       insertText(referenceTo(target.id, plainText(target.text)));
     },
   });
+}
+
+interface KindChoice extends PaletteOption {
+  kind: string;
+}
+
+function kindChoices(query: string, current: string | null): KindChoice[] {
+  const wanted = query.trim();
+  const choice = (kind: string, text = kind): KindChoice => ({ text, path: [], kind });
+  const inUse = kindsIn(doc()).filter((kind) => kind.toLowerCase().includes(wanted.toLowerCase()));
+  const isNew = isKindName(wanted) && !inUse.some((kind) => kind.toLowerCase() === wanted.toLowerCase());
+  return [...(isNew ? [choice(wanted, `New kind: ${wanted}`)] : []), ...inUse.map((kind) => choice(kind)), ...(current ? [choice("", "No kind")] : [])];
 }
 
 function followReference(target: string): void {

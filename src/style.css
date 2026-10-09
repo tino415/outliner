@@ -14,6 +14,8 @@
   --accent-soft: light-dark(#e6ebfc, #262c45);
   --tag: light-dark(#8146b8, #c9a6f1);
   --tag-bg: light-dark(#f2eafa, #2c2536);
+  --kind: light-dark(#ffffff, #1b1d22);
+  --kind-bg: light-dark(#3d4250, #c3c8d4);
   --mark: light-dark(#fbe38e, #6a5418);
   --border: light-dark(#e3dfd7, #2e2f35);
   --hover: light-dark(#efece5, #27282e);
@@ -600,6 +602,31 @@ code {
 :focus .tag-hash {
   opacity: 1;
   margin: 0;
+}
+
+.kind {
+  color: var(--kind);
+  background: var(--kind-bg);
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin-right: 1px;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: 0.08em;
+  cursor: pointer;
+}
+
+:focus .kind {
+  color: inherit;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: normal;
+  vertical-align: baseline;
+  cursor: text;
 }
 
 .completion {
