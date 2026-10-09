@@ -84,6 +84,21 @@ test("properties show as key and value outside editing", async ({ page }) => {
   await expect(row(page, "Oats").locator(".note")).toHaveText("from the market\n:calories: 300 kcal");
 });
 
+test("the formula help explains the syntax and adds a working example to the page", async ({ page }) => {
+  await freshOutline(page, "Plans");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">formula");
+  await page.keyboard.press("Enter");
+  const help = page.locator("#formula-help");
+  await expect(help).toBeVisible();
+  await expect(help).toContainText("before(effort)");
+  await help.getByRole("button", { name: "Add to this page" }).first().click();
+  await expect(help).toBeHidden();
+  await expect(page.locator("#title")).toHaveText("Example: Monday");
+  await expect(cell(page, "Lunch", "start")).toHaveText("11:15");
+  await expect(cell(page, "Lunch", "end")).toHaveText("12:15");
+});
+
 test("a computed column plans start times from the durations before each item", async ({ page }) => {
   await freshOutline(page, "Monday | :start: 9:00; :columns: effort start{=parent.start + before(effort)}\n  Standup | :effort: 15m\n  Write | :effort: 1h30m\n  Lunch | :effort: 1h");
   await row(page, "Monday").locator(".bullet").click();

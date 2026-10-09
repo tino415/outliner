@@ -1,7 +1,8 @@
 import { ItemId, ROOT, insertChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
-import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
+import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
+import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml } from "./formulaHelp";
 import { Command, Reach, bindingFor, describeKeys, keyCommands } from "./keys";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
@@ -33,6 +34,7 @@ export function bindChrome(): void {
   $("help-close").addEventListener("click", () => ui.help.close());
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
   ui.helpGrid.innerHTML = describeKeys();
+  bindFormulaHelp();
   $("build-commit").textContent = __BUILD_COMMIT__;
   document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 }
@@ -179,8 +181,33 @@ const menuActions: Record<string, () => void> = {
     ui.menu.hidePopover();
     ui.help.showModal();
   },
+  "formula-help": () => {
+    ui.menu.hidePopover();
+    formulaHelp().showModal();
+  },
   "clear-search": () => setQuery(""),
 };
+
+// ---- formula help -------------------------------------------------------------------
+
+const formulaHelp = () => $<HTMLDialogElement>("formula-help");
+
+function bindFormulaHelp(): void {
+  $("formula-help-body").innerHTML = formulaHelpHtml();
+  formulaHelp().addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    if (target === formulaHelp() || target.closest("[data-close-dialog]")) formulaHelp().close();
+    const example = target.closest<HTMLElement>("[data-formula-example]");
+    if (example) addFormulaExample(FORMULA_EXAMPLES[Number(example.dataset.formulaExample)]);
+  });
+}
+
+function addFormulaExample(example: FormulaExample): void {
+  formulaHelp().close();
+  const result = graft(doc(), parseIndentedText(example.outline), state.zoom, newChildIndex(doc(), state.zoom));
+  commitAndRender(result.doc, null);
+  zoomTo(result.ids[0]);
+}
 
 function pageSlug(): string {
   return (state.zoom !== ROOT && slug(doc().items[state.zoom].text)) || "outline";

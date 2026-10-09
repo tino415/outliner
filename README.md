@@ -63,12 +63,16 @@ Each item then starts when the items above it are done, counted from the
 parent's start. An item with its own `:start:` keeps it; the items after
 it still count from the parent's start.
 A formula that cannot be computed shows `error`, the reason on hover.
+⋯ → Formula help (or Ctrl-K, `>formula`) lists the syntax below, with
+example pages it adds to the current page.
 Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
 (`parent.start`) or the previous sibling (`previous.end`), `before(key)`
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time. A hyphen followed by a letter is
 part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
+A time plus a duration is a time, a time minus a time a duration; numbers
+in different units do not add.
 
 ## Kinds
 
