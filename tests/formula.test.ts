@@ -134,6 +134,29 @@ describe("computed columns, review round", () => {
   });
 });
 
+describe("computed columns, smaller fixes", () => {
+  it("a time plus a duration is a time whichever side it is on; a time minus a time is a duration", () => {
+    const doc = outline("Day | :start: 9:00; :end: 17:00; :columns: effort a{=effort + parent.start} b{=parent.end - parent.start} c{=parent.end - effort}\n  Task | :effort: 15m");
+    expect(column(doc, "Day", "a")).toEqual({ Task: "9:15" });
+    expect(column(doc, "Day", "b")).toEqual({ Task: "8h" });
+    expect(column(doc, "Day", "c")).toEqual({ Task: "16:45" });
+  });
+
+  it("refuses to add numbers in different units, and ignores the case of a unit", () => {
+    const doc = outline("P | :columns: a b c{=a + b}\n  mixed | :a: 5 kg; :b: 3 lb\n  same | :a: 5 kg; :b: 3 KG\n  bare | :a: 5; :b: 3 kg");
+    expect(column(doc, "P", "c")).toEqual({ mixed: "error", same: "8 kg", bare: "8 kg" });
+  });
+
+  it("computes before() over thousands of siblings in linear time", () => {
+    const rows = Array.from({ length: 3000 }, (_, i) => `  task ${i} | :effort: 10m`);
+    const doc = outline(["Day | :start: 9:00; :columns: effort start{=clock(parent.start + before(effort))}", ...rows].join("\n"));
+    const started = performance.now();
+    const cells = column(doc, "Day", "start");
+    expect(performance.now() - started).toBeLessThan(400);
+    expect(cells["task 2999"]).toBe("4:50");
+  });
+});
+
 describe("parsing formulas", () => {
   it.each(["parent.start + before(effort)", "clock(9:00 + 1h30m)", "-(a - b) * 2 / 3", "previous.end", "max(effort)", "350 kcal + a"])(
     "reads %s",

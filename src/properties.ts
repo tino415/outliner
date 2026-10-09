@@ -1,5 +1,5 @@
 import { Doc, ItemId, ViewFilter, ancestors, shownChildren } from "./model";
-import { Formula, FormulaError, Scope, evaluate, parseFormula } from "./formula";
+import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
 import { propertiesOf } from "./notes";
 
 /*
@@ -189,18 +189,36 @@ export function columnCells(
     return value.amount;
   };
 
+  const previousOf = new Map<ItemId, ItemId | null>();
+  const previousSibling = (id: ItemId): ItemId | null => {
+    const parent = doc.items[id].parent;
+    if (!previousOf.has(id)) {
+      const siblings = parent ? children(parent) : [id];
+      siblings.forEach((sibling, index) => previousOf.set(sibling, siblings[index - 1] ?? null));
+    }
+    return previousOf.get(id) ?? null;
+  };
+
+  const totals = new Map<string, Amount>();
+  const totalBefore = (id: ItemId, key: string): Amount => {
+    const slot = `${id}\u0000${key}`;
+    const known = totals.get(slot);
+    if (known) return known;
+    const previous = previousSibling(id);
+    const total = previous ? add(totalBefore(previous, key), amountOf(previous, key) ?? PLAIN_ZERO) : PLAIN_ZERO;
+    totals.set(slot, total);
+    return total;
+  };
+
   const scopeOf = (id: ItemId): Scope => {
     const parent = doc.items[id].parent;
-    const siblings = parent ? children(parent) : [id];
-    const earlier = siblings.slice(0, siblings.indexOf(id));
-    const amounts = (ids: ItemId[], key: string) => ids.flatMap((other) => amountOf(other, key) ?? []);
     return {
       value: (of, key) => {
-        const target = of === "self" ? id : of === "parent" ? parent : (earlier.at(-1) ?? null);
+        const target = of === "self" ? id : of === "parent" ? parent : previousSibling(id);
         return target ? amountOf(target, key) : null;
       },
-      before: (key) => amounts(earlier, key),
-      children: (key) => amounts(children(id), key),
+      totalBefore: (key) => totalBefore(id, key),
+      children: (key) => children(id).flatMap((child) => amountOf(child, key) ?? []),
     };
   };
 
