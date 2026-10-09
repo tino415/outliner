@@ -1,4 +1,5 @@
 import { Doc, ItemId, ROOT } from "./model";
+import { withoutCode } from "./properties";
 
 /*
  * References between items (doc/adr/0024), written as org links:
@@ -25,7 +26,7 @@ export function backlinks(doc: Doc, id: ItemId): ItemId[] {
   return inReadingOrder(doc).filter((other) => {
     if (other === id) return false;
     const { text, note } = doc.items[other];
-    return [...`${text}\n${note}`.matchAll(REFERENCE)].some((match) => resolveReference(doc, match[1]) === id);
+    return [...`${text}\n${withoutCode(note)}`.matchAll(REFERENCE)].some((match) => resolveReference(doc, match[1]) === id);
   });
 }
 

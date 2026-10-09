@@ -27,6 +27,7 @@ import { Candidate, findItems } from "./search";
 import { openPalette } from "./palette";
 import { itemLabel, plainText, renderInline, renderNote, shortLabel } from "./inline";
 import { referenceTo, resolveReference } from "./references";
+import { isInCode } from "./properties";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -60,7 +61,8 @@ export function bindEditorEvents(): void {
       editor.classList.toggle("empty", value === "");
     }
     const context = editorContext(editor);
-    if ((event as InputEvent).data === "[" && value.slice(0, context.start).endsWith("[[")) pickReference(context, 2);
+    const before = value.slice(0, context.start);
+    if ((event as InputEvent).data === "[" && before.endsWith("[[") && !(context.inNote && isInCode(before))) pickReference(context, 2);
   });
 
   document.addEventListener("focusout", (event) => {
@@ -557,11 +559,6 @@ function takeBackIndentation(c: EditorContext): void {
   select(c.editor, start, start + spaces);
   document.execCommand("delete");
   select(c.editor, Math.max(start, c.start - spaces));
-}
-
-/** True when the note text before the caret has opened a ``` fence and not closed it. */
-function isInCode(noteBefore: string): boolean {
-  return noteBefore.split("\n").filter((line) => /^\s*```/.test(line)).length % 2 === 1;
 }
 
 function keepCaret(c: EditorContext): Focus {

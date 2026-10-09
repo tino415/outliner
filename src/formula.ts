@@ -31,7 +31,7 @@ export class FormulaError extends Error {}
 
 // ---- parsing ---------------------------------------------------------------------------
 
-const TOKEN = /\s*(?:(\d+:[0-5]\d|\d[\d.,]*(?:\s*\p{L}+(?:\s*\d[\d.,]*\s*\p{L}+)*)?)|([\p{L}_][\p{L}\p{N}_-]*(?:\.[\p{L}_][\p{L}\p{N}_-]*)?)|([-+*/()]))/uy;
+const TOKEN = /\s*(?:(\d+:[0-5]\d|\d[\d.,]*(?:\s*\p{L}+(?:\s*\d[\d.,]*\s*\p{L}+)*)?)|((?:[\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}_][\p{L}\p{N}_]*)*)(?:\.[\p{L}_][\p{L}\p{N}_]*(?:-[\p{L}_][\p{L}\p{N}_]*)*)?)|([-+*/()]))/uy;
 
 export function parseFormula(source: string): Formula {
   const tokens = tokenize(source);

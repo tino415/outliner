@@ -100,21 +100,33 @@ Assumptions (Martin away):
 
 Review round (two review agents, 01:20): 16 bugs confirmed with failing
 tests, fixed in two commits ("Fix review round on properties and
-formulas", and the palette/completion/code-block/capture round). Not done:
+formulas", and the palette/completion/code-block/capture round).
 
-- Two of the new browser tests are intermittent, failing about 1 run in 3:
-  "a command from Ctrl-K acts with the caret where it was" (the caret can
-  still land at the start after Escape) and "completion: Enter after
-  clicking elsewhere in the same item splits it". The fixes (restore the
-  caret on palette close; close completion on selectionchange) work most of
-  the time; a timing race remains. Next step: restore the caret after the
-  dialog's own focus return, e.g. in a requestAnimationFrame.
-- Not fixed, noted by the review: keys containing `-` read `a-b` as one
-  key; backlinks and `[[` work inside code blocks; CLI config errors print
-  a stack trace; the CLI's `--template` matches names, not `:key:`
-  letters; a template item named like its own target files under itself.
-- Session ran out of token budget at about 01:40; nothing is untested
-  except as listed here.
+Continued at 04:40 (the session had run out of budget at 01:40):
+
+- The two intermittent browser tests failed 10 runs in 20. Both were a key
+  arriving before an asynchronous event: Escape in Ctrl-K left the caret
+  restore to the dialog's `close` event, which comes a task later, and a key
+  after a click reached the completion list before `selectionchange` closed
+  it. Escape and a backdrop click now restore the caret at once, and every
+  key checks the caret before the list acts on it. 45 runs in 45 pass.
+- The rest of the review's list, each with a test shown failing first:
+  - CLI config: an unreadable file says `cannot read <path>: EISDIR`
+    instead of a stack trace; `# comment` after a value is dropped; an
+    empty variable in the environment no longer hides the file's value.
+  - `outline capture --template m` also finds the template by its `:key:`.
+  - A template is never a capture target, so a template named `Inbox`
+    with `:capture: Inbox` files into a separate `Inbox`.
+  - Code blocks hold neither links nor tags: backlinks and tag completion
+    skip them, and `[[` and `:` inside one type text instead of opening
+    the link picker or key completion.
+  - In formulas a hyphen joins words only before a letter: `time-spent`
+    is a key, `effort-15m` subtracts.
+- Still open from the review, judged minor: work in `columnCells` grows
+  with the square of the number of siblings (2.6 s for 3,000 siblings with
+  a formula); the clock flag follows the left operand (`effort +
+  parent.start` shows as a duration); number + number keeps the left unit
+  (`5 kg + 3 lb` is `8 kg`); exports write `[[id:…][label]]` raw.
 
 Blocked:
 

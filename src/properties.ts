@@ -30,6 +30,16 @@ function linesOutsideCode(note: string): string[] {
   return lines.filter((_, index) => outside[index]);
 }
 
+/** The note without its code blocks: what links, tags and properties are read from. */
+export function withoutCode(note: string): string {
+  return linesOutsideCode(note).join("\n");
+}
+
+/** True when the note text before the caret has opened a ``` fence and not closed it. */
+export function isInCode(noteBefore: string): boolean {
+  return noteBefore.split("\n").filter((line) => /^\s*```/.test(line)).length % 2 === 1;
+}
+
 /** For each line, whether it is ordinary note text rather than a ``` fence or a line inside one. */
 function isOutsideCode(lines: string[]): boolean[] {
   let inCode = false;
