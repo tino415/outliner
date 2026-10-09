@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, setText } from "../src/model";
+import { Doc, ItemId, setNote, setText } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 import { backlinks, referenceTo, resolveReference } from "../src/references";
 import { renderInline } from "../src/inline";
@@ -29,6 +29,11 @@ describe("references", () => {
     doc = setText(doc, idOf(doc, "Notes"), "see [[Tomatoes]] and [[Garden]]");
     expect(backlinks(doc, tomatoes).map((id) => doc.items[id].text)).toEqual([`water the [[id:${tomatoes}][Tomatoes]]`, "see [[Tomatoes]] and [[Garden]]"]);
     expect(backlinks(doc, idOf(doc, "Plans"))).toEqual([]);
+  });
+
+  it("inside a code block are code, not links", () => {
+    const doc = setNote(base, idOf(base, "Notes"), "```\nsee [[Tomatoes]]\n```");
+    expect(backlinks(doc, idOf(doc, "Tomatoes"))).toEqual([]);
   });
 
   it("render the label and keep the raw text", () => {

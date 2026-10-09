@@ -67,7 +67,8 @@ Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
 (`parent.start`) or the previous sibling (`previous.end`), `before(key)`
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
-`clock(…)` to show a duration as a time.
+`clock(…)` to show a duration as a time. A hyphen followed by a letter is
+part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
 
 ## Links between items
 

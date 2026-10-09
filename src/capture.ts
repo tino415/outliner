@@ -63,7 +63,7 @@ function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
   let current = doc;
   let at: ItemId = ROOT;
   for (const step of path.split("/").map((part) => part.trim()).filter(Boolean)) {
-    const found = current.items[at].children.find((child) => current.items[child].text.trim().toLowerCase() === step.toLowerCase());
+    const found = current.items[at].children.find((child) => isStep(current, child, step));
     if (found) {
       at = found;
       continue;
@@ -73,6 +73,12 @@ function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
     at = created.id;
   }
   return { doc: current, target: at };
+}
+
+/** A template is never a place to file into, even when it bears its target's name. */
+function isStep(doc: Doc, id: ItemId, step: string): boolean {
+  const item = doc.items[id];
+  return item.text.trim().toLowerCase() === step.toLowerCase() && !propertiesOf(item.note).has("capture");
 }
 
 function isoDate(day: Date): string {
