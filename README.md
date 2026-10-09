@@ -74,6 +74,15 @@ part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
 A time plus a duration is a time, a time minus a time a duration; numbers
 in different units do not add.
 
+## Boards
+
+Alt-Shift-B (or ⋯ → Board) shows the page as a Kanban board: its children
+are the columns, theirs the cards (doc/adr/0031). It writes `:view: board`
+into the page's note, so the page is a board on every device and the CLI
+still sees an ordinary outline. Cards are edited in place like any item;
+drag one by its handle (mouse or finger) or press Alt-Shift-← / → to move
+it to the next column. The buttons add cards and columns.
+
 ## Kinds
 
 An item that starts with one to three capitalised words of letters and a

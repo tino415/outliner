@@ -3,6 +3,7 @@ import { selectionActions } from "./selection";
 import { globalActions } from "./chrome";
 import { escape } from "./inline";
 import { isMac } from "./platform";
+import { moveSideways, toggleBoard } from "./board";
 
 /** Where a global shortcut applies, judged by what has focus. */
 export type Reach = "anywhere" | "outsideFields" | "onPage";
@@ -79,6 +80,8 @@ const bindings: Binding[] = [
   editor(["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
   editor(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
   editor(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),
+  editor(["Alt+Shift+ArrowLeft"], "On a board: to the column on the left", (c) => moveSideways(c.id, -1, c.start)),
+  editor(["Alt+Shift+ArrowRight"], "On a board: to the column on the right", (c) => moveSideways(c.id, 1, c.start)),
   editor(["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
   editor(["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
   editor(["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
@@ -136,6 +139,7 @@ const bindings: Binding[] = [
   global(["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
   global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
   global(["Alt+Shift+c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
+  global(["Alt+Shift+b"], "Show this page as a board", "anywhere", () => toggleBoard()),
   global(["Alt+Shift+n"], "Capture…", "anywhere", () => globalActions.capture()),
   global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),

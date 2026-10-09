@@ -40,3 +40,4 @@ session report; the records here hold the choices behind them.
 28. [Attachments are files on the sync server, named by their hash](0028-attachments-are-files-on-the-sync-server-by-hash.md)
 29. [Private items are sealed whole at the sync boundary](0029-private-items-are-sealed-whole-at-the-sync-boundary.md)
 30. [Plugins run sandboxed, once a trusted device approves their code](0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md)
+31. [A board shows an item's children as columns and theirs as cards](0031-a-board-shows-children-as-columns.md)

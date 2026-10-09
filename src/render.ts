@@ -4,6 +4,7 @@ import { propertyLine } from "./notes";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
 import { pluginsMayHaveChanged } from "./pluginHost";
+import { boardShown, renderBoard } from "./board";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
@@ -27,7 +28,12 @@ export function render(request: FocusRequest): void {
   renderCrumbs();
   renderHead();
   renderColumnsHead();
-  renderTree();
+  const board = boardShown();
+  ui.board.hidden = !board;
+  ui.tree.hidden = board;
+  if (board) renderBoard();
+  else renderTree();
+  if (board) ui.addItem.hidden = ui.columnsHead.hidden = true;
   renderSearchSummary();
   renderMenuState();
   highlightMatches();
@@ -313,12 +319,17 @@ function highlightMatches(): void {
 }
 
 /** Text editors of the visible rows, in reading order: the order arrow keys and selection follow. */
+/** The outline as it is shown: the tree, or the board when the page is one. */
+export function shownOutline(): HTMLElement {
+  return boardShown() ? ui.board : ui.tree;
+}
+
 export function treeEditors(): HTMLElement[] {
-  return [...ui.tree.querySelectorAll<HTMLElement>(".text[data-id]")];
+  return [...shownOutline().querySelectorAll<HTMLElement>(".text[data-id]")];
 }
 
 export function itemElementFor(id: ItemId): HTMLElement | null {
-  return ui.tree.querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
+  return shownOutline().querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
 }
 
 export function editorFor(id: ItemId, part: "text" | "note"): HTMLElement | null {
