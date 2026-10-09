@@ -1,6 +1,6 @@
 # Encrypted items
 
-Status: proposal for discussion, 2026-10-09. From Martin's outline.
+Status: decided 2026-10-09 in [ADR 29](../adr/0029-private-items-are-sealed-whole-at-the-sync-boundary.md), which differs from the recommendation below: Martin chose to hide the structure too. From Martin's outline.
 
 ## Context
 

@@ -96,6 +96,7 @@ const bindings: Binding[] = [
   editor(["Alt+Shift+k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor(["Alt+Shift+l"], "Link to an item", (c) => actions.insertReference(c)),
   editor(["Alt+Shift+a"], "Attach a file…", (c) => actions.attachFile(c)),
+  editor(["Alt+Shift+p"], "Make private…", (c) => actions.makePrivate(c)),
   editor(["Mod+z"], "Undo", () => globalActions.undo()),
   editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   typing(["Escape"], "Stop editing", (c) => actions.blur(c)),

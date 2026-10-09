@@ -112,6 +112,17 @@ bin/outline attach "Outliner/TODO/Some bug" screenshot.png
 bin/outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
 ```
 
+## Private items
+
+Alt-Shift-P (or Make private… in the item menu) puts `:private: <key>` in an
+item's note: its note and everything under it are encrypted with that key
+before they are synced (doc/adr/0029). The headline stays readable.
+Devices without the key, the server and the CLI see only the headline and
+a lock; the CLI refuses to write into it. Keys live in each browser: ⋯ →
+Private keys makes one and shows it as a line to copy to your other
+devices, where Add opens what is already there. There is no recovery: keep
+a copy of each key.
+
 ## Capture
 
 Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving

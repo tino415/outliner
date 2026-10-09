@@ -38,10 +38,11 @@ export async function sealOutgoing(pending: Change[], replica: Replica, keyring:
   const changes: Change[] = [];
   const held: Change[] = [];
   const touchedRoots = new Set<ItemId>();
+  const privateIds = indexPrivateIds(replica);
   for (const change of pending) {
     const root = privateRootOf(replica, change.item, change.field);
     const wasPublic = root && change.item !== root && !change.item.startsWith(`${root}~`);
-    if (!root || wasPublic) changes.push(...publishing(change, replica, stamp));
+    if (!root || wasPublic) changes.push(...publishing(change, replica, privateIds, stamp));
     else if (keyring[keyNameOf(replica, root)!]) touchedRoots.add(root);
     else held.push(change);
   }
@@ -106,16 +107,34 @@ function subtreeChanges(replica: Replica, root: ItemId): Change[] {
 /**
  * A public change as it should reach the server. An item that was private
  * once (its id carries a private item's) goes out with all its fields when it
- * is moved out, since the server never had them; an item renamed when its
+ * is moved out, and so does everything under an item made public again,
+ * since the server never had them; an item renamed when its
  * subtree was made private has its old text and note blanked there.
  */
-function publishing(change: Change, replica: Replica, stamp: () => string): Change[] {
+function publishing(change: Change, replica: Replica, privateIds: PrivateIds, stamp: () => string): Change[] {
   const isDeletion = change.field === "deleted" && change.value === true;
-  if (isDeletion && Object.keys(replica).some((id) => id.endsWith(`~${change.item}`))) {
+  if (isDeletion && privateIds.renamedFrom.has(change.item)) {
     return [change, { item: change.item, field: "text", value: "", clock: stamp() }, { item: change.item, field: "note", value: "", clock: stamp() }];
   }
-  if (!change.item.includes("~") || change.field !== "parent") return [change];
-  return [change, ...publicSubtree(replica, change.item).filter((other) => !(other.item === change.item && other.field === "parent"))];
+  const madePublic = change.field === "note" && privateIds.holders.has(change.item);
+  const movedOut = change.field === "parent" && change.item.includes("~");
+  if (!madePublic && !movedOut) return [change];
+  return [change, ...publicSubtree(replica, change.item).filter((other) => !(other.item === change.item && other.field === change.field))];
+}
+
+interface PrivateIds {
+  /** Items that hold or held private items: the part of an id before its first "~". */
+  holders: Set<ItemId>;
+  /** Ids that items had before they were renamed into a private item: the part after the last "~". */
+  renamedFrom: Set<ItemId>;
+}
+
+function indexPrivateIds(replica: Replica): PrivateIds {
+  const marked = Object.keys(replica).filter((id) => id.includes("~"));
+  return {
+    holders: new Set(marked.map((id) => id.slice(0, id.indexOf("~")))),
+    renamedFrom: new Set(marked.map((id) => id.slice(id.lastIndexOf("~") + 1))),
+  };
 }
 
 function publicSubtree(replica: Replica, top: ItemId): Change[] {

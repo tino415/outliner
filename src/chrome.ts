@@ -12,6 +12,7 @@ import { jumpToItem, setQuery, showZoom, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
+import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 
 export function bindChrome(): void {
   bindSearchBox();
@@ -35,6 +36,7 @@ export function bindChrome(): void {
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
   ui.helpGrid.innerHTML = describeKeys();
   bindFormulaHelp();
+  bindPrivateKeys();
   $("build-commit").textContent = __BUILD_COMMIT__;
   document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 }
@@ -181,6 +183,10 @@ const menuActions: Record<string, () => void> = {
     ui.menu.hidePopover();
     ui.help.showModal();
   },
+  "private-keys": () => {
+    ui.menu.hidePopover();
+    openPrivateKeys();
+  },
   "formula-help": () => {
     ui.menu.hidePopover();
     formulaHelp().showModal();
@@ -309,6 +315,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   duplicate: (c) => actions.duplicate(c),
   move: (c) => actions.moveToPicker(c),
   attach: (c) => actions.attachFile(c),
+  private: (c) => actions.makePrivate(c),
   copy: (c) => {
     copyItems([c.id]);
     toast("Copied as text");

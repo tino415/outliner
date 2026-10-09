@@ -83,6 +83,19 @@ describe("outline CLI", () => {
     rmSync(folder, { recursive: true });
   });
 
+  it("shows a private item as private and refuses to write into it", async () => {
+    await outline('add "Journal"');
+    await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);
+    await outline('add "Shopping"');
+    expect(await outline("show")).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping");
+    await expect(outline('add "peek" --under Journal')).rejects.toThrow(/Journal is private/);
+    await expect(outline("move Shopping --under Journal")).rejects.toThrow(/Journal is private/);
+    await expect(outline('note Journal "plain"')).rejects.toThrow(/Journal is private/);
+    await expect(outline("set Journal mood good")).rejects.toThrow(/Journal is private/);
+    await outline('edit Journal "Diary"');
+    expect(await outline("show")).toContain("- Diary");
+  });
+
   it("exports Markdown with links as their labels", async () => {
     const id = await outline('add "Garden"');
     await outline(`add "See [[id:${id}][the garden]]"`);

@@ -27,10 +27,11 @@ import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
 import { PaletteOption, openPalette } from "./palette";
 import { keepFiles } from "./attachments";
+import { choosePrivacy } from "./privateItems";
 import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
-import { referenceTo, resolveReference } from "./references";
-import { isInCode } from "./notes";
+import { privateHolderOf, referenceTo, resolveReference } from "./references";
+import { isInCode, privateKeyOf } from "./notes";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -529,6 +530,8 @@ export const actions = {
     insertText(text === "" || /\s$/.test(text) ? "#" : " #");
   },
 
+  makePrivate: onItem((c) => choosePrivacy(c.id)),
+
   attachFile: onItem((c) => {
     void pickFiles().then((files) => (files.length > 0 ? attachFilesTo(c.id, files) : undefined));
   }),
@@ -626,7 +629,16 @@ function kindChoices(query: string, current: string | null): KindChoice[] {
 function followReference(target: string): void {
   const id = resolveReference(doc(), target);
   if (id) zoomTo(id);
+  else if (privateHolderOf(doc(), target)) privateLinkExplained(privateHolderOf(doc(), target)!);
   else toast(`Nothing called “${target}” yet`);
+}
+
+function privateLinkExplained(holder: ItemId): void {
+  const key = privateKeyOf(doc().items[holder].note);
+  toast(`That item is private, inside “${shortLabel(doc().items[holder].text, 30)}”: it needs the key ${key} on this device`, {
+    label: "Go there",
+    run: () => zoomTo(holder),
+  });
 }
 
 function inCodeBlock(c: EditorContext): boolean {
