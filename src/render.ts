@@ -3,6 +3,7 @@ import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./p
 import { propertyLine } from "./notes";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
+import { pluginsMayHaveChanged } from "./pluginHost";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
@@ -19,6 +20,7 @@ export type FocusRequest = Focus | Focus[] | null;
 
 export function render(request: FocusRequest): void {
   const candidates = request === null ? [] : [request].flat();
+  pluginsMayHaveChanged();
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
   columns = columnView();

@@ -13,6 +13,7 @@ import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from 
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
+import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
 export function bindChrome(): void {
   bindSearchBox();
@@ -37,6 +38,7 @@ export function bindChrome(): void {
   ui.helpGrid.innerHTML = describeKeys();
   bindFormulaHelp();
   bindPrivateKeys();
+  bindPlugins();
   $("build-commit").textContent = __BUILD_COMMIT__;
   document.querySelector(".menu-kbd")!.textContent = isMac ? "⌘K" : "Ctrl K";
 }
@@ -71,7 +73,8 @@ export const globalActions = {
 
 function paletteCommands(): Command[] {
   const editor = editorOf(document.activeElement);
-  return [...keyCommands(editor ? editorContext(editor) : null), ...menuCommands()];
+  const editing = editor ? editorContext(editor) : null;
+  return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
 const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "help"]);
@@ -186,6 +189,10 @@ const menuActions: Record<string, () => void> = {
   "private-keys": () => {
     ui.menu.hidePopover();
     openPrivateKeys();
+  },
+  plugins: () => {
+    ui.menu.hidePopover();
+    void openPlugins();
   },
   "formula-help": () => {
     ui.menu.hidePopover();

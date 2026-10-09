@@ -1,4 +1,5 @@
 import { bindAttachments } from "./attachments";
+import { pluginsMayHaveChanged } from "./pluginHost";
 import { Doc, ItemId, ROOT, ViewFilter, isDescendant, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
@@ -80,6 +81,7 @@ export function start(): void {
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
   bindAttachments(syncEndpoint);
+  onChangeHere(pluginsMayHaveChanged);
   bindCapture();
   captureFromAddress();
 }

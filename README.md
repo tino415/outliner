@@ -123,6 +123,26 @@ Private keys makes one and shows it as a line to copy to your other
 devices, where Add opens what is already there. There is no recovery: keep
 a copy of each key.
 
+## Plugins
+
+A plugin is an item with `:plugin: <name>` and JavaScript in a ```js block
+of its note (doc/adr/0030):
+
+````
+Tools
+  :plugin: tools
+  ```js
+  outline.command("Shout", async (item) => outline.setText(item.id, item.text.toUpperCase()))
+  ```
+````
+
+Its commands appear in Ctrl-K as `tools: Shout` and act on the item being
+edited and what is under it (`outline.item`, `setText`, `setNote`, `add`,
+`toast`). It runs in a sandbox without network, and only after a trusted
+device approved this exact code in ⋯ → Plugins; changing the code, from
+anywhere, stops it until it is approved again. A device is trusted when it
+has the key `trust` (Make it trusted, then copy it with ⋯ → Private keys).
+
 ## Capture
 
 Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving
