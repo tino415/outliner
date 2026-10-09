@@ -1,5 +1,5 @@
 {
-  description = "outline, the command line for the outliner-lab outline";
+  description = "outline, the command line for the outliner-lab outline, and its sync server";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -17,6 +17,7 @@
     {
       packages = forEachSystem (pkgs: rec {
         outline = pkgs.callPackage ./nix/outline.nix { };
+        outline-sync-server = pkgs.lib.addMetaAttrs { mainProgram = "outline-sync-server"; } outline;
         default = outline;
       });
     };
