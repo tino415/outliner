@@ -377,7 +377,8 @@ made it in.
 ### Known bugs and limits
 
 - Undo history does not survive a reload.
-- A new version shows on the next start, without a prompt.
+- ~~A new version shows on the next start, without a prompt.~~ Since
+  2026-10-09 a toast offers Reload (ADR 25).
 - On touch, a drag that starts on a bullet does not scroll the page.
 - On a phone there is no multi-item selection.
 - A trailing line break at the very end of a note is not visible until text
