@@ -124,6 +124,55 @@ test("a property set from the CLI shows as a chip, and one set in the app reache
   expect(shown.children[0].properties).toEqual({ kcal: "250 kcal", effort: "15m" });
 });
 
+test("note lines left by an older build become properties only after the server's newer values arrived", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  const two = await device(browser, "x");
+  await connect(two);
+  await synced(two);
+  await expect.poll(() => two.evaluate(() => localStorage.getItem("outliner-lab:doc:v1"))).toContain("Soup");
+  await two.context().setOffline(true);
+  await two.evaluate(() => {
+    const doc = JSON.parse(localStorage.getItem("outliner-lab:doc:v1")!);
+    const soup = Object.values<{ id: string; text: string; note: string }>(doc.items).find((item) => item.text === "Soup")!;
+    soup.note = ":effort: 3\nfoo";
+    localStorage.setItem("outliner-lab:doc:v1", JSON.stringify(doc));
+    const sync = JSON.parse(localStorage.getItem("outliner-lab:sync:v1")!);
+    sync.replica[soup.id].note = { value: soup.note, clock: sync.replica[soup.id].text.clock };
+    localStorage.setItem("outliner-lab:sync:v1", JSON.stringify(sync));
+  });
+  const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
+  expect((await run(["note", "Soup", "rewritten on the Mac"], env)).code).toBe(0);
+  expect((await run(["set", "Soup", "effort", "5"], env)).code).toBe(0);
+  await two.reload();
+  await two.context().setOffline(false);
+  await syncNow(two);
+  await synced(two);
+  await syncNow(two);
+  await synced(two);
+  const soup = JSON.parse((await run(["show", "--json"], env)).output).children[0];
+  expect(soup).toMatchObject({ note: "rewritten on the Mac", properties: { effort: "5" } });
+});
+
+test("a property cannot be set on an item sealed with a key this device lacks", async ({ browser }) => {
+  const one = await device(browser, "Journal\nShopping");
+  await connect(one);
+  await synced(one);
+  await editor(one, "Journal").click();
+  await one.keyboard.press("Alt+Shift+p");
+  await one.keyboard.type("personal");
+  await one.keyboard.press("Enter");
+  await synced(one);
+  const two = await device(browser, "x");
+  await connect(two);
+  await expect(row(two, "Journal").locator(".sealed")).toBeAttached();
+  await clickEnd(two, "Journal");
+  await two.keyboard.press("ControlOrMeta+;");
+  await expect(two.locator("#toast")).toContainText("key personal");
+  await expect(two.locator("#palette")).toBeHidden();
+});
+
 test("a server whose items were all deleted takes this device's outline instead of an empty one", async ({ browser }) => {
   const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
   const id = (await run(["add", "test item"], env)).output;

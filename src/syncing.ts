@@ -86,6 +86,15 @@ export function startSync(): void {
   syncNow();
 }
 
+let firstRoundDone = false;
+const waitingForFirstRound: (() => void)[] = [];
+
+/** Runs `change` once this device holds what the server has, so its fresh clocks do not overwrite newer edits it has not seen. */
+export function afterFirstSync(change: () => void): void {
+  if (!saved || firstRoundDone) change();
+  else waitingForFirstRound.push(change);
+}
+
 /** Sends what is queued and merges what came back; overlapping calls fold into one more round. */
 export function syncNow(): Promise<void> {
   if (!saved) return Promise.resolve();
@@ -123,6 +132,8 @@ async function roundTrip(): Promise<void> {
     write();
     if (fromTabs.length + merged.accepted.length > 0) showRemoteChanges();
     publishStranded(merged.stranded);
+    firstRoundDone = true;
+    for (const change of waitingForFirstRound.splice(0)) change();
     lastSynced = new Date();
     void uploadPendingFiles();
     showQueueStatus(outgoing, merged.unreadable);

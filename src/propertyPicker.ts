@@ -1,8 +1,11 @@
 import { commitAndRender, doc, state } from "./app";
-import { ItemId, PROPERTY_KEY, SETTINGS, setItemProperty } from "./model";
+import { ItemId, SETTINGS, setItemProperty } from "./model";
+import { isSealed, propertyKey, sealedKeyOf } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { declaredColumns } from "./properties";
 import { caretNow } from "./editing";
+import { choosePrivacy } from "./privateItems";
+import { toast } from "./chrome";
 
 /*
  * Setting a property without typing it (doc/adr/0032): pick a key, then a
@@ -27,13 +30,14 @@ export function bindPropertyChips(): void {
 }
 
 export function chooseProperty(id: ItemId): void {
+  if (sealedHere(id)) return;
   openPalette<Choice>({
     placeholder: "Property…",
     hint: "Pick a property or type a new name; its value comes next",
     candidates: (query) => {
       const wanted = query.trim().toLowerCase();
       const keys = [...new Set([...columnKeys(), ...keysByUse()])].filter((key) => key.includes(wanted));
-      const fresh = PROPERTY_KEY.test(wanted) && !keys.includes(wanted) ? [wanted] : [];
+      const fresh = propertyKey(wanted) === wanted && !keys.includes(wanted) ? [wanted] : [];
       return [...keys, ...fresh].slice(0, 30).map((key) => ({ text: doc().items[id].properties[key] ? `${key}: ${doc().items[id].properties[key]}` : key, path: [], value: key }));
     },
     choose: ({ value }) => chooseValue(id, value),
@@ -41,6 +45,8 @@ export function chooseProperty(id: ItemId): void {
 }
 
 export function chooseValue(id: ItemId, key: string): void {
+  if (key === "private") return choosePrivacy(id);
+  if (sealedHere(id)) return;
   const current = doc().items[id]?.properties[key];
   openPalette<Choice>({
     placeholder: `${key}: ${current ?? "value…"}`,
@@ -56,6 +62,14 @@ export function chooseValue(id: ItemId, key: string): void {
     },
     choose: ({ value }) => commitAndRender(setItemProperty(doc(), id, key, value), caretNow()),
   });
+}
+
+/** A private item this device has no key for: its properties are inside the seal, and a change could never be sent. */
+function sealedHere(id: ItemId): boolean {
+  const note = doc().items[id]?.note ?? "";
+  if (!isSealed(note)) return false;
+  toast(`This item is private: add the key ${sealedKeyOf(note)} in ⋯ → Private keys to change its properties`);
+  return true;
 }
 
 function hintFor(key: string): string {

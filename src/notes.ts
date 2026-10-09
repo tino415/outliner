@@ -4,7 +4,14 @@ const PROPERTY_LINE = /^:([\p{L}\p{N}_-]+):[ \t]*(.*)$/u;
 
 export function propertyLine(line: string): { key: string; value: string } | null {
   const match = PROPERTY_LINE.exec(line.trim());
-  return match ? { key: match[1].toLowerCase(), value: match[2].trim() } : null;
+  const key = match && propertyKey(match[1]);
+  return key ? { key, value: match[2].trim() } : null;
+}
+
+/** A property's key as stored and synced, in lower case; null for one the sync server would refuse. */
+export function propertyKey(written: string): string | null {
+  const key = written.trim().toLowerCase();
+  return /^[\p{L}\p{N}_-]{1,64}$/u.test(key) ? key : null;
 }
 
 /** Every property in a note, keyed in lower case; a key written twice keeps its last value. */

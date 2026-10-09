@@ -24,7 +24,7 @@ import { basename } from "node:path";
 import { findItems } from "../src/search";
 import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
-import { isSealed, propertyLines, sealedKeyOf } from "../src/notes";
+import { isSealed, propertyKey, propertyLines, sealedKeyOf } from "../src/notes";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
@@ -42,8 +42,8 @@ commands:
   done ITEM / undone ITEM  complete or reopen an item
   move ITEM --under ITEM   move an item and everything under it; --before
                            or --after ITEM put it beside ITEM instead
-  set ITEM KEY VALUE       set a property (a ":KEY: VALUE" line in the note);
-                           an empty VALUE removes it
+  set ITEM KEY VALUE       set a property of an item; an empty VALUE
+                           removes it
   capture TEXT             file TEXT with a capture template (--template NAME,
                            the first by default) and --set KEY=VALUE properties
   rm ITEM                  delete an item and everything under it
@@ -162,7 +162,7 @@ async function perform(command: string, args: string[], options: Options, outlin
     case "set": {
       if (args[0]) writable(doc, resolve(doc, args[0]));
       const [, key, ...words] = args;
-      if (!key || !/^[\p{L}\p{N}_-]+$/u.test(key)) throw new Error("set needs ITEM KEY VALUE; KEY is letters, digits, - or _");
+      if (!key || !propertyKey(key)) throw new Error("set needs ITEM KEY VALUE; KEY is up to 64 letters, digits, - or _");
       return changeItem(outline, args, (next, id) => setItemProperty(next, id, key, words.join(" ")));
     }
     case "capture": {
