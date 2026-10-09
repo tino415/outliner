@@ -1,7 +1,7 @@
 import { Doc, Item, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
-import { mapLinesOutsideCode } from "./properties";
+import { mapLinesOutsideCode } from "./notes";
 import { parseDoc } from "./storage";
 
 export function exportJson(doc: Doc): string {

@@ -1,5 +1,6 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
-import { Cell, Column, columnCells, declaredColumns, inferredColumns, propertyLine } from "./properties";
+import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./properties";
+import { propertyLine } from "./notes";
 import { escape, itemLabel, renderInline, renderNote, shortLabel } from "./inline";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";

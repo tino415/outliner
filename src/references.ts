@@ -1,5 +1,5 @@
 import { Doc, ItemId, ROOT } from "./model";
-import { withoutCode } from "./properties";
+import { withoutCode } from "./notes";
 
 /*
  * References between items (doc/adr/0024), written as org links:

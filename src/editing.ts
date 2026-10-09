@@ -27,7 +27,7 @@ import { Candidate, findItems } from "./search";
 import { openPalette } from "./palette";
 import { itemLabel, plainText, renderInline, renderNote, shortLabel } from "./inline";
 import { referenceTo, resolveReference } from "./references";
-import { isInCode } from "./properties";
+import { isInCode } from "./notes";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";

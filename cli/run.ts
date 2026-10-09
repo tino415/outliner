@@ -15,7 +15,8 @@ import {
 import { exportJson, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems } from "../src/search";
 import { Template, capture, captureTemplates } from "../src/capture";
-import { Cell, columnCells, declaredColumns, inferredColumns, propertiesOf, setProperty } from "../src/properties";
+import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
+import { propertiesOf, setProperty } from "../src/notes";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";

@@ -1,5 +1,5 @@
 import { Doc } from "./model";
-import { isInCode, propertiesOf, withoutCode } from "./properties";
+import { isInCode, propertiesOf, withoutCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
 import { insertText } from "./editing";
