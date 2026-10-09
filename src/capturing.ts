@@ -72,7 +72,7 @@ function paint(): void {
   const kept = new Map([...fields.querySelectorAll<HTMLInputElement>("input")].map((input) => [input.dataset.key!, input.value]));
   fields.innerHTML = template.ask.map((key) => `<label>${escape(key)}<input type="text" autocomplete="off" data-key="${escape(key)}" /></label>`).join("");
   for (const input of fields.querySelectorAll<HTMLInputElement>("input")) input.value = kept.get(input.dataset.key!) ?? "";
-  target.textContent = `Goes to ${template.target}${template.atTop ? ", at the top" : ""}`;
+  target.textContent = `Goes to ${template.target}${template.at === "top" ? ", at the top" : ""}`;
 }
 
 function file(): void {

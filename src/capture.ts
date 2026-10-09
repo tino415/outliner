@@ -1,10 +1,11 @@
-import { Doc, ItemId, ROOT, insertChild, setNote } from "./model";
+import { Doc, ItemId, ROOT, insertChild, newChildIndex, setNote } from "./model";
 import { propertiesOf, setProperty } from "./notes";
 
 /*
  * Capture, as in org-capture (doc/adr/0023): a template is an item whose note
  * has a `:capture:` property naming where new items go; `:ask:` lists the
- * properties to ask for, `:at: top` files at the top instead of the bottom,
+ * properties to ask for, `:at: top` or `:at: bottom` overrides where the
+ * target page files new items (`:new: top`, or the bottom),
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
  * a page per day; missing pages on the way are created.
@@ -14,11 +15,11 @@ export interface Template {
   name: string;
   target: string;
   ask: string[];
-  atTop: boolean;
+  at?: "top" | "bottom";
   key: string;
 }
 
-export const INBOX: Template = { name: "Inbox", target: "Inbox", ask: [], atTop: false, key: "i" };
+export const INBOX: Template = { name: "Inbox", target: "Inbox", ask: [], key: "i" };
 
 export function captureTemplates(doc: Doc): Template[] {
   const templates: Template[] = [];
@@ -31,7 +32,7 @@ export function captureTemplates(doc: Doc): Template[] {
           name: doc.items[child].text.trim() || target,
           target,
           ask: (properties.get("ask") ?? "").split(/[\s,]+/).filter(Boolean),
-          atTop: properties.get("at")?.toLowerCase() === "top",
+          at: placementOf(properties.get("at")),
           key: (properties.get("key") ?? "").slice(0, 1).toLowerCase(),
         });
       }
@@ -52,12 +53,23 @@ export interface Captured {
 export function capture(doc: Doc, template: Template, text: string, properties: Record<string, string>, today: Date): Captured {
   const located = targetOf(doc, template.target.replaceAll("{date}", isoDate(today)));
   const parent = located.target;
-  const created = insertChild(located.doc, parent, template.atTop ? 0 : located.doc.items[parent].children.length, text);
+  const created = insertChild(located.doc, parent, indexFor(located.doc, parent, template), text);
   const note = Object.entries(properties).reduce((written, [key, value]) => setProperty(written, key, value), "");
   return { doc: note ? setNote(created.doc, created.id, note) : created.doc, id: created.id, target: parent };
 }
 
 /** The item at a path of texts from the top ("Projects/Garden"), or an item id; steps that do not exist yet are added. */
+function indexFor(doc: Doc, parent: ItemId, template: Template): number {
+  if (template.at === "top") return 0;
+  if (template.at === "bottom") return doc.items[parent].children.length;
+  return newChildIndex(doc, parent);
+}
+
+function placementOf(written: string | undefined): Template["at"] {
+  const placement = written?.trim().toLowerCase();
+  return placement === "top" || placement === "bottom" ? placement : undefined;
+}
+
 function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
   if (doc.items[path.trim()]) return { doc, target: path.trim() };
   let current = doc;

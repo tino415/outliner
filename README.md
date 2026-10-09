@@ -70,6 +70,15 @@ over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time. A hyphen followed by a letter is
 part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
 
+## Order of new and completed items
+
+`:completed: last` on a page shows completed items after the open ones,
+on that page and every page below it (`:completed: in place` turns it off
+further down). Only the display changes; the CLI shows the same order.
+`:new: top` on a page files new children at the top: the + button,
+capture (unless the template says `:at:`) and `outline add --under`.
+Alt-Shift-Enter adds a first child to any item.
+
 ## Links between items
 
 Type `[[` or press Alt-Shift-L to link to another item: it writes

@@ -35,3 +35,4 @@ session report; the records here hold the choices behind them.
 23. [Capture templates live in the outline; shortcuts reach them by URL](0023-capture-templates-live-in-the-outline.md)
 24. [References are org links by id; mirrors wait](0024-references-are-org-links-mirrors-wait.md)
 25. [A new version offers a reload](0025-a-new-version-offers-a-reload.md)
+26. [Completed items last is an order of display, new items on top a page property](0026-completed-last-is-a-display-order.md)

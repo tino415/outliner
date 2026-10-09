@@ -54,6 +54,17 @@ describe("outline CLI", () => {
     expect(await outline("show")).toBe("- Projects\n- Shopping\n  - ~~Buy tomato seeds~~");
   });
 
+  it("follows the page's :new: top and :completed: last", async () => {
+    await outline('add "TODO"');
+    await outline("set TODO new top");
+    await outline("set TODO completed last");
+    await outline('add "old" --under TODO');
+    const newer = await outline('add "newer" --under TODO');
+    await outline(`done ${newer}`);
+    await outline('add "newest" --under TODO');
+    expect(await outline("show TODO")).toBe("- TODO\n  :new: top\n  :completed: last\n  - newest\n  - old\n  - ~~newer~~");
+  });
+
   it("adds items before or after another, beside it", async () => {
     await outline('add "Projects"');
     await outline('add "Garden" --under Projects');

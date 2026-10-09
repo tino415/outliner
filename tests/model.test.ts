@@ -21,6 +21,10 @@ import {
   setFlags,
   split,
   visibleOrder,
+  childrenInOrder,
+  newChildIndex,
+  setNote,
+  shownChildren,
 } from "../src/model";
 import { parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems, search } from "../src/search";
@@ -52,6 +56,47 @@ function consistent(doc: Doc): void {
     if (item.parent) expect(doc.items[item.parent].children).toContain(item.id);
   }
 }
+
+describe("order of children", () => {
+  function withCompleted(note: string): Doc {
+    let doc = outline("Tasks\n  old\n  open one\n  older\n  open two\n    done inside\n    open inside\nElsewhere\n  done\n  open");
+    doc = setNote(doc, idOf(doc, "Tasks"), note);
+    for (const text of ["old", "older", "done inside", "done"]) doc = setFlags(doc, idOf(doc, text), { completed: true });
+    return doc;
+  }
+
+  const texts = (doc: Doc, ids: ItemId[]) => ids.map((id) => doc.items[id].text);
+
+  it("puts completed children last under a page with :completed: last, and below it", () => {
+    const doc = withCompleted(":completed: last");
+    expect(texts(doc, childrenInOrder(doc, idOf(doc, "Tasks")))).toEqual(["open one", "open two", "old", "older"]);
+    expect(texts(doc, childrenInOrder(doc, idOf(doc, "open two")))).toEqual(["open inside", "done inside"]);
+    expect(texts(doc, childrenInOrder(doc, idOf(doc, "Elsewhere")))).toEqual(["done", "open"]);
+    expect(texts(doc, shownChildren(doc, idOf(doc, "Tasks"), all))).toEqual(["open one", "open two", "old", "older"]);
+  });
+
+  it("keeps the written order without it", () => {
+    const doc = withCompleted("");
+    expect(texts(doc, childrenInOrder(doc, idOf(doc, "Tasks")))).toEqual(["old", "open one", "older", "open two"]);
+  });
+
+  it("reads reading order, moves and indents in the shown order", () => {
+    const doc = withCompleted(":completed: last");
+    const tasks = idOf(doc, "Tasks");
+    expect(texts(doc, visibleOrder(doc, tasks, all)).slice(0, 3)).toEqual(["open one", "open two", "open inside"]);
+    const indented = indent(doc, idOf(doc, "open two"), all);
+    expect(indented.items[idOf(doc, "open two")].parent).toBe(idOf(doc, "open one"));
+    const moved = moveUp(doc, idOf(doc, "open two"), all);
+    expect(texts(moved, childrenInOrder(moved, tasks))).toEqual(["open two", "open one", "old", "older"]);
+  });
+
+  it("files new children first under a page with :new: top, and last otherwise", () => {
+    const doc = withCompleted(":new: top");
+    expect(newChildIndex(doc, idOf(doc, "Tasks"))).toBe(0);
+    expect(newChildIndex(doc, idOf(doc, "Elsewhere"))).toBe(2);
+    expect(newChildIndex(doc, idOf(doc, "open two"))).toBe(2);
+  });
+});
 
 describe("split", () => {
   it("moves the text after the caret into a new next sibling", () => {
