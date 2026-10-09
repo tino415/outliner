@@ -1,5 +1,5 @@
 import { ItemId, setNote } from "./model";
-import { propertiesOf, setProperty } from "./properties";
+import { propertiesOf, setProperty } from "./notes";
 import { commitAndRender, doc, state, ui } from "./app";
 import { caretNow } from "./editing";
 import { columnViewShown, render } from "./render";

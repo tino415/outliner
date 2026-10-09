@@ -8,9 +8,8 @@ import {
   inferredColumns,
   parseAmount,
   parseColumns,
-  propertiesOf,
-  setProperty,
 } from "../src/properties";
+import { propertiesOf, setProperty } from "../src/notes";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;

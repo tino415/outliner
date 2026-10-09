@@ -1,5 +1,5 @@
 import { Doc, ItemId, ROOT, insertChild, setNote } from "./model";
-import { propertiesOf, setProperty } from "./properties";
+import { propertiesOf, setProperty } from "./notes";
 
 /*
  * Capture, as in org-capture (doc/adr/0023): a template is an item whose note
