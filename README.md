@@ -144,6 +144,14 @@ after it switches to the server's outline.
 Back up the database by copying `/data/outline.db` out of the `sync`
 container.
 
+The flake also builds the server, as `outline-sync-server`, taking the same
+settings as the container (`OUTLINE_TOKEN`, `OUTLINE_DB`, `PORT`, `HOST`):
+
+```sh
+OUTLINE_TOKEN=… OUTLINE_DB=$HOME/outline.db PORT=8791 HOST=127.0.0.1 \
+  nix run git+ssh://git@github.com/tino415/outliner.git#outline-sync-server
+```
+
 ## CLI
 
 ```sh
