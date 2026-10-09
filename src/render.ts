@@ -30,6 +30,7 @@ export function render(request: FocusRequest): void {
   renderColumnsHead();
   const board = boardShown();
   ui.board.hidden = !board;
+  ui.page.classList.toggle("with-board", board);
   ui.tree.hidden = board;
   if (board) renderBoard();
   else renderTree();
