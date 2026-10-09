@@ -1,5 +1,5 @@
 import { Doc, ItemId, ROOT } from "./model";
-import { withoutCode } from "./notes";
+import { privateKeyOf, withoutCode } from "./notes";
 
 /*
  * References between items (doc/adr/0024), written as org links:
@@ -19,6 +19,17 @@ export function resolveReference(doc: Doc, target: string): ItemId | null {
   const wanted = target.trim().toLowerCase();
   const found = inReadingOrder(doc).find((id) => doc.items[id].text.trim().toLowerCase() === wanted);
   return found ?? null;
+}
+
+/** For a link this device cannot follow: the private item it leads into, read from the id (doc/adr/0029). */
+export function privateHolderOf(doc: Doc, target: string): ItemId | null {
+  if (!target.startsWith("id:") || doc.items[target.slice(3)]) return null;
+  const parts = target.slice(3).split("~");
+  for (let length = parts.length - 1; length > 0; length--) {
+    const holder = parts.slice(0, length).join("~");
+    if (doc.items[holder] && privateKeyOf(doc.items[holder].note)) return holder;
+  }
+  return null;
 }
 
 export function linksAsLabels(doc: Doc, text: string): string {

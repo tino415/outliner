@@ -1,5 +1,5 @@
 import { bindAttachments } from "./attachments";
-import { Doc, ItemId, ROOT, ViewFilter, isDescendant } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
 import { SearchResult } from "./search";
@@ -90,8 +90,13 @@ export type Focus = Caret;
 
 export function commitAndRender(next: Doc, focus: FocusRequest): void {
   if (next === doc()) return;
-  commit(next);
-  render(focus);
+  const renamed = commit(next);
+  render(renamed.size === 0 ? focus : focusAfterRenaming(focus, renamed));
+}
+
+function focusAfterRenaming(focus: FocusRequest, renamed: Map<ItemId, ItemId>): FocusRequest {
+  if (focus === null) return null;
+  return [focus].flat().map((each) => ({ ...each, id: renamed.get(each.id) ?? each.id }));
 }
 
 /**
@@ -99,16 +104,21 @@ export function commitAndRender(next: Doc, focus: FocusRequest): void {
  * no render, but the row and the search results have to know.
  */
 export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null, typingKey: string | null = null): void {
-  commit(next, typingKey, caretBefore);
+  const renamed = commit(next, typingKey, caretBefore);
+  if (renamed.size > 0) render(caretNow());
   rowShowsTypedText(id);
   if (state.query) state.keptInResults.add(id);
 }
 
-function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): void {
+/** Commits `next` with the ids private items need (doc/adr/0029); returns the items that were renamed. */
+function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): Map<ItemId, ItemId> {
   const before = doc();
-  state.history.commit(next, caretBefore, typingKey);
-  saveDocSoon(next);
-  changedHere(before, next);
+  const { doc: named, renamed } = withPrivateIds(next);
+  state.history.commit(named, caretBefore, typingKey);
+  saveDocSoon(named);
+  changedHere(before, named);
+  if (renamed.has(state.zoom)) state.zoom = renamed.get(state.zoom)!;
+  return renamed;
 }
 
 type ChangeListener = (before: Doc, after: Doc) => void;

@@ -111,6 +111,16 @@ describe("private items at the sync boundary", () => {
     expect(JSON.stringify(sent)).not.toContain("was public");
   });
 
+  it("publish everything inside when the item is made public again", async () => {
+    const phone = device("phone", journal());
+    await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    const changes = phone.edit(setNote(phone.doc(), idOf(phone.doc(), "Journal"), "my diary"));
+    const { changes: sent } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp);
+    const cli = device("cli");
+    cli.receive(sent);
+    expect(Object.values(cli.doc().items).map((item) => item.text)).toEqual(expect.arrayContaining(["secret one", "secret two"]));
+  });
+
   it("finds the sealed notes in a replica to open once a key is added", async () => {
     const phone = device("phone", journal());
     const { changes } = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);

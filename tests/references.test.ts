@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Doc, ItemId, setNote, setText } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
-import { backlinks, referenceTo, resolveReference } from "../src/references";
+import { backlinks, privateHolderOf, referenceTo, resolveReference } from "../src/references";
 import { renderInline } from "../src/inline";
 
 function idOf(doc: Doc, text: string): ItemId {
@@ -43,5 +43,17 @@ describe("references", () => {
       ["the garden", "id:abc"],
       ["Plans", "Plans"],
     ]);
+  });
+});
+
+describe("links into private items", () => {
+  it("name the private item they lead into when the item itself cannot be seen here", () => {
+    let doc = parseIndentedText("Journal\nIndex");
+    doc = setNote(doc, idOf(doc, "Journal"), `🔒private:1:personal:${"A".repeat(40)}`);
+    const journal = idOf(doc, "Journal");
+    expect(privateHolderOf(doc, `id:${journal}~abc`)).toBe(journal);
+    expect(privateHolderOf(doc, "id:gone")).toBeNull();
+    expect(privateHolderOf(doc, `id:${idOf(doc, "Index")}~abc`)).toBeNull();
+    expect(privateHolderOf(doc, `id:${journal}`)).toBeNull();
   });
 });

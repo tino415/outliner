@@ -2,6 +2,7 @@ import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
 import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./properties";
 import { propertyLine } from "./notes";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
+import { isSealed } from "./notes";
 import { select } from "./caret";
 import { Focus, doc, filter, state, ui } from "./app";
 import { paintSelection } from "./selection";
@@ -55,6 +56,7 @@ function renderHead(): void {
   ui.titleNote.dataset.id = item.id;
   if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderItemText(item.text);
   ui.title.classList.toggle("empty", item.text === "");
+  ui.titleNote.contentEditable = isSealed(item.note) ? "false" : "plaintext-only";
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
   document.title = titleFor(item.id);
@@ -260,7 +262,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
-    `<div class="note${noteAsColumns ? " as-columns" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
+    `<div class="note${noteAsColumns ? " as-columns" : ""}" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;
   return row;

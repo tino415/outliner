@@ -629,6 +629,12 @@ code {
   cursor: text;
 }
 
+.sealed::before {
+  content: "🔒 Private, sealed with the key “" attr(data-key) "”. Add it in ⋯ → Private keys to open it here.";
+  color: var(--muted);
+  font-style: italic;
+}
+
 .att-image {
   display: block;
   max-width: min(100%, 520px);

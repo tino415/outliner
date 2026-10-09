@@ -7,6 +7,7 @@
 
 import { kindOf } from "./kinds";
 import { ATTACHMENT } from "./attachmentLinks";
+import { SEALED_NOTE } from "./notes";
 
 const TOKEN = new RegExp(
   [
@@ -87,6 +88,8 @@ const FENCE = /^\s*```/;
  * (doc/adr/0020), and lines between ``` fences as a code block (doc/adr/0021).
  */
 export function renderNote(note: string): string {
+  const sealed = SEALED_NOTE.exec(note);
+  if (sealed) return `<span class="sealed" data-key="${escape(sealed[1])}">${marker(note)}</span>`;
   const lines = note.split("\n");
   let html = "";
   for (let index = 0; index < lines.length; index++) {

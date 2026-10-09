@@ -10,6 +10,9 @@ import { render } from "./render";
 import { saveDocSoon } from "./storage";
 import { toast } from "./chrome";
 import { uploadPendingFiles } from "./attachments";
+import { Outgoing, openIncoming, sealOutgoing, sealedIn } from "./sync/privacy";
+import { privateKeyOf } from "./notes";
+import { keys } from "./keyring";
 
 /*
  * The app's side of sync (doc/adr/0011, 0012). Every change made here is
@@ -101,20 +104,24 @@ export function syncNow(): Promise<void> {
 
 async function roundTrip(): Promise<void> {
   const current = saved!;
-  const sent = current.pending.filter(fitsOnServer);
+  const taken = current.pending.filter(fitsOnServer);
   try {
+    const outgoing = await sealOutgoing(taken, current.replica, keys(), () => clock!.tick());
+    const sent = outgoing.changes.filter(fitsOnServer);
     const response = await exchange(current, { since: current.seq, changes: sent });
     if (saved !== current) return;
     const fromTabs = absorbOtherTabs();
-    current.pending = current.pending.filter((change) => !sent.some((done) => sameChange(done, change)));
+    const sealedTooLong = sent.length < outgoing.changes.length;
+    const done = taken.filter((change) => (sealedTooLong ? sent.includes(change) : !outgoing.held.includes(change)));
+    current.pending = current.pending.filter((change) => !done.some((each) => sameChange(each, change)));
     for (const change of response.changes) clock!.observe(change.clock);
-    const fromServer = merge(current.replica, response.changes);
+    const fromServer = merge(current.replica, await openIncoming(response.changes, keys()));
     current.seq = Math.max(current.seq, response.seq);
     write();
     if (fromTabs.length + fromServer.length > 0) showRemoteChanges();
     lastSynced = new Date();
     void uploadPendingFiles();
-    showQueueStatus();
+    showQueueStatus(outgoing);
   } catch (error) {
     if (!(error instanceof SyncError) || error.status === undefined) setStatus("offline");
     else if (error.status === 401) setStatus("refused");
@@ -122,10 +129,34 @@ async function roundTrip(): Promise<void> {
   }
 }
 
-function showQueueStatus(): void {
+function showQueueStatus(outgoing: Outgoing = { changes: [], held: [] }): void {
   const tooLong = saved!.pending.filter((change) => !fitsOnServer(change)).length;
+  const privateTooLong = outgoing.changes.some((change) => !fitsOnServer(change));
+  const missingKeys = [...new Set(outgoing.held.map((change) => privateKeyNeededFor(change)).filter(Boolean))];
   if (tooLong > 0) setStatus("rejected", `${tooLong === 1 ? "A note or item is" : `${tooLong} notes or items are`} over ${MAX_TEXT.toLocaleString()} characters, too long to sync; shorten it to send it`);
+  else if (privateTooLong) setStatus("rejected", "A private item is too large to sync; move some of what is under it out");
+  else if (missingKeys.length > 0) setStatus("rejected", `This device has no key named ${missingKeys.join(", ")}; private items using it stay here until it is added in ⋯ → Private keys`);
   else setStatus(saved!.pending.length > 0 ? "pending" : "synced");
+}
+
+function privateKeyNeededFor(change: Change): string | null {
+  const items = doc().items;
+  for (let current: string | null = change.item; current; current = items[current]?.parent ?? null) {
+    const key = items[current] && privateKeyOf(items[current].note);
+    if (key) return key;
+  }
+  return null;
+}
+
+/** After a key is added: opens what was sealed with it and shows it. */
+export async function openWithNewKeys(): Promise<void> {
+  if (!saved) return;
+  const current = saved;
+  const opened = merge(current.replica, await openIncoming(sealedIn(current.replica), keys()));
+  if (saved !== current || opened.length === 0) return;
+  write();
+  showRemoteChanges();
+  void syncNow();
 }
 
 function fitsOnServer(change: Change): boolean {
@@ -199,7 +230,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
   const fresh: Saved = { ...endpoint, device: newDeviceId(), seq: response.seq, replica: {}, pending: [] };
   const newClock = clockFor(fresh);
   for (const change of response.changes) newClock.observe(change.clock);
-  merge(fresh.replica, response.changes);
+  merge(fresh.replica, await openIncoming(response.changes, keys()));
   const serverHasOutline = materialize(fresh.replica).items[ROOT].children.length > 0;
   const mine = doc();
   if (!serverHasOutline) {

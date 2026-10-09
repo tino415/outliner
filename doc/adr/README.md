@@ -38,3 +38,4 @@ session report; the records here hold the choices behind them.
 26. [Completed items last is an order of display, new items on top a page property](0026-completed-last-is-a-display-order.md)
 27. [Kinds are the leading words before a colon, shown as badges](0027-kinds-are-leading-words-shown-as-badges.md)
 28. [Attachments are files on the sync server, named by their hash](0028-attachments-are-files-on-the-sync-server-by-hash.md)
+29. [Private items are sealed whole at the sync boundary](0029-private-items-are-sealed-whole-at-the-sync-boundary.md)

@@ -22,7 +22,7 @@ import { basename } from "node:path";
 import { findItems } from "../src/search";
 import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
-import { propertiesOf, setProperty } from "../src/notes";
+import { isSealed, privateKeyOf, propertiesOf, setProperty } from "../src/notes";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
@@ -142,6 +142,7 @@ async function perform(command: string, args: string[], options: Options, outlin
     case "edit":
       return changeItem(outline, args, (next, id) => setText(next, id, requireText(args, "edit")));
     case "note":
+      if (args[0]) writable(doc, resolve(doc, args[0]));
       return changeItem(outline, args, (next, id) => setNote(next, id, args.slice(1).join(" ")));
     case "done":
       return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: true }));
@@ -157,6 +158,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       });
     }
     case "set": {
+      if (args[0]) writable(doc, resolve(doc, args[0]));
       const [, key, ...words] = args;
       if (!key || !/^[\p{L}\p{N}_-]+$/u.test(key)) throw new Error("set needs ITEM KEY VALUE; KEY is letters, digits, - or _");
       return changeItem(outline, args, (next, id) => setNote(next, id, setProperty(next.items[id].note, key, words.join(" "))));
@@ -168,6 +170,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       const template = options.template ? templateNamed(templates, options.template) : templates[0];
       if (!template) throw new Error(`no capture template named ${options.template}; there are ${templates.map((each) => each.name).join(", ")}`);
       const result = capture(doc, template, text, propertiesFrom(options.set), new Date());
+      for (const id of [result.target, ...ancestors(result.doc, result.target)]) writable(result.doc, id);
       await outline.save(result.doc);
       return options.json ? json({ id: result.id, under: result.target }) : result.id;
     }
@@ -175,6 +178,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       return changeItem(outline, args, (next, id) => remove(next, id));
     case "attach": {
       const [item, path] = args;
+      if (item) writable(outline.doc, resolve(outline.doc, item));
       if (!item || !path) throw new Error("attach needs ITEM FILE");
       const bytes = readLocalFile(path);
       const hash = await sha256Hex(bytes);
@@ -212,19 +216,25 @@ interface Place {
 function place(doc: Doc, options: Options): Place {
   const beside = besideOf(options);
   if (beside === undefined) {
-    const parent = resolve(doc, options.under ?? "/");
+    const parent = writable(doc, resolve(doc, options.under ?? "/"));
     return { parent, at: options.first ? 0 : newChildIndex(doc, parent) };
   }
   if (options.under !== undefined || options.first) throw new Error("--before and --after cannot go with --under or --first");
   const sibling = resolve(doc, beside);
   if (sibling === ROOT) throw new Error("the top of the outline has no place beside it");
   const at = indexInParent(doc, sibling) + (options.after !== undefined ? 1 : 0);
-  return { parent: doc.items[sibling].parent!, at, beside: sibling };
+  return { parent: writable(doc, doc.items[sibling].parent!), at, beside: sibling };
 }
 
 function besideOf(options: Options): string | undefined {
   if (options.before !== undefined && options.after !== undefined) throw new Error("give either --before or --after, not both");
   return options.before ?? options.after;
+}
+
+/** The item, unless it is private: what is inside one can only change on a device with its key (doc/adr/0029). */
+function writable(doc: Doc, id: ItemId): ItemId {
+  if (isSealed(doc.items[id].note)) throw new Error(`${doc.items[id].text} is private: only a device with the key ${privateKeyOf(doc.items[id].note)} can change what is in it`);
+  return id;
 }
 
 function readLocalFile(path: string): Uint8Array<ArrayBuffer> {
@@ -338,7 +348,7 @@ function tree(doc: Doc, id: ItemId, depth = Infinity, cells?: Map<ItemId, Map<st
   return {
     id,
     text: item.text,
-    ...(item.note ? { note: item.note } : {}),
+    ...(isSealed(item.note) ? { private: privateKeyOf(item.note) } : item.note ? { note: item.note } : {}),
     ...(item.completed ? { completed: true } : {}),
     ...(properties.size > 0 ? { properties: Object.fromEntries(properties) } : {}),
     ...(row && row.size > 0 ? { columns: Object.fromEntries([...row].map(([key, cell]) => [key, cell.text])) } : {}),
@@ -405,7 +415,8 @@ function line(doc: Doc, id: ItemId, depth: number, options: Options): string {
   const item = doc.items[id];
   const pad = "  ".repeat(depth);
   const text = item.completed ? `~~${item.text}~~` : item.text;
-  const note = item.note ? `\n${item.note.split("\n").map((noteLine) => `${pad}  ${noteLine}`).join("\n")}` : "";
+  const shownNote = isSealed(item.note) ? `🔒 private, sealed with the key ${privateKeyOf(item.note)}` : item.note;
+  const note = shownNote ? `\n${shownNote.split("\n").map((noteLine) => `${pad}  ${noteLine}`).join("\n")}` : "";
   return `${pad}- ${text}${options.ids ? `  [${id}]` : ""}${note}`;
 }
 

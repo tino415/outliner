@@ -214,6 +214,47 @@ test("a file attached on one device shows on another and reaches the CLI", async
   expect(readFileSync(saved)).toEqual(pixel);
 });
 
+test("a private item reaches the server sealed and opens only where its key is", async ({ browser }) => {
+  const one = await device(browser, "Journal\n  secret one\nShopping");
+  await connect(one);
+  await synced(one);
+  await editor(one, "Journal").click();
+  await one.keyboard.press("Alt+Shift+p");
+  await one.keyboard.type("personal");
+  await expect(one.locator("#palette li.active")).toHaveText("New key: personal");
+  await one.keyboard.press("Enter");
+  await synced(one);
+
+  const everything = await (await fetch(`${server.url}/sync`, { method: "POST", headers: { Authorization: `Bearer ${server.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ since: 0, changes: [] }) })).text();
+  expect(everything).not.toContain("secret one");
+  expect(everything).toContain("🔒private:1:personal:");
+  const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
+  expect((await run(["show"], env)).output).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping");
+
+  const two = await device(browser, "x");
+  await connect(two);
+  await expectOutline(two, "Journal\nShopping");
+  await expect(row(two, "Journal").locator(".sealed")).toBeAttached();
+
+  await one.locator("#menu-button").click();
+  await one.getByRole("button", { name: "Private keys…" }).click();
+  const key = await one.locator("#key-list input").inputValue();
+  await two.locator("#menu-button").click();
+  await two.getByRole("button", { name: "Private keys…" }).click();
+  await two.locator("#key-add-text").fill(key);
+  await two.getByRole("button", { name: "Add", exact: true }).click();
+  await two.keyboard.press("Escape");
+  await expectOutline(two, "Journal\n  secret one\nShopping");
+
+  await clickEnd(two, "secret one");
+  await two.keyboard.type(", edited on two");
+  await synced(two);
+  await one.keyboard.press("Escape");
+  await syncNow(one);
+  await expectOutline(one, "Journal\n  secret one, edited on two\nShopping");
+  expect((await run(["export", "--json"], env)).output).not.toContain("edited on two");
+});
+
 test("a wrong token is reported and nothing is lost", async ({ browser }) => {
   const one = await device(browser, "keep me");
   await one.locator("#menu-button").click();
