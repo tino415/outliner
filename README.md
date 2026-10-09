@@ -151,8 +151,17 @@ Tools
 ````
 
 Its commands appear in Ctrl-K as `tools: Shout` and act on the item being
-edited and what is under it (`outline.item`, `setText`, `setNote`, `add`,
-`toast`). It runs in a sandbox without network, and only after a trusted
+edited and what is under it:
+
+- `outline.item(item)` reads `{id, text, note, properties, children}`
+- `outline.setText(item, text)`, `setNote(item, note)`
+- `outline.setProperty(item, key, value)`, an empty value removing it; not
+  `private`, `plugin` or `approved`
+- `outline.add(parent, text)` adds a child and returns its id
+- `outline.toast(message)`
+
+Each takes an item as the action got it or its id, and returns a promise; a
+failed call shows its error as a toast, awaited or not. It runs in a sandbox without network, and only after a trusted
 device approved this exact code in ⋯ → Plugins; changing the code, from
 anywhere, stops it until it is approved again. A device is trusted when it
 has the key `trust` (Make it trusted, then copy it with ⋯ → Private keys).
