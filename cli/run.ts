@@ -14,7 +14,11 @@ import {
   setNote,
   setText,
 } from "../src/model";
-import { exportJson, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
+import { exportJson, exportMarkdown, exportOpml, graft, parseIndentedText } from "../src/transfer";
+import { attachmentLink, typeFromName } from "../src/attachmentLinks";
+import { downloadFile, sha256Hex, uploadFile } from "../src/sync/files";
+import { readFileSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 import { findItems } from "../src/search";
 import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
@@ -41,6 +45,9 @@ commands:
   capture TEXT             file TEXT with a capture template (--template NAME,
                            the first by default) and --set KEY=VALUE properties
   rm ITEM                  delete an item and everything under it
+  attach ITEM FILE         upload FILE and link it in the item's note; prints
+                           its hash
+  file HASH PATH           save the attached file with that hash to PATH
   export [ITEM]            --md (default), --opml or --json
 
 ITEM is an item id, or a path of item texts separated by "/", like
@@ -166,11 +173,30 @@ async function perform(command: string, args: string[], options: Options, outlin
     }
     case "rm":
       return changeItem(outline, args, (next, id) => remove(next, id));
+    case "attach": {
+      const [item, path] = args;
+      if (!item || !path) throw new Error("attach needs ITEM FILE");
+      const bytes = readLocalFile(path);
+      const hash = await sha256Hex(bytes);
+      const type = typeFromName(path);
+      await uploadFile(outline.endpoint, hash, type, bytes);
+      const link = attachmentLink(basename(path), hash, type);
+      await changeItem(outline, [item], (next, id) => setNote(next, id, [next.items[id].note, link].filter(Boolean).join("\n")));
+      return hash;
+    }
+    case "file": {
+      const [hash, path] = args;
+      if (!/^[0-9a-f]{64}$/.test(hash ?? "") || !path) throw new Error("file needs HASH PATH; HASH is the 64 letters after att: in a note");
+      const blob = await downloadFile(outline.endpoint, hash);
+      if (!blob) throw new Error(`no file ${hash} on the server`);
+      writeFileSync(path, new Uint8Array(await blob.arrayBuffer()));
+      return path;
+    }
     case "export": {
       const top = resolve(doc, args[0] ?? "/");
       if (options.format === "opml") return exportOpml(doc, top);
       if (options.format === "json") return exportJson(doc);
-      return subtreesAsText(doc, doc.items[top].children);
+      return exportMarkdown(doc, top).trimEnd();
     }
     default:
       throw new Error(`unknown command ${command}; run outline help`);
@@ -199,6 +225,14 @@ function place(doc: Doc, options: Options): Place {
 function besideOf(options: Options): string | undefined {
   if (options.before !== undefined && options.after !== undefined) throw new Error("give either --before or --after, not both");
   return options.before ?? options.after;
+}
+
+function readLocalFile(path: string): Uint8Array<ArrayBuffer> {
+  try {
+    return new Uint8Array(readFileSync(path));
+  } catch (error) {
+    throw new Error(`cannot read ${path}: ${(error as NodeJS.ErrnoException).code ?? (error as Error).message}`);
+  }
 }
 
 async function changeItem(outline: Outline, args: string[], change: (doc: Doc, id: ItemId) => Doc): Promise<string> {
@@ -235,7 +269,7 @@ function requireText(args: string[], command: string): string {
 /** The whole outline fetched from the server; `save` sends what changed and nothing else. */
 class Outline {
   private constructor(
-    private endpoint: Endpoint,
+    readonly endpoint: Endpoint,
     private replica: Replica,
     private clock: Clock,
     readonly doc: Doc,

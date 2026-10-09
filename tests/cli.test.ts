@@ -4,6 +4,9 @@ import { Server } from "node:http";
 import { createSyncServer } from "../server/app";
 import { Store } from "../server/store";
 import { run } from "../cli/run";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const token = "cli-test-token-0123456789";
 let server: Server;
@@ -63,6 +66,27 @@ describe("outline CLI", () => {
     await outline(`done ${newer}`);
     await outline('add "newest" --under TODO');
     expect(await outline("show TODO")).toBe("- TODO\n  :new: top\n  :completed: last\n  - newest\n  - old\n  - ~~newer~~");
+  });
+
+  it("attaches a file to an item's note and fetches it back by its hash", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "outline-cli-"));
+    const shot = join(folder, "glitch.png");
+    writeFileSync(shot, "not really a png");
+    await outline('add "Bug report"');
+    const hash = await outline(`attach "Bug report" ${shot}`);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(await outline('show "Bug report"')).toBe(`- Bug report\n  ![glitch.png](att:${hash})`);
+    const copy = join(folder, "copy.png");
+    expect(await outline(`file ${hash} ${copy}`)).toBe(copy);
+    expect(readFileSync(copy, "utf8")).toBe("not really a png");
+    await expect(outline(`file ${"0".repeat(64)} ${copy}`)).rejects.toThrow(/no file/);
+    rmSync(folder, { recursive: true });
+  });
+
+  it("exports Markdown with links as their labels", async () => {
+    const id = await outline('add "Garden"');
+    await outline(`add "See [[id:${id}][the garden]]"`);
+    expect(await outline("export --md")).toBe("- Garden\n- See the garden");
   });
 
   it("adds items before or after another, beside it", async () => {
