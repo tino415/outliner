@@ -4,7 +4,8 @@ import { Change, Field } from "../src/sync/replica";
 /**
  * The current value of every field, with the clock that wrote it and a
  * sequence number that grows with every accepted write. Clients ask for
- * everything after the last sequence number they saw.
+ * everything after the last sequence number they saw. Attached files are
+ * kept by the SHA-256 of their content (doc/adr/0028).
  */
 export class Store {
   private db: DatabaseSync;
@@ -21,7 +22,21 @@ export class Store {
         primary key (item, field)
       );
       create index if not exists fields_by_seq on fields (seq);
+      create table if not exists files (
+        hash text primary key,
+        type text not null,
+        bytes blob not null
+      );
     `);
+  }
+
+  saveFile(hash: string, type: string, bytes: Uint8Array): void {
+    this.db.prepare("insert into files (hash, type, bytes) values (?, ?, ?) on conflict (hash) do nothing").run(hash, type, bytes);
+  }
+
+  file(hash: string): { type: string; bytes: Uint8Array } | null {
+    const row = this.db.prepare("select type, bytes from files where hash = ?").get(hash) as { type: string; bytes: Uint8Array } | undefined;
+    return row ?? null;
   }
 
   latestSeq(): number {

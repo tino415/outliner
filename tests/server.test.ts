@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AddressInfo } from "node:net";
 import { Server } from "node:http";
 import { rmSync } from "node:fs";
-import { createSyncServer } from "../server/app";
+import { createHash } from "node:crypto";
+import { MAX_FILE, createSyncServer } from "../server/app";
 import { Store } from "../server/store";
 import { Change } from "../src/sync/replica";
 
@@ -68,6 +69,11 @@ describe("sync server", () => {
     expect(other.headers.get("access-control-allow-origin")).toBeNull();
   });
 
+  it("allows PUT from the browser, for attachments", async () => {
+    const allowed = await fetch(`${base}/files/x`, { method: "OPTIONS", headers: { Origin: "https://app.example" } });
+    expect(allowed.headers.get("access-control-allow-methods")).toContain("PUT");
+  });
+
   it("keeps data across restarts of the store", async () => {
     const file = `/tmp/outline-test-${process.pid}-${Date.now()}.db`;
     const first = new Store(file);
@@ -77,5 +83,39 @@ describe("sync server", () => {
     expect(second.changesAfter(0)).toEqual([change("a", "kept", "1")]);
     second.close();
     rmSync(file);
+  });
+});
+
+describe("attachments", () => {
+  const bytes = new TextEncoder().encode("a small screenshot");
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  const auth = { Authorization: `Bearer ${token}` };
+  const put = (name: string, body: Uint8Array, headers: Record<string, string> = auth) =>
+    fetch(`${base}/files/${name}`, { method: "PUT", headers: { "Content-Type": "image/png", ...headers }, body });
+
+  it("stores a file under its SHA-256 and hands it back with its type", async () => {
+    expect((await put(hash, bytes)).status).toBe(201);
+    const back = await fetch(`${base}/files/${hash}`, { headers: auth });
+    expect(back.status).toBe(200);
+    expect(back.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await back.arrayBuffer())).toEqual(bytes);
+  });
+
+  it("refuses a file whose content does not match the name", async () => {
+    const response = await put("0".repeat(64), bytes);
+    expect(response.status).toBe(400);
+    expect((await fetch(`${base}/files/${"0".repeat(64)}`, { headers: auth })).status).toBe(404);
+  });
+
+  it("needs the token to store or read a file", async () => {
+    expect((await put(hash, bytes, {})).status).toBe(401);
+    await put(hash, bytes);
+    expect((await fetch(`${base}/files/${hash}`)).status).toBe(401);
+  });
+
+  it("refuses a file over the size limit", async () => {
+    const big = new Uint8Array(MAX_FILE + 1);
+    const response = await put(createHash("sha256").update(big).digest("hex"), big);
+    expect(response.status).toBe(413);
   });
 });
