@@ -35,6 +35,11 @@ before writing and do not delete without being asked.
 - The remote is `git@github.com:tino415/outliner.git` (private); `main` there
   holds all work so far. Work on a branch and open a PR; do not push to
   `main`.
+- A session working in a worktree under `.claude/worktrees/` cannot run git
+  in the main checkout (`~/src/outliner-lab`); to pull main there (needed
+  before rebuilding `sync`), leave the worktree keeping it, run git in the
+  checkout, and enter the worktree again. A worktree has no `.env.sync`, so
+  its own compose stack needs a separate project name and an empty one.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
@@ -52,7 +57,9 @@ before writing and do not delete without being asked.
 - The `sync` container holds Martin's real outline and is reached by his
   phone and Mac. Browser and unit tests start their own server
   (`e2e/sync-server.ts`); never point a test at the live one.
-- Rebuild and restart `sync` (`podman compose up -d --build sync`) only when
+- Rebuild and restart `sync` (`podman compose up -d --build --force-recreate
+  --no-deps sync`; without `--force-recreate` the old container keeps
+  running the old image) only when
   `server/` or the wire format in `src/sync/protocol.ts` changes, and say so
   in the report. Changing what the server accepts needs the app and the
   server to agree; old clients keep running on phones.

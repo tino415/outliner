@@ -75,7 +75,10 @@ Done, each with tests:
 - Private items: Alt-Shift-P, sealed at the sync boundary, keys copied by
   hand, the CLI sees a lock (ADR 29). A review agent read the first
   version and found six ways plaintext or edits could slip through; all
-  fixed, each with a test, before anything was published.
+  fixed, each with a test, before anything was published. A second
+  review of the fixes found three more (a note-only private item, two
+  keys of one name, making public while another device adds inside);
+  fixed the same way.
 - Plugins: Ctrl-K commands in a sandboxed iframe, approved by an HMAC with
   the `trust` key, so the CLI cannot approve and any code change needs a
   new approval (ADR 30).
@@ -84,9 +87,10 @@ Not done or left out:
 
 - Plugin hooks on events (an item was added) and plugins in the CLI: a
   hook would fire once per device; see ADR 30.
-- The live `sync` container still runs the old server: the main checkout
-  could not be updated from this session's worktree. Attachments upload
-  once it is rebuilt.
+- The live `sync` container was rebuilt at 17:44 from main (49a9da8);
+  attachments upload from then on. `podman compose up -d --build sync`
+  rebuilt the image but kept the old container; it needed
+  `--force-recreate`.
 - Step 2 of the Nix server (NixOS module, moving the live database) waits
   for Martin.
 - Testing on a real phone, and the Todoist project (its connector needs
