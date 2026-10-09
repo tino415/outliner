@@ -70,6 +70,15 @@ over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time. A hyphen followed by a letter is
 part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
 
+## Kinds
+
+An item that starts with one to three capitalised words of letters and a
+colon, as `Question: …` or `Needs you: …`, shows them as a dark badge
+(doc/adr/0027). Typing at the start of an item offers the kinds in use;
+Alt-Shift-K sets or removes the kind from anywhere in the item and leaves
+the caret where it was. A click on a badge searches for it. The text stays
+plain, so the CLI and search read `Question:` as written.
+
 ## Order of new and completed items
 
 `:completed: last` on a page shows completed items after the open ones,

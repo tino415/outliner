@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ROOT, setFlags } from "../src/model";
 import { exportMarkdown, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
-import { renderInline, renderNote } from "../src/inline";
+import { renderInline, renderItemText, renderNote } from "../src/inline";
 
 describe("export", () => {
   const doc = (() => {
@@ -104,6 +104,14 @@ describe("renderInline", () => {
     "2 * 3 * 4 is not italic",
   ])("keeps the raw text as the text content: %s", (text) => {
     expect(textOf(renderInline(text))).toBe(text);
+  });
+
+  it.each(["Question: is it **done**?", "Needs you:", "Mon 9:30 standup", "plain"])("keeps an item's raw text with its kind: %s", (text) => {
+    expect(textOf(renderItemText(text))).toBe(text);
+  });
+
+  it("shows the kind as a badge", () => {
+    expect(renderItemText("Needs you: review")).toContain('<span class="kind" data-kind="Needs you">Needs you<span class="md">:</span></span>');
   });
 
   it("recognises formatting", () => {

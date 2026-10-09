@@ -1,4 +1,4 @@
-import { escape, plainText, renderInline } from "./inline";
+import { escape, plainText, renderItemText } from "./inline";
 import { select, selectionIn } from "./caret";
 
 export interface PaletteOption {
@@ -84,7 +84,7 @@ function refresh(): void {
 
 function optionHtml(option: PaletteOption, index: number): string {
   const isCommand = option.shortcut !== undefined;
-  const text = `<span class="palette-text">${renderInline(option.text) || "<em>Untitled</em>"}</span>`;
+  const text = `<span class="palette-text">${renderItemText(option.text) || "<em>Untitled</em>"}</span>`;
   const path = option.path.length ? `<span class="palette-path">${option.path.map((step) => escape(plainText(step))).join(" / ")}</span>` : "";
   const shortcut = isCommand ? `<span class="palette-shortcut">${option.shortcut}</span>` : "";
   return `<li role="option" data-index="${index}"${isCommand ? ` class="palette-command"` : ""}>${text}${path}${shortcut}</li>`;
