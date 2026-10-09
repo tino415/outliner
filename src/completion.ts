@@ -97,6 +97,7 @@ function byUse(words: string[]): string[] {
 }
 
 function steerCompletion(event: KeyboardEvent): void {
+  closeWhenTheCaretMoves();
   if (list.hidden || event.target !== editor || event.isComposing) return;
   const ctrlItself = event.ctrlKey && !event.metaKey && !event.altKey;
   const step =
