@@ -260,6 +260,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
+    `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>` +
     propertyChipsHtml(item, keysShownAsColumns()) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +

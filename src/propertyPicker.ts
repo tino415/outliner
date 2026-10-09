@@ -20,12 +20,14 @@ interface Choice extends PaletteOption {
 
 export function bindPropertyChips(): void {
   document.addEventListener("mousedown", (event) => {
-    if ((event.target as Element).closest?.(".prop-chip")) event.preventDefault();
+    if ((event.target as Element).closest?.(".prop-chip, .prop-add")) event.preventDefault();
   });
   document.addEventListener("click", (event) => {
-    const chip = (event.target as Element).closest?.<HTMLElement>(".prop-chip");
-    const owner = chip?.closest<HTMLElement>("[data-id]");
-    if (chip && owner) chooseValue(owner.dataset.id!, chip.dataset.key!);
+    const button = (event.target as Element).closest?.<HTMLElement>(".prop-chip, .prop-add");
+    const owner = button?.closest<HTMLElement>("[data-id]");
+    if (!button || !owner) return;
+    if (button.classList.contains("prop-add")) chooseProperty(owner.dataset.id!);
+    else chooseValue(owner.dataset.id!, button.dataset.key!);
   });
 }
 

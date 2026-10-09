@@ -206,7 +206,7 @@ async function showPlugins(): Promise<void> {
       return `<li><strong>${escape(plugin.name)}</strong> <span class="plugin-status">${status}</span><pre>${escape(plugin.code)}</pre>${action}</li>`;
     }),
   );
-  $("plugin-list").innerHTML = rows.join("") || `<li class="key-none">No plugins. A plugin is an item with <code>:plugin: name</code> and a <code>\`\`\`js</code> block in its note.</li>`;
+  $("plugin-list").innerHTML = rows.join("") || `<li class="key-none">No plugins. A plugin is an item with a <code>plugin</code> property naming it and a <code>\`\`\`js</code> block in its note.</li>`;
   $("plugin-trust").innerHTML = trust
     ? "This device is trusted: it can approve plugins, and approvals made here count on every trusted device."
     : `This device cannot approve plugins. <button type="button" class="link-button" data-trust>Make it trusted</button>, or add the key <code>${TRUST_KEY}</code> from a trusted device in ⋯ → Private keys.`;
