@@ -1,4 +1,4 @@
-import { privateKeyOf, propertiesOf } from "./notes";
+import { privateKeyOf, propertiesOf, setProperty } from "./notes";
 
 export type ItemId = string;
 
@@ -104,10 +104,20 @@ function edit(doc: Doc, change: (draft: Draft) => void): Doc {
 
 // ---- private items (doc/adr/0029) ----------------------------------------------------
 
+/**
+ * A private item has a `:private:` line, or still holds items with its id
+ * and "~": while its line is being retyped it stays private, and only
+ * `makePublic` ends it.
+ */
+function isPrivateRoot(items: Doc["items"], id: ItemId): boolean {
+  const item = items[id];
+  return privateKeyOf(item.note) !== null || item.children.some((child) => child.startsWith(`${id}~`));
+}
+
 /** The nearest private item at or above `id`; its descendants' ids start with its own and "~". */
 function privateRootAtOrAbove(items: Doc["items"], id: ItemId | null): ItemId | null {
   for (let current = id; current; current = items[current].parent) {
-    if (privateKeyOf(items[current].note)) return current;
+    if (isPrivateRoot(items, current)) return current;
   }
   return null;
 }
@@ -117,28 +127,53 @@ export function privateRootAbove(doc: Doc, id: ItemId): ItemId | null {
 }
 
 /**
- * Renames the items under a private item whose ids do not say so yet, for
- * one that was just made private or moved in, and rewrites links to them.
+ * Gives every item the id its place calls for: under a private item one
+ * that starts with that item's id and "~", for one just made private or
+ * moved in; elsewhere a public one, for one moved out. Links follow.
  */
 export function withPrivateIds(doc: Doc): { doc: Doc; renamed: Map<ItemId, ItemId> } {
   const renamed = new Map<ItemId, ItemId>();
   const visit = (id: ItemId, root: ItemId | null) => {
-    const item = doc.items[id];
-    const rootHere = privateKeyOf(item.note) ? id : root;
-    for (const child of item.children) {
+    const rootHere = isPrivateRoot(doc.items, id) ? id : root;
+    for (const child of doc.items[id].children) {
       if (rootHere && !child.startsWith(`${rootHere}~`)) renamed.set(child, `${rootHere}~${child}`);
+      else if (!rootHere && child.includes("~")) renamed.set(child, publicIdFor(doc, child));
       visit(child, rootHere);
     }
   };
   visit(ROOT, null);
-  if (renamed.size === 0) return { doc, renamed };
+  return { doc: renameItems(doc, renamed), renamed };
+}
+
+/** The item public again: its `:private:` line gone and everything under it with public ids. */
+export function makePublic(doc: Doc, id: ItemId): Doc {
+  const withoutLine = setNote(doc, id, setProperty(doc.items[id].note, "private", ""));
+  const renamed = new Map<ItemId, ItemId>();
+  const visit = (parent: ItemId) => {
+    for (const child of withoutLine.items[parent].children) {
+      if (child.startsWith(`${id}~`)) renamed.set(child, publicIdFor(withoutLine, child));
+      visit(child);
+    }
+  };
+  visit(id);
+  return renameItems(withoutLine, renamed);
+}
+
+/** The id an item had before it was made private, or a fresh one if that is taken. */
+function publicIdFor(doc: Doc, id: ItemId): ItemId {
+  const original = id.slice(id.lastIndexOf("~") + 1);
+  return doc.items[original] ? newId() : original;
+}
+
+function renameItems(doc: Doc, renamed: Map<ItemId, ItemId>): Doc {
+  if (renamed.size === 0) return doc;
   const newName = (id: ItemId | null) => (id === null ? null : (renamed.get(id) ?? id));
   const items: Record<ItemId, Item> = {};
   for (const item of Object.values(doc.items)) {
     const id = newName(item.id)!;
     items[id] = { ...item, id, parent: newName(item.parent), children: item.children.map((child) => newName(child)!), text: linksRenamed(item.text, renamed), note: linksRenamed(item.note, renamed) };
   }
-  return { doc: { items }, renamed };
+  return { items };
 }
 
 function linksRenamed(text: string, renamed: Map<ItemId, ItemId>): string {

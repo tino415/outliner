@@ -1,14 +1,15 @@
 import { ItemId, ROOT } from "../model";
 import { SEALED_NOTE, isSealed, privateKeyOf } from "../notes";
-import { Change, Field, Replica, allChanges } from "./replica";
+import { Change, Field, Replica, allChanges, merge } from "./replica";
 
 /*
  * Private items at the sync boundary (doc/adr/0029). The local replica holds
  * them open; what goes to the server is the private item's note replaced by
  * one sealed value holding every field of the item's note and of everything
  * under it, with their clocks, compressed and encrypted with AES-GCM. A device
- * with the key opens it back into fields and merges them as usual, so two
- * devices editing different items inside still both keep their edits.
+ * with the key opens it back into fields and merges them as usual, and seals
+ * again when what arrived lacks something it has, so edits made on two
+ * devices meet on the server.
  */
 
 /** Keys by name, each 32 random bytes in base64. */
@@ -29,122 +30,142 @@ export function keyFromText(text: string): { name: string; key: string } | null 
 
 export interface Outgoing {
   changes: Change[];
-  /** Private changes that could not be sealed because this device lacks the key. */
+  /** Private changes that could not be sealed: this device lacks the key, or the item lost its `:private:` line. */
   held: Change[];
 }
 
 /** What to send instead of `pending`: public changes as they are, each touched private item sealed whole. */
 export async function sealOutgoing(pending: Change[], replica: Replica, keyring: Keyring, stamp: () => string): Promise<Outgoing> {
+  const privacy = new Privacy(replica);
   const changes: Change[] = [];
   const held: Change[] = [];
   const touchedRoots = new Set<ItemId>();
-  const privateIds = indexPrivateIds(replica);
   for (const change of pending) {
-    const root = privateRootOf(replica, change.item, change.field);
-    const wasPublic = root && change.item !== root && !change.item.startsWith(`${root}~`);
-    if (!root || wasPublic) changes.push(...publishing(change, replica, privateIds, stamp));
-    else if (keyring[keyNameOf(replica, root)!]) touchedRoots.add(root);
+    const root = privacy.rootOf(change.item, change.field);
+    const key = root && keyring[privacy.keyNameOf(root) ?? ""];
+    if (!root) changes.push(...(privacy.wasRenamed(change) ? blanked(change, stamp) : [change]));
+    else if (change.item !== root && !change.item.startsWith(`${root}~`)) {
+      if (change.field === "deleted" && change.value === true) changes.push(...blanked(change, stamp));
+      else if (!key) held.push(change);
+    } else if (key) touchedRoots.add(root);
     else held.push(change);
   }
   for (const root of touchedRoots) {
-    const name = keyNameOf(replica, root)!;
-    const sealed = await seal(root, name, keyring[name], subtreeChanges(replica, root));
+    const name = privacy.keyNameOf(root)!;
+    const sealed = await seal(root, name, keyring[name], privacy.insideOf(root));
     changes.push({ item: root, field: "note", value: sealed, clock: stamp() });
   }
   return { changes, held };
 }
 
-/** The changes from the server with each sealed note this device has the key for opened into its fields. */
-export async function openIncoming(changes: Change[], keyring: Keyring): Promise<Change[]> {
-  const opened: Change[] = [];
-  for (const change of changes) {
-    const sealed = change.field === "note" && typeof change.value === "string" ? SEALED_NOTE.exec(change.value) : null;
-    const key = sealed && keyring[sealed[1]];
-    if (!sealed || !key) {
-      opened.push(change);
-      continue;
-    }
-    const inside = await open(change.item, key, sealed[2]).catch(() => null);
-    if (!inside) {
-      opened.push(change);
-      continue;
-    }
-    opened.push(...inside.map((field) => (field.item === change.item && field.field === "note" ? { ...field, clock: `${change.clock}~open` } : field)));
-  }
-  return opened;
+export interface Merged {
+  /** The changes that won, as `merge` reports them. */
+  accepted: Change[];
+  /** Private items to seal again: what arrived for them lacks something this device has. */
+  reseal: ItemId[];
 }
 
-/** Sealed notes already in the replica that `keyring` can now open: what to merge after adding a key. */
+/** Merges changes from the server, opening each sealed note this device has the key for. */
+export async function mergeIncoming(replica: Replica, changes: Change[], keyring: Keyring): Promise<Merged> {
+  const accepted: Change[] = [];
+  const reseal: ItemId[] = [];
+  for (const change of changes) {
+    const inside = await opened(change, keyring);
+    if (!inside) {
+      accepted.push(...merge(replica, [change]));
+      continue;
+    }
+    const current = replica[change.item]?.note;
+    if (current && typeof current.value === "string" && isSealed(current.value)) delete replica[change.item].note;
+    accepted.push(...merge(replica, inside));
+    if (hasNewerThan(new Privacy(replica).insideOf(change.item), inside)) reseal.push(change.item);
+  }
+  return { accepted, reseal };
+}
+
+/** The changes with each sealed note this device has the key for opened into its fields. */
+export async function openIncoming(changes: Change[], keyring: Keyring): Promise<Change[]> {
+  const result: Change[] = [];
+  for (const change of changes) result.push(...((await opened(change, keyring)) ?? [change]));
+  return result;
+}
+
+/** Sealed notes already in the replica: what to open after adding a key. */
 export function sealedIn(replica: Replica): Change[] {
   return allChanges(replica).filter((change) => change.field === "note" && typeof change.value === "string" && isSealed(change.value));
 }
 
+async function opened(change: Change, keyring: Keyring): Promise<Change[] | null> {
+  const sealed = change.field === "note" && typeof change.value === "string" ? SEALED_NOTE.exec(change.value) : null;
+  const key = sealed && keyring[sealed[1]];
+  return key ? open(change.item, key, sealed[2]).catch(() => null) : null;
+}
+
+function hasNewerThan(mine: Change[], theirs: Change[]): boolean {
+  const known = new Map(theirs.map((change) => [`${change.item}\u0000${change.field}`, change.clock]));
+  return mine.some((change) => {
+    const clock = known.get(`${change.item}\u0000${change.field}`);
+    return clock === undefined || clock < change.clock;
+  });
+}
+
+/** An item renamed into a private item leaves its old id deleted on the server, its text and note blanked. */
+function blanked(deletion: Change, stamp: () => string): Change[] {
+  return [deletion, { item: deletion.item, field: "text", value: "", clock: stamp() }, { item: deletion.item, field: "note", value: "", clock: stamp() }];
+}
+
 // ---- which items are private --------------------------------------------------------------
 
-function read(replica: Replica, item: ItemId, field: Field) {
-  return replica[item]?.[field]?.value;
-}
-
-function keyNameOf(replica: Replica, item: ItemId): string | null {
-  const note = read(replica, item, "note");
-  return typeof note === "string" ? privateKeyOf(note) : null;
-}
-
-/** The private item a field belongs to: the item's own note, or anything about an item below it. */
-function privateRootOf(replica: Replica, item: ItemId, field: Field): ItemId | null {
-  if (field === "note" && keyNameOf(replica, item)) return item;
-  for (let current = read(replica, item, "parent") as ItemId | null | undefined; current && current !== ROOT; current = read(replica, current, "parent") as ItemId | null) {
-    if (keyNameOf(replica, current)) return current;
-  }
-  return null;
-}
-
-function subtreeChanges(replica: Replica, root: ItemId): Change[] {
-  const inside = (item: ItemId) => item.startsWith(`${root}~`) && privateRootOf(replica, item, "text") === root;
-  return allChanges(replica).filter((change) => inside(change.item) || (change.item === root && change.field === "note"));
-}
-
 /**
- * A public change as it should reach the server. An item that was private
- * once (its id carries a private item's) goes out with all its fields when it
- * is moved out, and so does everything under an item made public again,
- * since the server never had them; an item renamed when its
- * subtree was made private has its old text and note blanked there.
+ * Reads the replica the way the model reads the outline: an item is private
+ * while its note has a `:private:` line or it still holds live items whose
+ * ids start with its own and "~".
  */
-function publishing(change: Change, replica: Replica, privateIds: PrivateIds, stamp: () => string): Change[] {
-  const isDeletion = change.field === "deleted" && change.value === true;
-  if (isDeletion && privateIds.renamedFrom.has(change.item)) {
-    return [change, { item: change.item, field: "text", value: "", clock: stamp() }, { item: change.item, field: "note", value: "", clock: stamp() }];
+class Privacy {
+  private holders: Set<ItemId>;
+  private renamedFrom: Set<ItemId>;
+
+  constructor(private replica: Replica) {
+    const marked = Object.keys(replica).filter((id) => id.includes("~"));
+    this.holders = new Set(marked.filter((id) => replica[id].deleted?.value !== true).map((id) => id.slice(0, id.indexOf("~"))));
+    this.renamedFrom = new Set(marked.map((id) => id.slice(id.indexOf("~") + 1)));
   }
-  const madePublic = change.field === "note" && privateIds.holders.has(change.item);
-  const movedOut = change.field === "parent" && change.item.includes("~");
-  if (!madePublic && !movedOut) return [change];
-  return [change, ...publicSubtree(replica, change.item).filter((other) => !(other.item === change.item && other.field === change.field))];
-}
 
-interface PrivateIds {
-  /** Items that hold or held private items: the part of an id before its first "~". */
-  holders: Set<ItemId>;
-  /** Ids that items had before they were renamed into a private item: the part after the last "~". */
-  renamedFrom: Set<ItemId>;
-}
+  /** A deletion of an id that was renamed into a private item, whose old text must not stay on the server. */
+  wasRenamed(change: Change): boolean {
+    return change.field === "deleted" && change.value === true && this.renamedFrom.has(change.item);
+  }
 
-function indexPrivateIds(replica: Replica): PrivateIds {
-  const marked = Object.keys(replica).filter((id) => id.includes("~"));
-  return {
-    holders: new Set(marked.map((id) => id.slice(0, id.indexOf("~")))),
-    renamedFrom: new Set(marked.map((id) => id.slice(id.lastIndexOf("~") + 1))),
-  };
-}
+  keyNameOf(item: ItemId): string | null {
+    const note = this.read(item, "note");
+    return typeof note === "string" ? privateKeyOf(note) : null;
+  }
 
-function publicSubtree(replica: Replica, top: ItemId): Change[] {
-  const below = (item: ItemId): boolean => {
-    for (let current: ItemId | null | undefined = item; current; current = read(replica, current, "parent") as ItemId | null) {
-      if (current === top) return true;
+  isPrivate(item: ItemId): boolean {
+    return this.keyNameOf(item) !== null || this.holders.has(item);
+  }
+
+  /** The private item a field belongs to: the item's own note, an item whose id names it, or one below it. */
+  rootOf(item: ItemId, field: Field): ItemId | null {
+    if (field === "note" && this.isPrivate(item)) return item;
+    const named = item.includes("~") ? item.slice(0, item.indexOf("~")) : null;
+    if (named && this.isPrivate(named)) return named;
+    const seen = new Set<ItemId>();
+    for (let current = this.read(item, "parent") as ItemId | null | undefined; current && current !== ROOT && !seen.has(current); current = this.read(current, "parent") as ItemId | null) {
+      seen.add(current);
+      if (this.isPrivate(current)) return current;
     }
-    return false;
-  };
-  return allChanges(replica).filter((change) => below(change.item));
+    return null;
+  }
+
+  /** Every field inside a private item, and its own note: what its sealed note holds. */
+  insideOf(root: ItemId): Change[] {
+    return allChanges(this.replica).filter((change) => change.item.startsWith(`${root}~`) || (change.item === root && change.field === "note"));
+  }
+
+  private read(item: ItemId, field: Field) {
+    return this.replica[item]?.[field]?.value;
+  }
 }
 
 // ---- sealing ----------------------------------------------------------------------------------
