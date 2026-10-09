@@ -73,3 +73,8 @@ export function privateKeyOf(note: string): string | null {
 export function isSealed(note: string): boolean {
   return SEALED_NOTE.test(note);
 }
+
+/** An item shown as a board: its children are columns, theirs are cards (doc/adr/0031). */
+export function isBoard(note: string): boolean {
+  return note.includes(":view:") && propertiesOf(note).get("view")?.toLowerCase() === "board";
+}

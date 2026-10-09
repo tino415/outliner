@@ -12,6 +12,7 @@ import { jumpToItem, setQuery, showZoom, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
+import { bindBoard, boardShown, toggleBoard } from "./board";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
@@ -23,6 +24,7 @@ export function bindChrome(): void {
   bindGlobalKeys();
   endSelectionWhenSomethingTakesFocus();
   bindColumnCells();
+  bindBoard();
 
   window.addEventListener("hashchange", showZoom);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
@@ -77,7 +79,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -156,6 +158,7 @@ const menuActions: Record<string, () => void> = {
     openCapture();
   },
   "toggle-columns": () => toggleColumnView(),
+  "toggle-board": () => toggleBoard(),
   "toggle-completed": () => {
     updatePrefs({ showCompleted: !state.prefs.showCompleted });
     render(caretNow());
@@ -360,6 +363,7 @@ export function renderMenuState(): void {
   }
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
+  $("board-switch").classList.toggle("on", boardShown());
 }
 
 export function applyAppearance(): void {
