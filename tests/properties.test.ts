@@ -11,6 +11,8 @@ import {
   parseColumns,
 } from "../src/properties";
 import { propertiesOf, splitPropertyLines } from "../src/notes";
+import { parseDoc } from "../src/storage";
+import { parseSyncRequest } from "../src/sync/protocol";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -62,6 +64,20 @@ describe("properties of an item", () => {
   it("takes typed property lines from the note when it is left", () => {
     const typed = setNote(base, id, "remember\n:kcal: 300 kcal");
     expect(typed.items[id]).toMatchObject({ note: "remember", properties: { kcal: "300 kcal" } });
+  });
+
+  it("only takes keys the sync server accepts, so one odd key cannot stop syncing", () => {
+    const long = `:${"a".repeat(65)}: x`;
+    const typed = setNote(base, id, long);
+    expect(typed.items[id]).toMatchObject({ note: long, properties: {} });
+    expect(setItemProperty(base, id, "İd", "1").items[id].properties).toEqual({});
+    const fields = Object.keys(setItemProperty(base, id, "a".repeat(64), "1").items[id].properties).map((key) => `prop:${key}`);
+    expect(() => parseSyncRequest({ since: 0, changes: fields.map((field) => ({ item: id, field, value: "1", clock: "1" })) })).not.toThrow();
+  });
+
+  it("drops keys the sync server would refuse from an outline read from JSON", () => {
+    const raw = JSON.stringify({ items: { ...base.items, [id]: { ...base.items[id], properties: { "my key": "1", effort: "2h" } } } });
+    expect(parseDoc(raw).items[id].properties).toEqual({ effort: "2h" });
   });
 });
 

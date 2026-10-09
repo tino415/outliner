@@ -1,5 +1,5 @@
 import { ItemId, ROOT } from "../model";
-import { SEALED_NOTE, isSealed, sealedKeyOf } from "../notes";
+import { SEALED_NOTE, isSealed, propertiesOf, sealedKeyOf } from "../notes";
 import { Change, Field, Replica, allChanges, merge } from "./replica";
 
 /*
@@ -50,8 +50,10 @@ export async function sealOutgoing(pending: Change[], replica: Replica, keyring:
     else if (change.item !== root && !change.item.startsWith(`${root}~`)) {
       if (change.field === "deleted" && change.value === true) changes.push(...blanked(change, stamp, replica));
       else if (!key) held.push(change);
-    } else if (key) touchedRoots.add(root);
-    else held.push(change);
+    } else if (key) {
+      touchedRoots.add(root);
+      if (change.field === "prop:private" && change.value !== null) changes.push(...propertiesWithdrawn(root, replica, stamp));
+    } else held.push(change);
   }
   for (const root of touchedRoots) {
     const name = privacy.keyNameOf(root)!;
@@ -94,7 +96,7 @@ export async function mergeIncoming(replica: Replica, changes: Change[], keyring
     merged.accepted.push(...merge(replica, inside));
     merged.opened.push(change.item);
     if (hasNewerThan(new Privacy(replica).insideOf(change.item), inside)) merged.reseal.push(change.item);
-    if (typeof replica[change.item]?.["prop:private"]?.value !== "string" && !known.has(change.item)) merged.stranded.push(change.item);
+    if (new Privacy(replica).keyNameOf(change.item) === null && !known.has(change.item)) merged.stranded.push(change.item);
   }
   return merged;
 }
@@ -132,6 +134,18 @@ function ownFieldsAgain(item: ItemId, replica: Replica, stamp: () => string): Ch
     .map((change) => ({ ...change, clock: stamp() }));
 }
 
+/**
+ * An item made private takes its properties into the seal: the server's plain
+ * values are removed, and the item's own are stamped after the removal so
+ * that they win over it where the seal is opened.
+ */
+function propertiesWithdrawn(item: ItemId, replica: Replica, stamp: () => string): Change[] {
+  const fields = Object.keys(replica[item] ?? {}).filter((field) => field.startsWith("prop:") && field !== "prop:private") as Field[];
+  const removed = fields.map((field): Change => ({ item, field, value: null, clock: stamp() }));
+  for (const field of fields) replica[item][field]!.clock = stamp();
+  return removed;
+}
+
 /** An item renamed into a private item leaves its old id deleted on the server, its text, note and properties blanked. */
 function blanked(deletion: Change, stamp: () => string, replica: Replica): Change[] {
   const properties = Object.keys(replica[deletion.item] ?? {}).filter((field) => field.startsWith("prop:")) as Field[];
@@ -165,11 +179,12 @@ class Privacy {
     return change.field === "deleted" && change.value === true && this.renamedFrom.has(change.item);
   }
 
+  /** The `private` property, or a `:private:` line not yet lifted from the note: typed just now, or written by an older build. */
   keyNameOf(item: ItemId): string | null {
     const note = this.read(item, "note");
     const key = this.read(item, "prop:private");
     if (typeof key === "string") return key;
-    return typeof note === "string" ? sealedKeyOf(note) : null;
+    return typeof note === "string" ? (sealedKeyOf(note) ?? (propertiesOf(note).get("private") || null)) : null;
   }
 
   isPrivate(item: ItemId): boolean {
