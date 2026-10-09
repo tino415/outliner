@@ -32,7 +32,17 @@ test("the toolbar appears while editing and its buttons act on the item", async 
 test("the toolbar's Property button sets a property without typing a line", async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await editor(page, "Soup").tap();
-  await page.getByRole("button", { name: "Property" }).tap();
+  await page.getByRole("button", { name: "Property", exact: true }).tap();
+  await page.locator("#palette li", { hasText: "kcal" }).tap();
+  await page.locator("#palette li", { hasText: "300 kcal" }).tap();
+  await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
+});
+
+test("the item being edited shows a button that adds a property", async ({ page }) => {
+  await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
+  await expect(row(page, "Soup").getByRole("button", { name: "Add a property" })).toBeHidden();
+  await editor(page, "Soup").tap();
+  await row(page, "Soup").getByRole("button", { name: "Add a property" }).tap();
   await page.locator("#palette li", { hasText: "kcal" }).tap();
   await page.locator("#palette li", { hasText: "300 kcal" }).tap();
   await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
