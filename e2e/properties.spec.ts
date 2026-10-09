@@ -42,6 +42,19 @@ test("a click on a chip changes or removes its value", async ({ page }) => {
   await expect(editor(page, "Task")).toBeVisible();
 });
 
+test("the private chip offers to make the item public again, as Make private… does", async ({ page }) => {
+  await freshOutline(page, "Journal\n  secret");
+  await editor(page, "Journal").click();
+  await page.keyboard.press("Alt+Shift+p");
+  await page.keyboard.type("personal");
+  await page.keyboard.press("Enter");
+  await row(page, "Journal").locator(".prop-chip").first().click();
+  await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Make private with the key…");
+  await page.locator("#palette li", { hasText: "Make public again" }).click();
+  await expect(row(page, "Journal").locator(".prop-chip")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("outliner-lab:doc:v1")!).items).some((id) => id.includes("~")))).toBe(false);
+});
+
 test("settings of a page show as muted chips under its title", async ({ page }) => {
   await freshOutline(page, "Plan | :columns: effort\n  Task | :effort: 1h");
   await row(page, "Plan").locator(".bullet").click();

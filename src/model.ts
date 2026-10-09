@@ -1,4 +1,4 @@
-import { sealedKeyOf, splitPropertyLines } from "./notes";
+import { propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
 
 export type ItemId = string;
 
@@ -283,17 +283,15 @@ export function setNote(doc: Doc, id: ItemId, note: string): Doc {
 
 // ---- properties (doc/adr/0032) ---------------------------------------------------------
 
-export const PROPERTY_KEY = /^[\p{L}\p{N}_-]+$/u;
-
 /** Properties that set up the app rather than describe the item: shown muted, never offered as columns. */
 export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved"]);
 
-/** Sets `key` to `value` on the item; an empty value removes it. */
+/** Sets `key` to `value` on the item; an empty value removes it, and a key the sync server would refuse changes nothing. */
 export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string): Doc {
-  const name = key.trim().toLowerCase();
+  const name = propertyKey(key);
   const written = value.trim();
   const current = doc.items[id].properties;
-  if ((current[name] ?? "") === written) return doc;
+  if (!name || (current[name] ?? "") === written) return doc;
   const { [name]: _, ...others } = current;
   return edit(doc, (d) => {
     d.write(id).properties = written ? { ...others, [name]: written } : others;

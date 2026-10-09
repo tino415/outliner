@@ -1,4 +1,5 @@
 import { Doc, ROOT } from "./model";
+import { propertyKey } from "./notes";
 
 const DOC_KEY = "outliner-lab:doc:v1";
 const PREFS_KEY = "outliner-lab:prefs:v1";
@@ -32,7 +33,11 @@ export function loadDoc(): Doc | null {
 export function parseDoc(raw: string): Doc {
   const parsed = JSON.parse(raw) as Doc;
   if (!parsed?.items?.[ROOT]) throw new Error("not an outline: no root item");
-  return { items: Object.fromEntries(Object.entries(parsed.items).map(([id, item]) => [id, { ...item, properties: item.properties ?? {} }])) };
+  return { items: Object.fromEntries(Object.entries(parsed.items).map(([id, item]) => [id, { ...item, properties: syncableProperties(item.properties ?? {}) }])) };
+}
+
+function syncableProperties(properties: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(properties).filter(([key, value]) => propertyKey(key) === key && typeof value === "string"));
 }
 
 let pendingSave: number | undefined;

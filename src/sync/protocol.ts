@@ -1,4 +1,5 @@
 import { Change, Field, PropertyField } from "./replica";
+import { propertyKey } from "../notes";
 
 /** What a client sends: its unsent changes and the last sequence number it has seen. */
 export interface SyncRequest {
@@ -25,7 +26,7 @@ const FIELDS: Record<Exclude<Field, PropertyField>, "string" | "boolean" | "stri
 export const MAX_TEXT = 100_000;
 
 function isPropertyField(field: unknown): field is PropertyField {
-  return typeof field === "string" && /^prop:[\p{L}\p{N}_-]{1,64}$/u.test(field);
+  return typeof field === "string" && field.startsWith("prop:") && propertyKey(field.slice(5)) === field.slice(5);
 }
 
 /** Throws with a readable reason unless `body` is a well-formed sync request. */

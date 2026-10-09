@@ -10,7 +10,7 @@ import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
-import { isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
+import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
@@ -82,7 +82,7 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
-  liftPropertiesWrittenInNotes();
+  afterFirstSync(liftPropertiesWrittenInNotes);
   bindAttachments(syncEndpoint);
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();

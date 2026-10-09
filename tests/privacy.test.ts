@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ROOT, emptyDoc, insertChild, makePublic, moveTo, remove, setItemProperty, setText, withPrivateIds } from "../src/model";
+import { Doc, ROOT, emptyDoc, insertChild, makePublic, moveTo, remove, setItemProperty, setNote as setRawNote, setText, withPrivateIds } from "../src/model";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { Change, Replica, diff, materialize, merge } from "../src/sync/replica";
@@ -177,6 +177,46 @@ describe("private items at the sync boundary", () => {
     const { changes: sent, held } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp, known);
     expect(JSON.stringify(sent)).not.toContain("diary");
     expect(held.length).toBeGreaterThan(0);
+  });
+
+  it("leaves no property readable on the server when an item with properties is made private", async () => {
+    let doc = parseIndentedText("Journal");
+    const journalId = idOf(doc, "Journal");
+    doc = setItemProperty(doc, journalId, "salary", "9000");
+    const phone = device("phone", doc);
+    const server: Replica = {};
+    merge(server, allOf(phone.replica));
+    const changes = phone.edit(setItemProperty(phone.doc(), journalId, "private", "personal"));
+    const { changes: sent, sealed } = await sealOutgoing(changes, phone.replica, keyring, phone.stamp);
+    merge(server, sent);
+    expect(materialize(server).items[journalId].properties).toEqual({});
+
+    await mergeIncoming(phone.replica, sent, keyring, new Set(sealed));
+    phone.receive([]);
+    expect(phone.doc().items[journalId].properties).toEqual({ salary: "9000", private: "personal" });
+    const mac = device("mac");
+    await mergeIncoming(mac.replica, allOf(server), keyring);
+    mac.receive([]);
+    expect(mac.doc().items[journalId].properties).toEqual({ salary: "9000", private: "personal" });
+  });
+
+  it("seals a note as soon as a :private: line is typed into it, before the line becomes a property", async () => {
+    let doc = parseIndentedText("Journal");
+    doc = setRawNote(doc, idOf(doc, "Journal"), ":private: personal\nmy diary");
+    const phone = device("phone", doc);
+    const { changes } = await sealOutgoing(allOf(phone.replica), phone.replica, keyring, phone.stamp);
+    expect(JSON.stringify(changes)).not.toContain("diary");
+  });
+
+  it("keeps an item sealed by an older build, whose key is a :private: line, private where it is opened", async () => {
+    let doc = parseIndentedText("Journal\n  secret one");
+    doc = withPrivateIds(setRawNote(doc, idOf(doc, "Journal"), ":private: personal\nmy diary")).doc;
+    const old = device("old", doc);
+    const { sealed, changes } = await sealOutgoing(allOf(old.replica), old.replica, keyring, old.stamp);
+    expect(sealed).toEqual([idOf(doc, "Journal")]);
+    const mac = device("mac");
+    const { stranded } = await mergeIncoming(mac.replica, changes, keyring, new Set());
+    expect(stranded).toEqual([]);
   });
 
   it("counts :Private: written with capitals", async () => {
