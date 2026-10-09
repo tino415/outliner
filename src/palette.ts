@@ -10,21 +10,27 @@ export interface PaletteOption {
 export interface PaletteRequest<O extends PaletteOption> {
   placeholder: string;
   hint: string;
-  candidates: (query: string) => O[];
+  /** `mode` is one of `modes`, which Tab cycles through; "" when there are none. */
+  candidates: (query: string, mode: string) => O[];
   choose: (option: O) => void;
+  modes?: string[];
+  mode?: string;
 }
 
 const dialog = document.getElementById("palette") as HTMLDialogElement;
 const input = dialog.querySelector<HTMLInputElement>("input")!;
 const list = dialog.querySelector<HTMLElement>(".palette-results")!;
 const hint = dialog.querySelector<HTMLElement>(".palette-hint")!;
+const modeTabs = dialog.querySelector<HTMLElement>(".palette-modes")!;
 
 let current: PaletteRequest<PaletteOption> | null = null;
 let shown: PaletteOption[] = [];
 let active = 0;
+let mode = "";
 
 export function openPalette<O extends PaletteOption>(request: PaletteRequest<O>): void {
   current = request as unknown as PaletteRequest<PaletteOption>;
+  mode = request.mode ?? request.modes?.[0] ?? "";
   caretToRestore = caretInFocusedEditor();
   input.value = "";
   input.placeholder = request.placeholder;
@@ -42,6 +48,11 @@ input.addEventListener("keydown", (event) => {
     event.preventDefault();
     active = (active + step + shown.length) % Math.max(shown.length, 1);
     paintActive();
+  } else if (event.key === "Tab" && current?.modes) {
+    event.preventDefault();
+    const modes = current.modes;
+    mode = modes[(modes.indexOf(mode) + (event.shiftKey ? -1 : 1) + modes.length) % modes.length];
+    refresh();
   } else if (event.key === "Enter") {
     event.preventDefault();
     choose(active);
@@ -83,8 +94,18 @@ dialog.addEventListener("click", (event) => {
   pressedOnBackdrop = false;
 });
 
+modeTabs.addEventListener("mousedown", (event) => event.preventDefault());
+modeTabs.addEventListener("click", (event) => {
+  const tab = (event.target as HTMLElement).closest<HTMLElement>("[data-mode]");
+  if (!tab) return;
+  mode = tab.dataset.mode!;
+  refresh();
+});
+
 function refresh(): void {
-  shown = current?.candidates(input.value) ?? [];
+  shown = current?.candidates(input.value, mode) ?? [];
+  modeTabs.hidden = !current?.modes;
+  modeTabs.innerHTML = (current?.modes ?? []).map((each) => `<button type="button" tabindex="-1" data-mode="${escape(each)}"${each === mode ? ` class="active"` : ""}>${escape(each)}</button>`).join("");
   active = 0;
   list.innerHTML = shown.map(optionHtml).join("") || `<li class="palette-empty">Nothing found</li>`;
   paintActive();

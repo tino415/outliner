@@ -69,30 +69,56 @@ export function searchResults(focus: Focus | null): SearchResult | null {
 
 type JumpOption = { item: Candidate; text: string; path: string[] } | { command: Command; text: string; path: string[]; shortcut: string };
 
-export function jumpToItem(commands: Command[]): void {
-  const asOption = (item: Candidate): JumpOption => ({ item, text: item.text, path: item.path });
-  const recent = (): Candidate[] =>
-    state.recent
-      .filter((id) => doc().items[id])
-      .map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
+export type SearchMode = "All" | "Items" | "Commands";
+
+/** One search for items and commands, as GitHub's Ctrl-K: Tab narrows it to items or commands; ">" still means commands. */
+export function searchEverything(commands: Command[], mode: SearchMode = "All"): void {
   openPalette<JumpOption>({
-    placeholder: "Jump to…, or > for commands",
-    hint: "↑ ↓ or Ctrl N / P to choose · Enter to open · Esc to close",
-    candidates: (query) => {
-      if (query.startsWith(">")) return matchingCommands(commands, query.slice(1), Infinity);
-      if (query.trim()) return [...findItems(doc(), query, 40).map(asOption), ...matchingCommands(commands, query, 5)];
-      const seen = new Set(state.recent);
-      return [...recent(), ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption);
+    placeholder: "Search items and commands",
+    hint: "Tab: All · Items · Commands · ↑ ↓ or Ctrl N / P to choose · Enter to open",
+    modes: ["All", "Items", "Commands"],
+    mode,
+    candidates: (query, chosen) => {
+      if (query.startsWith(">")) return matchingCommands(commands, query.slice(1));
+      if (chosen === "Items") return matchingItems(query);
+      if (chosen === "Commands") return matchingCommands(commands, query);
+      const items = matchingItems(query);
+      const found = matchingCommands(commands, query);
+      if (!query.trim() || items.some((option) => startsWithQuery(option.text, query))) return [...items, ...found];
+      const strong = found.filter((option) => "command" in option && namesIt(option.command, query)).slice(0, 3);
+      return [...strong, ...items, ...found.filter((option) => !strong.includes(option))];
     },
     choose: (option) => ("command" in option ? option.command.run() : zoomTo(option.item.id)),
   });
 }
 
-function matchingCommands(commands: Command[], query: string, limit: number): JumpOption[] {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+function matchingItems(query: string): JumpOption[] {
+  const asOption = (item: Candidate): JumpOption => ({ item, text: item.text, path: item.path });
+  if (query.trim()) return findItems(doc(), query, 40).map(asOption);
+  const recent = state.recent.filter((id) => doc().items[id]).map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
+  const seen = new Set(state.recent);
+  return [...recent, ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption);
+}
+
+function matchingCommands(commands: Command[], query: string): JumpOption[] {
+  const terms = words(query);
   return commands
     .filter((command) => terms.every((term) => command.label.toLowerCase().includes(term)))
-    .slice(0, limit)
     .map((command) => ({ command, text: command.label, path: [], shortcut: command.shortcut }));
+}
+
+/** An item named by what was typed is what Enter opens, never a command of that name: "delete" must not delete. */
+function startsWithQuery(text: string, query: string): boolean {
+  return text.toLowerCase().startsWith(query.trim().toLowerCase());
+}
+
+/** Every word typed starts a word of the command's name: "board" names "Show this page as a board". */
+function namesIt(command: Command, query: string): boolean {
+  const named = words(command.label);
+  return words(query).every((term) => named.some((word) => word.startsWith(term)));
+}
+
+function words(text: string): string[] {
+  return text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 }
 

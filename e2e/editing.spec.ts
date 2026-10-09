@@ -330,6 +330,41 @@ test.describe("zoom and search", () => {
     await expect(page.locator("#title")).toHaveText("tomatoes");
   });
 
+  test("Ctrl-K finds commands among items without >, and Tab narrows it to items or commands", async ({ page }) => {
+    await freshOutline(page, "Kanban board games\nother");
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type("board");
+    await expect(page.locator(".palette-results li").first()).toContainText("Show this page as a board");
+    await expect(page.locator(".palette-results li", { hasText: "Kanban board games" })).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(page.locator(".palette-modes .active")).toHaveText("Items");
+    await expect(page.locator(".palette-results li").first()).toContainText("Kanban board games");
+    await expect(page.locator(".palette-results li.palette-command")).toHaveCount(0);
+    await page.keyboard.press("Tab");
+    await expect(page.locator(".palette-modes .active")).toHaveText("Commands");
+    await expect(page.locator(".palette-results li", { hasText: "Kanban board games" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("ControlOrMeta+Shift+k");
+    await expect(page.locator(".palette-modes .active")).toHaveText("Commands");
+  });
+
+  test("Ctrl-J then a letter runs a command, a pause shows what can follow, and Ctrl-J twice jumps to an item", async ({ page }) => {
+    await freshOutline(page, "task\nother");
+    await clickEnd(page, "task");
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("p");
+    await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Property…");
+    await page.keyboard.press("Escape");
+    expect(await caret(page)).toEqual({ text: "task", offset: 4 });
+    await expectOutline(page, "task\nother");
+
+    await page.keyboard.press("ControlOrMeta+j");
+    await expect(page.locator("#prefix-keys")).toContainText("Add a tag");
+    await page.keyboard.press("ControlOrMeta+j");
+    await expect(page.locator("#prefix-keys")).toBeHidden();
+    await expect(page.locator(".palette-modes .active")).toHaveText("Items");
+  });
+
   test("Alt-Shift-M moves an item under another one", async ({ page }) => {
     await freshOutline(page, "inbox item\nprojects\n  garden");
     await clickEnd(page, "inbox item");

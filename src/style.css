@@ -1685,6 +1685,58 @@ code {
   color: var(--muted);
 }
 
+.palette-modes {
+  display: flex;
+  gap: 4px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.palette-modes button {
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.palette-modes button.active {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+/* The keys that can follow ⌘J / Ctrl-J, shown when the next key does not come at once. */
+.prefix-keys {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 30;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 20px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+
+.prefix-title {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.prefix-key {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.prefix-key.unavailable {
+  opacity: 0.45;
+}
+
 .item-menu {
   width: 220px;
 }
