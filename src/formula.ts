@@ -23,7 +23,7 @@ const OVER_ITEMS: FunctionName[] = ["before", "sum", "min", "max", "mean"];
 /** What a formula can ask about the item it is computed for. */
 export interface Scope {
   value(of: "self" | "parent" | "previous", key: string): Amount | null;
-  before(key: string): Amount[];
+  totalBefore(key: string): Amount;
   children(key: string): Amount[];
 }
 
@@ -127,9 +127,10 @@ function call(name: FunctionName, argument: Formula | string, scope: Scope): Amo
     if (value && value.kind !== "duration") throw new FormulaError("clock() takes a duration or a time");
     return value && { ...value, clock: true };
   }
-  const values = name === "before" ? scope.before(argument as string) : scope.children(argument as string);
-  if (values.length === 0) return name === "before" ? PLAIN_ZERO : null;
-  if (name === "before" || name === "sum") return values.reduce((total, value) => combine("+", total, value)!);
+  if (name === "before") return scope.totalBefore(argument as string);
+  const values = scope.children(argument as string);
+  if (values.length === 0) return null;
+  if (name === "sum") return values.reduce((total, value) => combine("+", total, value)!);
   if (name === "mean") return scale(values.reduce((total, value) => combine("+", total, value)!), 1 / values.length);
   const pick = name === "min" ? Math.min : Math.max;
   const best = pick(...values.map(magnitude));
@@ -137,10 +138,14 @@ function call(name: FunctionName, argument: Formula | string, scope: Scope): Amo
 }
 
 /** What nothing before the first item adds up to; it adds to a duration as well as to a number. */
-const PLAIN_ZERO: Amount = { kind: "number", value: 0, unit: "" };
+export const PLAIN_ZERO: Amount = { kind: "number", value: 0, unit: "" };
 
 function isPlainZero(amount: Amount): boolean {
   return amount.kind === "number" && amount.value === 0 && amount.unit === "";
+}
+
+export function add(left: Amount, right: Amount): Amount {
+  return combine("+", left, right)!;
 }
 
 function combine(operator: "+" | "-" | "*" | "/", left: Amount | null, right: Amount | null): Amount | null {
@@ -149,8 +154,11 @@ function combine(operator: "+" | "-" | "*" | "/", left: Amount | null, right: Am
     const sign = operator === "+" ? 1 : -1;
     if (isPlainZero(right)) return left;
     if (isPlainZero(left)) return scale(right, sign);
-    if (left.kind === "duration" && right.kind === "duration") return { ...left, minutes: left.minutes + sign * right.minutes };
-    if (left.kind === "number" && right.kind === "number") return { kind: "number", value: left.value + sign * right.value, unit: left.unit || right.unit };
+    if (left.kind === "duration" && right.kind === "duration") {
+      const isTime = operator === "+" ? Boolean(left.clock || right.clock) : Boolean(left.clock && !right.clock);
+      return { kind: "duration", minutes: left.minutes + sign * right.minutes, ...(isTime ? { clock: true } : {}) };
+    }
+    if (left.kind === "number" && right.kind === "number") return { kind: "number", value: left.value + sign * right.value, unit: commonUnit(left.unit, right.unit) };
     throw new FormulaError("cannot add a duration and a number");
   }
   if (right.kind === "number" && operator === "*") return scale(left, right.value);
@@ -166,6 +174,11 @@ function combine(operator: "+" | "-" | "*" | "/", left: Amount | null, right: Am
     return { kind: "number", value: magnitude(left) / divisor, unit: "" };
   }
   throw new FormulaError("cannot multiply two durations");
+}
+
+function commonUnit(left: string, right: string): string {
+  if (left && right && left.toLowerCase() !== right.toLowerCase()) throw new FormulaError(`cannot add ${left} and ${right}`);
+  return left || right;
 }
 
 function scale(amount: Amount, factor: number): Amount {
