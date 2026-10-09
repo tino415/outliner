@@ -1,4 +1,4 @@
-import { propertiesOf } from "./notes";
+import { privateKeyOf, propertiesOf } from "./notes";
 
 export type ItemId = string;
 
@@ -63,7 +63,8 @@ class Draft {
   }
 
   create(parent: ItemId, index: number, text = ""): Item {
-    const item = blankItem(newId(), parent, text);
+    const privateRoot = privateRootAtOrAbove(this.items, parent);
+    const item = blankItem(privateRoot ? `${privateRoot}~${newId()}` : newId(), parent, text);
     this.items[item.id] = item;
     this.cloned.add(item.id);
     this.write(parent).children.splice(index, 0, item.id);
@@ -99,6 +100,50 @@ function edit(doc: Doc, change: (draft: Draft) => void): Doc {
   const draft = new Draft(doc);
   change(draft);
   return draft.done();
+}
+
+// ---- private items (doc/adr/0029) ----------------------------------------------------
+
+/** The nearest private item at or above `id`; its descendants' ids start with its own and "~". */
+function privateRootAtOrAbove(items: Doc["items"], id: ItemId | null): ItemId | null {
+  for (let current = id; current; current = items[current].parent) {
+    if (privateKeyOf(items[current].note)) return current;
+  }
+  return null;
+}
+
+export function privateRootAbove(doc: Doc, id: ItemId): ItemId | null {
+  return privateRootAtOrAbove(doc.items, doc.items[id]?.parent ?? null);
+}
+
+/**
+ * Renames the items under a private item whose ids do not say so yet, for
+ * one that was just made private or moved in, and rewrites links to them.
+ */
+export function withPrivateIds(doc: Doc): { doc: Doc; renamed: Map<ItemId, ItemId> } {
+  const renamed = new Map<ItemId, ItemId>();
+  const visit = (id: ItemId, root: ItemId | null) => {
+    const item = doc.items[id];
+    const rootHere = privateKeyOf(item.note) ? id : root;
+    for (const child of item.children) {
+      if (rootHere && !child.startsWith(`${rootHere}~`)) renamed.set(child, `${rootHere}~${child}`);
+      visit(child, rootHere);
+    }
+  };
+  visit(ROOT, null);
+  if (renamed.size === 0) return { doc, renamed };
+  const newName = (id: ItemId | null) => (id === null ? null : (renamed.get(id) ?? id));
+  const items: Record<ItemId, Item> = {};
+  for (const item of Object.values(doc.items)) {
+    const id = newName(item.id)!;
+    items[id] = { ...item, id, parent: newName(item.parent), children: item.children.map((child) => newName(child)!), text: linksRenamed(item.text, renamed), note: linksRenamed(item.note, renamed) };
+  }
+  return { doc: { items }, renamed };
+}
+
+function linksRenamed(text: string, renamed: Map<ItemId, ItemId>): string {
+  if (!text.includes("[[id:")) return text;
+  return text.replace(/\[\[id:([^\]\n]+)\]/g, (link, id: string) => (renamed.has(id) ? `[[id:${renamed.get(id)}]` : link));
 }
 
 export function indexInParent(doc: Doc, id: ItemId): number {

@@ -25,6 +25,8 @@ import {
   newChildIndex,
   setNote,
   shownChildren,
+  insertChild,
+  withPrivateIds,
 } from "../src/model";
 import { parseIndentedText, subtreesAsText } from "../src/transfer";
 import { findItems, search } from "../src/search";
@@ -95,6 +97,33 @@ describe("order of children", () => {
     expect(newChildIndex(doc, idOf(doc, "Tasks"))).toBe(0);
     expect(newChildIndex(doc, idOf(doc, "Elsewhere"))).toBe(2);
     expect(newChildIndex(doc, idOf(doc, "open two"))).toBe(2);
+  });
+});
+
+describe("ids inside a private item", () => {
+  it("are made under the private item", () => {
+    let doc = outline("Journal\n  day one");
+    doc = setNote(doc, idOf(doc, "Journal"), ":private: personal");
+    const journal = idOf(doc, "Journal");
+    const created = insertChild(doc, journal, 0, "new");
+    expect(created.id.startsWith(`${journal}~`)).toBe(true);
+    expect(insertChild(created.doc, created.id, 0, "deeper").id.startsWith(`${journal}~`)).toBe(true);
+    expect(insertChild(doc, ROOT, 0, "public").id).not.toContain("~");
+  });
+
+  it("are given to items that were there before, and links follow", () => {
+    let doc = outline("Journal\n  day one\n    detail\nIndex");
+    const [journal, dayOne, index] = [idOf(doc, "Journal"), idOf(doc, "day one"), idOf(doc, "Index")];
+    doc = setNote(doc, index, `see [[id:${dayOne}][day one]]`);
+    doc = setNote(doc, journal, ":private: personal");
+    const { doc: named, renamed } = withPrivateIds(doc);
+    expect(renamed.get(dayOne)).toBe(`${journal}~${dayOne}`);
+    expect(named.items[journal].children).toEqual([`${journal}~${dayOne}`]);
+    expect(named.items[`${journal}~${dayOne}`].children).toEqual([`${journal}~${idOf(doc, "detail")}`]);
+    expect(named.items[index].note).toBe(`see [[id:${journal}~${dayOne}][day one]]`);
+    expect(named.items[dayOne]).toBeUndefined();
+    consistent(named);
+    expect(withPrivateIds(named).doc).toBe(named);
   });
 });
 
