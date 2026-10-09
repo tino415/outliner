@@ -51,6 +51,49 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 4 (2026-10-09, afternoon)
+
+Tasks from Outliner/TODO in the outline. Martin's answers (14:40, asked in
+the session and recorded under each task): attachments where I see fit;
+private subtrees as one sealed value, structure hidden; all three ordering
+proposals; any leading `Words:` is a kind (I advised a declared list); ids
+that carry their private item, so links into one are recognisable; merge
+to main and push.
+
+Done, each with tests:
+
+- Ctrl-U to the parent item.
+- Exports (app and `outline export --md`) write links as their labels.
+- `:completed: last`, `:new: top`, Alt-Shift-Enter for a first child (ADR 26).
+- Kinds as dark badges, completion, Alt-Shift-K (ADR 27).
+- Formulas: time + duration is a time on either side, different units do
+  not add, `before()` linear; ⋯ → Formula help with example pages a unit
+  test computes.
+- `nix run .#outline-sync-server` (step 1 of packaging the server).
+- Attachments: paste, drop, Alt-Shift-A; files on the sync server by
+  SHA-256, kept in IndexedDB; `outline attach` and `outline file` (ADR 28).
+- Private items: Alt-Shift-P, sealed at the sync boundary, keys copied by
+  hand, the CLI sees a lock (ADR 29). A review agent read the first
+  version and found six ways plaintext or edits could slip through; all
+  fixed, each with a test, before anything was published.
+- Plugins: Ctrl-K commands in a sandboxed iframe, approved by an HMAC with
+  the `trust` key, so the CLI cannot approve and any code change needs a
+  new approval (ADR 30).
+
+Not done or left out:
+
+- Plugin hooks on events (an item was added) and plugins in the CLI: a
+  hook would fire once per device; see ADR 30.
+- The live `sync` container still runs the old server: the main checkout
+  could not be updated from this session's worktree. Attachments upload
+  once it is rebuilt.
+- Step 2 of the Nix server (NixOS module, moving the live database) waits
+  for Martin.
+- Testing on a real phone, and the Todoist project (its connector needs
+  Martin's sign-in).
+- The performance test failed twice under the full five-browser run while
+  passing alone at the same timings as main (13 to 30 ms); load.
+
 ## Session 3 (2026-10-09 00:28, about four hours)
 
 Tasks came from the backlog below and from the outline itself
