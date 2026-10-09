@@ -1242,6 +1242,58 @@ code {
   line-height: 1.5;
 }
 
+.key-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.key-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.key-list .key-none,
+.plugin-list li {
+  display: block;
+  color: var(--muted);
+}
+
+.key-list input {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.key-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.plugin-list li {
+  color: var(--fg);
+}
+
+.plugin-status {
+  margin-left: 6px;
+  color: var(--muted);
+}
+
+.plugin-list pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--code-bg);
+  font: 12px / 1.45 var(--mono);
+}
+
 .capture-templates {
   display: flex;
   flex-wrap: wrap;

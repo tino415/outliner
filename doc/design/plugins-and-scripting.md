@@ -1,6 +1,6 @@
 # Plugins and scripting
 
-Status: proposal for discussion, 2026-10-09. Backlog item 3 in NOTES.md.
+Status: decided 2026-10-09: formulas in [ADR 22](../adr/0022-computed-columns-with-formulas.md), plugins in [ADR 30](../adr/0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md). Backlog item 3 in NOTES.md.
 
 ## Context
 

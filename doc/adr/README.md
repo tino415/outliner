@@ -39,3 +39,4 @@ session report; the records here hold the choices behind them.
 27. [Kinds are the leading words before a colon, shown as badges](0027-kinds-are-leading-words-shown-as-badges.md)
 28. [Attachments are files on the sync server, named by their hash](0028-attachments-are-files-on-the-sync-server-by-hash.md)
 29. [Private items are sealed whole at the sync boundary](0029-private-items-are-sealed-whole-at-the-sync-boundary.md)
+30. [Plugins run sandboxed, once a trusted device approves their code](0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md)
