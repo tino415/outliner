@@ -1,5 +1,4 @@
-import { Doc, ItemId, ROOT, insertChild, newChildIndex, setNote } from "./model";
-import { propertiesOf, setProperty } from "./notes";
+import { Doc, ItemId, ROOT, insertChild, newChildIndex, setItemProperty } from "./model";
 
 /*
  * Capture, as in org-capture (doc/adr/0023): a template is an item whose note
@@ -25,15 +24,15 @@ export function captureTemplates(doc: Doc): Template[] {
   const templates: Template[] = [];
   const walk = (id: ItemId) => {
     for (const child of doc.items[id].children) {
-      const properties = propertiesOf(doc.items[child].note);
-      const target = properties.get("capture");
+      const properties = doc.items[child].properties;
+      const target = properties.capture;
       if (target) {
         templates.push({
           name: doc.items[child].text.trim() || target,
           target,
-          ask: (properties.get("ask") ?? "").split(/[\s,]+/).filter(Boolean),
-          at: placementOf(properties.get("at")),
-          key: (properties.get("key") ?? "").slice(0, 1).toLowerCase(),
+          ask: (properties.ask ?? "").split(/[\s,]+/).filter(Boolean),
+          at: placementOf(properties.at),
+          key: (properties.key ?? "").slice(0, 1).toLowerCase(),
         });
       }
       walk(child);
@@ -54,8 +53,8 @@ export function capture(doc: Doc, template: Template, text: string, properties: 
   const located = targetOf(doc, template.target.replaceAll("{date}", isoDate(today)));
   const parent = located.target;
   const created = insertChild(located.doc, parent, indexFor(located.doc, parent, template), text);
-  const note = Object.entries(properties).reduce((written, [key, value]) => setProperty(written, key, value), "");
-  return { doc: note ? setNote(created.doc, created.id, note) : created.doc, id: created.id, target: parent };
+  const filled = Object.entries(properties).reduce((written, [key, value]) => setItemProperty(written, created.id, key, value), created.doc);
+  return { doc: filled, id: created.id, target: parent };
 }
 
 /** The item at a path of texts from the top ("Projects/Garden"), or an item id; steps that do not exist yet are added. */
@@ -90,7 +89,7 @@ function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
 /** A template is never a place to file into, even when it bears its target's name. */
 function isStep(doc: Doc, id: ItemId, step: string): boolean {
   const item = doc.items[id];
-  return item.text.trim().toLowerCase() === step.toLowerCase() && !propertiesOf(item.note).has("capture");
+  return item.text.trim().toLowerCase() === step.toLowerCase() && !("capture" in item.properties);
 }
 
 function isoDate(day: Date): string {

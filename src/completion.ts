@@ -1,5 +1,5 @@
 import { Doc } from "./model";
-import { isInCode, propertiesOf, withoutCode } from "./notes";
+import { isInCode, withoutCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
 import { insertText } from "./editing";
@@ -84,7 +84,7 @@ const finishTag = (tag: string) => `#${tag} `;
 const finishKind = (kind: string) => `${kind}: `;
 
 function keysIn(doc: Doc): string[] {
-  return byUse(Object.values(doc.items).flatMap((item) => [...propertiesOf(item.note).keys()]));
+  return byUse(Object.values(doc.items).flatMap((item) => Object.keys(item.properties)));
 }
 
 function tagsIn(doc: Doc): string[] {

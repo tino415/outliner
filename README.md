@@ -33,13 +33,17 @@ podman compose exec app npx playwright test         # desktop Chromium, phone, W
 
 ## Properties and columns
 
-A line `:key: value` in an item's note is a property, as in org mode
-(doc/adr/0017, 0020): `:calories: 350 kcal`, `:effort: 1h30m`,
-`:start: 9:00` (a time of day), `:protein: 12 g`. Typing `:` at the start of a note line
-offers the keys already in use, and `#` offers the tags.
+An item's properties are `key: value` pairs such as `calories: 350 kcal`,
+`effort: 1h30m`, `start: 9:00` (a time of day) or `protein: 12 g`, shown
+as chips under its text (doc/adr/0032). Ctrl-; (⌘; on a Mac), Set a
+property… in the item menu or the Property button in the phone's toolbar
+asks for a key, then a value, offering the ones in use; a click on a chip
+changes or removes it. Each property syncs on its own. Typing a line
+`:calories: 350 kcal` into a note still works: it becomes a property when
+the note is left. Exports write properties as such lines, as org mode does.
 ⋯ → Columns (Alt-Shift-C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
-roll up, put a `:columns:` property on the page, as in org mode:
+roll up, put a `columns` property on the page, as in org mode:
 
 ```
 :columns: calories{+} protein{+} effort{max}

@@ -269,7 +269,7 @@ test("clicking a note's text while a property line is hidden types where clicked
   await page.mouse.click(box.x + box.width - 2, box.y + box.height / 2);
   await page.keyboard.press("End");
   await page.keyboard.type("X");
-  await expect(note).toHaveText(":effort: 1h\nfree text hereX");
+  await expect(note).toHaveText("free text hereX");
 });
 
 test("clicking another item after editing a cell leaves the caret in that item", async ({ page }) => {
@@ -343,7 +343,7 @@ test("inside a code block [[ and : are code, not a link picker or key completion
   await page.keyboard.type(":k");
   await expect(page.locator("#palette")).toBeHidden();
   await expect(page.locator(".completion")).toBeHidden();
-  await expect(row(page, "snippet").locator(".note")).toHaveText(":kind: x\n```\na = [[1]]\n:k\n```");
+  await expect(row(page, "snippet").locator(".note")).toHaveText("```\na = [[1]]\n:k\n```");
 });
 
 test("jumping by typing an item's first word and Enter opens the item, not a command of that name", async ({ page }) => {

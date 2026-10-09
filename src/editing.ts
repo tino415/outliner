@@ -5,6 +5,8 @@ import {
   duplicate,
   indent,
   insertChild,
+  liftNoteProperties,
+  privateKeyOf,
   indexInParent,
   isBlank,
   isDescendant,
@@ -28,10 +30,11 @@ import { Candidate, findItems } from "./search";
 import { PaletteOption, openPalette } from "./palette";
 import { keepFiles } from "./attachments";
 import { choosePrivacy } from "./privateItems";
+import { chooseProperty } from "./propertyPicker";
 import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { privateHolderOf, referenceTo, resolveReference } from "./references";
-import { isInCode, privateKeyOf } from "./notes";
+import { isInCode } from "./notes";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -75,7 +78,10 @@ export function bindEditorEvents(): void {
       clearFocusedRow();
     }
     const editor = editorOf(event.target);
-    if (editor && isNoteEditor(editor)) dropTrailingBlankLines(editor.dataset.id!);
+    if (editor && isNoteEditor(editor)) {
+      dropTrailingBlankLines(editor.dataset.id!);
+      liftTypedProperties(editor.dataset.id!);
+    }
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item) return;
     editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
@@ -190,6 +196,15 @@ function pickFiles(): Promise<File[]> {
     const input = Object.assign(document.createElement("input"), { type: "file", multiple: true });
     input.addEventListener("change", () => resolve([...(input.files ?? [])]));
     input.click();
+  });
+}
+
+/** `:key: value` lines typed into a note become properties once the note is left (doc/adr/0032). */
+function liftTypedProperties(id: ItemId): void {
+  if (!/^[ \t]*:[\p{L}\p{N}_-]+:/mu.test(doc().items[id]?.note ?? "")) return;
+  setTimeout(() => {
+    const lifted = liftNoteProperties(doc(), [id]);
+    if (lifted !== doc()) commitAndRender(lifted, caretNow());
   });
 }
 
@@ -538,6 +553,10 @@ export const actions = {
     insertText(text === "" || /\s$/.test(text) ? "#" : " #");
   },
 
+  setProperty(c: EditorContext): void {
+    chooseProperty(c.id);
+  },
+
   makePrivate: onItem((c) => choosePrivacy(c.id)),
 
   attachFile: onItem((c) => {
@@ -642,7 +661,7 @@ function followReference(target: string): void {
 }
 
 function privateLinkExplained(holder: ItemId): void {
-  const key = privateKeyOf(doc().items[holder].note);
+  const key = privateKeyOf(doc().items[holder]);
   toast(`That item is private, inside “${shortLabel(doc().items[holder].text, 30)}”: it needs the key ${key} on this device`, {
     label: "Go there",
     run: () => zoomTo(holder),

@@ -1,4 +1,4 @@
-import { Doc, ROOT, appendOutline, emptyDoc, makePublic } from "./model";
+import { Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf } from "./model";
 import { Clock, newDeviceId } from "./sync/clock";
 import { Endpoint, SyncError, exchange } from "./sync/client";
 import { MAX_TEXT } from "./sync/protocol";
@@ -11,7 +11,6 @@ import { saveDocSoon } from "./storage";
 import { toast } from "./chrome";
 import { uploadPendingFiles } from "./attachments";
 import { Merged, Outgoing, mergeIncoming, sealOutgoing, sealedIn } from "./sync/privacy";
-import { privateKeyOf } from "./notes";
 import { keys } from "./keyring";
 
 /*
@@ -142,14 +141,14 @@ function showQueueStatus(outgoing: Outgoing = { changes: [], held: [], sealed: [
   else if (privateTooLong) setStatus("rejected", "A private item is too large to sync; move some of what is under it out");
   else if (unreadable.length > 0) setStatus("rejected", "A private item arrived sealed with a different key of the same name; it was not opened. Copy the key from the device that made it in ⋯ → Private keys");
   else if (missingKeys.length > 0) setStatus("rejected", `This device has no key named ${missingKeys.join(", ")}; private items using it stay here until it is added in ⋯ → Private keys`);
-  else if (outgoing.held.length > 0) setStatus("rejected", "A private item has lost its :private: line; what is in it stays on this device until the line is back, or until it is made public");
+  else if (outgoing.held.length > 0) setStatus("rejected", "A private item has lost its private property; what is in it stays on this device until it is set again, or until the item is made public");
   else setStatus(saved!.pending.length > 0 ? "pending" : "synced");
 }
 
 function privateKeyNeededFor(change: Change): string | null {
   const items = doc().items;
   for (let current: string | null = change.item; current; current = items[current]?.parent ?? null) {
-    const key = items[current] ? privateKeyOf(items[current].note) : null;
+    const key = items[current] ? privateKeyOf(items[current]) : null;
     if (key) return key;
   }
   return null;
@@ -173,7 +172,7 @@ export function forgetPrivate(item: string): void {
 /** Keeps track of what is private here: opened items join; one whose plain note arrived was made public elsewhere. */
 function afterMerging(state: Saved, merged: Merged): void {
   rememberPrivate(state, merged.opened);
-  const madePublic = merged.accepted.filter((change) => change.field === "note" && typeof change.value === "string" && privateKeyOf(change.value) === null);
+  const madePublic = merged.accepted.filter((change) => change.field === "prop:private" && change.value === null);
   if (madePublic.length > 0) state.privateItems = (state.privateItems ?? []).filter((item) => !madePublic.some((change) => change.item === item));
   queueReseal(state, merged.reseal);
 }

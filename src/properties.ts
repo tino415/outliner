@@ -1,10 +1,9 @@
-import { Doc, ItemId, ViewFilter, ancestors, shownChildren } from "./model";
+import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, shownChildren } from "./model";
 import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
-import { propertiesOf } from "./notes";
 
 /*
- * Properties are `:key: value` lines in an item's note (doc/adr/0017, 0020), read
- * in notes.ts. This module understands their values as numbers or
+ * Properties are an item's `key: value` pairs (doc/adr/0032). This module
+ * understands their values as numbers or
  * durations, and computes the rollups a column view shows.
  */
 
@@ -94,7 +93,7 @@ function formulaOrError(source: string): Formula | FormulaError {
 /** Columns from a `columns::` property on the page or its nearest ancestor that has one. */
 export function declaredColumns(doc: Doc, page: ItemId): Column[] | null {
   for (const id of [page, ...ancestors(doc, page).reverse()]) {
-    const spec = propertiesOf(doc.items[id].note).get("columns");
+    const spec = doc.items[id].properties.columns;
     if (spec) return parseColumns(spec).map((column) => (column.formula ? { ...column, declaredOn: id } : column));
   }
   return null;
@@ -104,7 +103,7 @@ export function declaredColumns(doc: Doc, page: ItemId): Column[] | null {
 export function inferredColumns(doc: Doc, top: ItemId): Column[] {
   const keys = new Set<string>();
   const walk = (id: ItemId) => {
-    for (const key of propertiesOf(doc.items[id].note).keys()) if (key !== "columns") keys.add(key);
+    for (const key of Object.keys(doc.items[id].properties)) if (!SETTINGS.has(key)) keys.add(key);
     doc.items[id].children.forEach(walk);
   };
   doc.items[top].children.forEach(walk);
@@ -158,7 +157,7 @@ export function columnCells(
 
   const freshValue = (id: ItemId, key: string): Value => {
     const column = byKey.get(key) ?? { key, summary: "sum" as Summary };
-    const raw = propertiesOf(doc.items[id].note).get(key);
+    const raw = doc.items[id].properties[key];
     const formulaApplies = column.formula && raw === undefined && id !== (column.declaredOn ?? top) && !isAbove(id, column.declaredOn);
     if (formulaApplies) return computed(id, column.formula!);
     const fromChildren = () => children(id).flatMap((child) => valueOf(child, key).amount ?? []);

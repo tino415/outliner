@@ -42,7 +42,7 @@ test("editing a cell writes the property and updates every total above it", asyn
   await expect(cell(page, "Coffee", "calories")).toHaveText("120 kcal");
   await expect(cell(page, "Breakfast", "calories")).toHaveText("420 kcal");
   await expect(page.locator("#columns-head .column-total").first()).toHaveText("1070 kcal");
-  await expect(row(page, "Coffee").locator(".note")).toHaveText(":calories: 120 kcal");
+  await expect(row(page, "Coffee").locator(".note")).toBeHidden();
 
   await cell(page, "Coffee", "protein").click();
   await page.keyboard.type("1 g");
@@ -76,12 +76,12 @@ test("the menu switches columns on for any page, inferring them from properties"
   await expect(page.locator("#columns-head")).toBeHidden();
 });
 
-test("properties show as key and value outside editing", async ({ page }) => {
+test("properties show as chips of key and value, the note keeps the rest", async ({ page }) => {
   await freshOutline(page, "Oats | from the market; :calories: 300 kcal");
-  const property = row(page, "Oats").locator(".prop");
+  const property = row(page, "Oats").locator(".prop-chip");
   await expect(property.locator(".prop-key")).toHaveText("calories");
   await expect(property.locator(".prop-value")).toHaveText("300 kcal");
-  await expect(row(page, "Oats").locator(".note")).toHaveText("from the market\n:calories: 300 kcal");
+  await expect(row(page, "Oats").locator(".note")).toHaveText("from the market");
 });
 
 test("the formula help explains the syntax and adds a working example to the page", async ({ page }) => {

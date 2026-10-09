@@ -1,4 +1,4 @@
-import { Change, Field } from "./replica";
+import { Change, Field, PropertyField } from "./replica";
 
 /** What a client sends: its unsent changes and the last sequence number it has seen. */
 export interface SyncRequest {
@@ -12,7 +12,7 @@ export interface SyncResponse {
   changes: Change[];
 }
 
-const FIELDS: Record<Field, "string" | "boolean" | "string or null"> = {
+const FIELDS: Record<Exclude<Field, PropertyField>, "string" | "boolean" | "string or null"> = {
   text: "string",
   note: "string",
   parent: "string or null",
@@ -23,6 +23,10 @@ const FIELDS: Record<Field, "string" | "boolean" | "string or null"> = {
 };
 
 export const MAX_TEXT = 100_000;
+
+function isPropertyField(field: unknown): field is PropertyField {
+  return typeof field === "string" && /^prop:[\p{L}\p{N}_-]{1,64}$/u.test(field);
+}
 
 /** Throws with a readable reason unless `body` is a well-formed sync request. */
 export function parseSyncRequest(body: unknown): SyncRequest {
@@ -41,7 +45,7 @@ function changeProblem(change: Partial<Change>): string | null {
   if (typeof change !== "object" || change === null) return "not an object";
   if (typeof change.item !== "string" || change.item.length === 0 || change.item.length > 64) return "bad item id";
   if (typeof change.clock !== "string" || change.clock.length > 100) return "bad clock";
-  const kind = FIELDS[change.field as Field];
+  const kind = isPropertyField(change.field) ? "string or null" : FIELDS[change.field as Exclude<Field, PropertyField>];
   if (!kind) return `unknown field ${String(change.field)}`;
   const value = change.value;
   const fits =

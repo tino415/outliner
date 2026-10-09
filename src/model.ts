@@ -1,4 +1,4 @@
-import { privateKeyOf, propertiesOf, setProperty } from "./notes";
+import { sealedKeyOf, splitPropertyLines } from "./notes";
 
 export type ItemId = string;
 
@@ -6,6 +6,8 @@ export interface Item {
   id: ItemId;
   text: string;
   note: string;
+  /** `key: value`, keys in lower case (doc/adr/0032). */
+  properties: Readonly<Record<string, string>>;
   parent: ItemId | null;
   children: ItemId[];
   collapsed: boolean;
@@ -32,7 +34,7 @@ export function emptyDoc(): Doc {
 }
 
 function blankItem(id: ItemId, parent: ItemId | null, text = ""): Item {
-  return { id, text, note: "", parent, children: [], collapsed: false, completed: false, updated: Date.now() };
+  return { id, text, note: "", properties: {}, parent, children: [], collapsed: false, completed: false, updated: Date.now() };
 }
 
 /**
@@ -105,13 +107,13 @@ function edit(doc: Doc, change: (draft: Draft) => void): Doc {
 // ---- private items (doc/adr/0029) ----------------------------------------------------
 
 /**
- * A private item has a `:private:` line, or still holds items with its id
- * and "~": while its line is being retyped it stays private, and only
+ * A private item has a `private` property, or still holds items with its id
+ * and "~": while the property is being changed it stays private, and only
  * `makePublic` ends it.
  */
 function isPrivateRoot(items: Doc["items"], id: ItemId): boolean {
   const item = items[id];
-  return privateKeyOf(item.note) !== null || item.children.some((child) => child.startsWith(`${id}~`));
+  return privateKeyOf(item) !== null || item.children.some((child) => child.startsWith(`${id}~`));
 }
 
 /** The nearest private item at or above `id`; its descendants' ids start with its own and "~". */
@@ -145,9 +147,9 @@ export function withPrivateIds(doc: Doc): { doc: Doc; renamed: Map<ItemId, ItemI
   return { doc: renameItems(doc, renamed), renamed };
 }
 
-/** The item public again: its `:private:` line gone and everything under it with public ids. */
+/** The item public again: its `private` property gone and everything under it with public ids. */
 export function makePublic(doc: Doc, id: ItemId): Doc {
-  const withoutLine = setNote(doc, id, setProperty(doc.items[id].note, "private", ""));
+  const withoutLine = setItemProperty(doc, id, "private", "");
   const renamed = new Map<ItemId, ItemId>();
   const visit = (parent: ItemId) => {
     for (const child of withoutLine.items[parent].children) {
@@ -198,7 +200,7 @@ function nextShownSibling(doc: Doc, id: ItemId, filter: ViewFilter): ItemId | nu
 }
 
 export function isBlank(item: Item): boolean {
-  return item.text === "" && item.note === "" && item.children.length === 0;
+  return item.text === "" && item.note === "" && Object.keys(item.properties).length === 0 && item.children.length === 0;
 }
 
 export function ancestors(doc: Doc, id: ItemId): ItemId[] {
@@ -234,8 +236,8 @@ function completedLast(doc: Doc, id: ItemId): boolean {
   completedLastByDoc.set(doc.items, known);
   const lookUp = (page: ItemId): boolean => {
     if (known.has(page)) return known.get(page)!;
-    const { note, parent } = doc.items[page];
-    const placement = note.includes(":completed:") ? propertiesOf(note).get("completed") : undefined;
+    const { properties, parent } = doc.items[page];
+    const placement = properties.completed;
     const answer = placement ? placement.toLowerCase() === "last" : parent !== null && lookUp(parent);
     known.set(page, answer);
     return answer;
@@ -244,7 +246,7 @@ function completedLast(doc: Doc, id: ItemId): boolean {
 }
 
 export function newChildIndex(doc: Doc, parent: ItemId): number {
-  const isNewOnTop = propertiesOf(doc.items[parent].note).get("new")?.toLowerCase() === "top";
+  const isNewOnTop = doc.items[parent].properties.new?.toLowerCase() === "top";
   return isNewOnTop ? 0 : doc.items[parent].children.length;
 }
 
@@ -279,6 +281,52 @@ export function setNote(doc: Doc, id: ItemId, note: string): Doc {
   });
 }
 
+// ---- properties (doc/adr/0032) ---------------------------------------------------------
+
+export const PROPERTY_KEY = /^[\p{L}\p{N}_-]+$/u;
+
+/** Properties that set up the app rather than describe the item: shown muted, never offered as columns. */
+export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved"]);
+
+/** Sets `key` to `value` on the item; an empty value removes it. */
+export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string): Doc {
+  const name = key.trim().toLowerCase();
+  const written = value.trim();
+  const current = doc.items[id].properties;
+  if ((current[name] ?? "") === written) return doc;
+  const { [name]: _, ...others } = current;
+  return edit(doc, (d) => {
+    d.write(id).properties = written ? { ...others, [name]: written } : others;
+  });
+}
+
+/** Moves `:key: value` lines out of the notes of `ids` (every item by default) into their properties. */
+export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.items)): Doc {
+  let next = doc;
+  for (const id of ids) {
+    const item = next.items[id];
+    if (!item || !item.note.includes(":") || sealedKeyOf(item.note)) continue;
+    const { properties, rest } = splitPropertyLines(item.note);
+    if (properties.size === 0) continue;
+    next = edit(next, (d) => {
+      const written = d.write(id);
+      written.note = rest;
+      written.properties = { ...written.properties, ...Object.fromEntries([...properties].filter(([, value]) => value !== "")) };
+    });
+  }
+  return next;
+}
+
+/** The key a private item is sealed with: its `private` property where it is open, the sealed note's key elsewhere (doc/adr/0029). */
+export function privateKeyOf(item: Item): string | null {
+  return item.properties.private ?? sealedKeyOf(item.note);
+}
+
+/** An item shown as a board: its children are columns, theirs are cards (doc/adr/0031). */
+export function isBoard(item: Item): boolean {
+  return item.properties.view?.toLowerCase() === "board";
+}
+
 export function setCollapsed(doc: Doc, id: ItemId, collapsed: boolean): Doc {
   if (doc.items[id].collapsed === collapsed) return doc;
   return edit(doc, (d) => {
@@ -311,7 +359,7 @@ export function appendChild(doc: Doc, parent: ItemId, text = ""): { doc: Doc; id
   return insertChild(doc, parent, doc.items[parent].children.length, text);
 }
 
-export function setFlags(doc: Doc, id: ItemId, flags: Partial<Pick<Item, "collapsed" | "completed" | "note">>): Doc {
+export function setFlags(doc: Doc, id: ItemId, flags: Partial<Pick<Item, "collapsed" | "completed" | "note" | "properties">>): Doc {
   return edit(doc, (d) => {
     Object.assign(d.write(id), flags);
   });
@@ -412,7 +460,7 @@ export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
     const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
       const source = d.read(sourceId);
       const created = d.create(parent, index, source.text);
-      Object.assign(created, { note: source.note, completed: source.completed, collapsed: source.collapsed });
+      Object.assign(created, { note: source.note, properties: source.properties, completed: source.completed, collapsed: source.collapsed });
       source.children.forEach((child, i) => copy(child, created.id, i));
       return created.id;
     };
@@ -429,7 +477,7 @@ export function appendOutline(doc: Doc, source: Doc, title: string): { doc: Doc;
     const copy = (sourceId: ItemId, parent: ItemId, index: number) => {
       const original = source.items[sourceId];
       const created = d.create(parent, index, original.text);
-      Object.assign(created, { note: original.note, completed: original.completed, collapsed: original.collapsed });
+      Object.assign(created, { note: original.note, properties: original.properties ?? {}, completed: original.completed, collapsed: original.collapsed });
       original.children.forEach((child, i) => copy(child, created.id, i));
     };
     const holder = d.create(ROOT, d.read(ROOT).children.length, title);
@@ -476,6 +524,7 @@ export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offse
     const target = d.write(into);
     target.text += source.text;
     target.note = [target.note, source.note].filter(Boolean).join("\n");
+    target.properties = { ...source.properties, ...target.properties };
     const intoIsParent = source.parent === into;
     const insertAt = intoIsParent ? target.children.indexOf(id) : target.children.length;
     d.detach(id);

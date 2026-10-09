@@ -6,11 +6,13 @@ import {
   childrenInOrder,
   indexInParent,
   insertChild,
+  liftNoteProperties,
   isDescendant,
   moveTo,
   newChildIndex,
   remove,
   setFlags,
+  setItemProperty,
   setNote,
   setText,
 } from "../src/model";
@@ -22,7 +24,7 @@ import { basename } from "node:path";
 import { findItems } from "../src/search";
 import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
-import { isSealed, privateKeyOf, propertiesOf, setProperty } from "../src/notes";
+import { isSealed, propertyLines, sealedKeyOf } from "../src/notes";
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
@@ -161,7 +163,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       if (args[0]) writable(doc, resolve(doc, args[0]));
       const [, key, ...words] = args;
       if (!key || !/^[\p{L}\p{N}_-]+$/u.test(key)) throw new Error("set needs ITEM KEY VALUE; KEY is letters, digits, - or _");
-      return changeItem(outline, args, (next, id) => setNote(next, id, setProperty(next.items[id].note, key, words.join(" "))));
+      return changeItem(outline, args, (next, id) => setItemProperty(next, id, key, words.join(" ")));
     }
     case "capture": {
       const text = args.join(" ");
@@ -233,7 +235,7 @@ function besideOf(options: Options): string | undefined {
 
 /** The item, unless it is private: what is inside one can only change on a device with its key (doc/adr/0029). */
 function writable(doc: Doc, id: ItemId): ItemId {
-  if (isSealed(doc.items[id].note)) throw new Error(`${doc.items[id].text} is private: only a device with the key ${privateKeyOf(doc.items[id].note)} can change what is in it`);
+  if (isSealed(doc.items[id].note)) throw new Error(`${doc.items[id].text} is private: only a device with the key ${sealedKeyOf(doc.items[id].note)} can change what is in it`);
   return id;
 }
 
@@ -295,7 +297,7 @@ class Outline {
   }
 
   async save(next: Doc): Promise<void> {
-    const changes = diff(this.doc, next, this.replica, () => this.clock.tick());
+    const changes = diff(this.doc, liftNoteProperties(next), this.replica, () => this.clock.tick());
     if (changes.length > 0) await exchange(this.endpoint, { since: Number.MAX_SAFE_INTEGER, changes });
   }
 }
@@ -343,14 +345,14 @@ interface Tree {
 
 function tree(doc: Doc, id: ItemId, depth = Infinity, cells?: Map<ItemId, Map<string, Cell>>): Tree {
   const item = doc.items[id];
-  const properties = propertiesOf(item.note);
+  const properties = Object.entries(item.properties);
   const row = cells?.get(id);
   return {
     id,
     text: item.text,
-    ...(isSealed(item.note) ? { private: privateKeyOf(item.note) } : item.note ? { note: item.note } : {}),
+    ...(isSealed(item.note) ? { private: sealedKeyOf(item.note) } : item.note ? { note: item.note } : {}),
     ...(item.completed ? { completed: true } : {}),
-    ...(properties.size > 0 ? { properties: Object.fromEntries(properties) } : {}),
+    ...(properties.length > 0 ? { properties: Object.fromEntries(properties) } : {}),
     ...(row && row.size > 0 ? { columns: Object.fromEntries([...row].map(([key, cell]) => [key, cell.text])) } : {}),
     children: depth > 0 ? childrenInOrder(doc, id).map((child) => tree(doc, child, depth - 1, cells)) : [],
   };
@@ -415,7 +417,7 @@ function line(doc: Doc, id: ItemId, depth: number, options: Options): string {
   const item = doc.items[id];
   const pad = "  ".repeat(depth);
   const text = item.completed ? `~~${item.text}~~` : item.text;
-  const shownNote = isSealed(item.note) ? `🔒 private, sealed with the key ${privateKeyOf(item.note)}` : item.note;
+  const shownNote = isSealed(item.note) ? `🔒 private, sealed with the key ${sealedKeyOf(item.note)}` : [...propertyLines(item.properties), item.note].filter(Boolean).join("\n");
   const note = shownNote ? `\n${shownNote.split("\n").map((noteLine) => `${pad}  ${noteLine}`).join("\n")}` : "";
   return `${pad}- ${text}${options.ids ? `  [${id}]` : ""}${note}`;
 }

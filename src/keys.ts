@@ -96,6 +96,7 @@ const bindings: Binding[] = [
   editor(["Mod+e"], "Code", (c) => actions.code(c)),
   editor(["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
   editor(["Alt+Shift+t"], "Add a tag", (c) => actions.addTag(c)),
+  editor(["Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
   editor(["Alt+Shift+k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor(["Alt+Shift+l"], "Link to an item", (c) => actions.insertReference(c)),
   editor(["Alt+Shift+a"], "Attach a file…", (c) => actions.attachFile(c)),

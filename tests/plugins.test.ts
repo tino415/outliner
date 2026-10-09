@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { setNote } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { approvalOf, codeOf, isApproved, pluginsIn } from "../src/plugins";
 import { newKey } from "../src/sync/privacy";

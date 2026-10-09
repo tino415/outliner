@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, setNote, setText } from "../src/model";
+import { Doc, ItemId, setText } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { backlinks, privateHolderOf, referenceTo, resolveReference } from "../src/references";
 import { renderInline } from "../src/inline";

@@ -45,6 +45,19 @@ describe("links in exports", () => {
   });
 });
 
+describe("properties in exports", () => {
+  it("writes them as :key: value lines above the note and reads them back as properties", () => {
+    const base = parseIndentedText("- Lunch\n  :kcal: 600 kcal\n  soup and bread");
+    const lunch = base.items[ROOT].children[0];
+    expect(base.items[lunch]).toMatchObject({ note: "soup and bread", properties: { kcal: "600 kcal" } });
+    const written = exportMarkdown(base, ROOT);
+    expect(written).toBe("- Lunch\n  :kcal: 600 kcal\n  soup and bread\n");
+    const again = parseIndentedText(written);
+    expect(again.items[again.items[ROOT].children[0]]).toMatchObject({ note: "soup and bread", properties: { kcal: "600 kcal" } });
+    expect(exportOpml(base, ROOT)).toContain('_note=":kcal: 600 kcal&#10;soup and bread"');
+  });
+});
+
 describe("round trips", () => {
   it("keeps line breaks in OPML notes", () => {
     const base = parseIndentedText("item");
