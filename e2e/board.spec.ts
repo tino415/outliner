@@ -96,3 +96,11 @@ test("buttons add cards and columns, and the board turns back into the outline",
   await expect(page.locator("#board")).toBeHidden();
   await expect(page.locator("#tree")).toContainText("ship it");
 });
+
+test("a short board reaches the bottom of the window, so its scrollbar is there, and the page does not scroll", async ({ page }) => {
+  await openProject(page);
+  const box = (await page.locator("#board").boundingBox())!;
+  const height = await page.evaluate(() => window.innerHeight);
+  expect(box.y + box.height).toBeGreaterThanOrEqual(height - 1);
+  expect(await page.evaluate(() => document.scrollingElement!.scrollHeight)).toBeLessThanOrEqual(height + 1);
+});

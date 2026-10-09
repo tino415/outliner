@@ -1124,6 +1124,18 @@ code {
   scroll-padding-inline: var(--board-inset);
 }
 
+/* A board fills the window below the top bar, so its horizontal scrollbar sits at the bottom. */
+.page.with-board {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 56px - env(safe-area-inset-top));
+  padding-bottom: 0;
+}
+
+.page.with-board > .board {
+  flex: 1 0 auto;
+}
+
 .board-column {
   flex: 0 0 272px;
   display: grid;
