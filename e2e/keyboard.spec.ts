@@ -69,6 +69,17 @@ test("Ctrl-. folds and unfolds the item", async ({ page }) => {
   expect((await caret(page)).text).toBe("parent");
 });
 
+test("Ctrl-U goes up to the parent item, from a note to its own item, and from the top to the page title", async ({ page }) => {
+  await freshOutline(page, "parent\n  child | a note");
+  await row(page, "child").locator(".note").click();
+  await page.keyboard.press("Control+u");
+  expect((await caret(page)).text).toBe("child");
+  await page.keyboard.press("Control+u");
+  expect((await caret(page)).text).toBe("parent");
+  await page.keyboard.press("Control+u");
+  await expect(page.locator("#title")).toBeFocused();
+});
+
 test("⌥→ no longer zooms in, it moves by word on a Mac", async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await clickEnd(page, "projects");

@@ -81,6 +81,7 @@ const bindings: Binding[] = [
   editor(["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
   editor(["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
   editor(["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
+  editor(["Ctrl+u"], "Up to the parent item", (c) => actions.upToParent(c)),
   editor(["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
   editor(["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
   editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),

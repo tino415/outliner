@@ -448,6 +448,11 @@ export const actions = {
     if (doc().items[c.id].children.length > 0) toggleFold(c.id);
   }),
 
+  upToParent: onItem((c) => {
+    if (c.inNote) focusCaret({ id: c.id, offset: 0 });
+    else focusCaret({ id: doc().items[c.id].parent ?? state.zoom, offset: 0 });
+  }),
+
   zoomIn: onItem((c) => zoomTo(c.id, { id: c.id, offset: c.start })),
 
   zoomOut(c: EditorContext): void {
