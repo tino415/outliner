@@ -393,3 +393,32 @@ test.describe("drag and drop", () => {
     await expectOutline(page, "b\nc\na");
   });
 });
+
+test.describe("order of new and completed items", () => {
+  test("a page with :completed: last shows its completed items after the open ones", async ({ page }) => {
+    await freshOutline(page, "Tasks | :completed: last\n  done\n  open");
+    await editor(page, "done").click();
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await expectOutline(page, "Tasks\n  open\n  done [x]");
+    await editor(page, "done").click();
+    await page.keyboard.press("ControlOrMeta+Enter");
+    await expectOutline(page, "Tasks\n  done\n  open");
+  });
+
+  test("Alt-Shift-Enter adds a first child and goes there", async ({ page }) => {
+    await freshOutline(page, "parent\n  child");
+    await clickEnd(page, "parent");
+    await page.keyboard.press("Alt+Shift+Enter");
+    await page.keyboard.type("first");
+    await expectOutline(page, "parent\n  first\n  child");
+  });
+
+  test("the add button files at the top of a page with :new: top", async ({ page }) => {
+    await freshOutline(page, "Inbox | :new: top\n  older");
+    await editor(page, "Inbox").click();
+    await page.keyboard.press("Control+]");
+    await page.locator("#add-item").click();
+    await page.keyboard.type("newest");
+    await expectOutline(page, "newest\nolder");
+  });
+});

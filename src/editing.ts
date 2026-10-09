@@ -13,6 +13,7 @@ import {
   moveDown,
   moveTo,
   moveUp,
+  newChildIndex,
   outdent,
   remove,
   setCollapsed,
@@ -448,6 +449,11 @@ export const actions = {
     if (doc().items[c.id].children.length > 0) toggleFold(c.id);
   }),
 
+  newFirstChild(c: EditorContext): void {
+    const created = insertChild(doc(), c.id, 0);
+    commitAndRender(created.doc, startOf(created.id));
+  },
+
   upToParent: onItem((c) => {
     if (c.inNote) focusCaret({ id: c.id, offset: 0 });
     else focusCaret({ id: doc().items[c.id].parent ?? state.zoom, offset: 0 });
@@ -493,14 +499,14 @@ export const actions = {
     const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
     openPalette({
       placeholder: `Move “${itemLabel(doc().items[id].text, 30)}” to…`,
-      hint: "It goes to the end of the item you choose",
+      hint: "It goes under the item you choose, last or where the page files new items",
       candidates: (query) => {
         const found = findItems(doc(), query, 40, (other) => other === id || isDescendant(doc(), other, id));
         const homeMatches = !query.trim() || home.text.toLowerCase().includes(query.trim().toLowerCase());
         return homeMatches ? [home, ...found] : found;
       },
       choose: (target) => {
-        commitAndRender(moveTo(doc(), id, target.id, doc().items[target.id].children.length), startsOf(id, before, after));
+        commitAndRender(moveTo(doc(), id, target.id, newChildIndex(doc(), target.id)), startsOf(id, before, after));
         toast(`Moved to “${shortLabel(target.text, 30)}”`, { label: "Go there", run: () => zoomTo(target.id, startOf(id)) });
       },
     });

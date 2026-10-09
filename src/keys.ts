@@ -75,6 +75,7 @@ const bindings: Binding[] = [
   typing(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
   typing(["Delete"], "At the end: pull the next item up", (c) => actions.deleteForward(c), true),
   editor(["Shift+Enter"], "Add or leave a note", (c) => actions.toggleNote(c)),
+  editor(["Alt+Shift+Enter"], "New first child", (c) => actions.newFirstChild(c)),
   editor(["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
   editor(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
   editor(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),

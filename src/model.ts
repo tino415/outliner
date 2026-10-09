@@ -1,3 +1,5 @@
+import { propertiesOf } from "./notes";
+
 export type ItemId = string;
 
 export interface Item {
@@ -105,15 +107,14 @@ export function indexInParent(doc: Doc, id: ItemId): number {
 }
 
 function previousShownSibling(doc: Doc, id: ItemId, filter: ViewFilter): ItemId | null {
-  const siblings = doc.items[doc.items[id].parent!].children;
-  const before = siblings.slice(0, siblings.indexOf(id)).reverse();
-  return before.find((sibling) => isShown(doc, sibling, filter)) ?? null;
+  const siblings = shownChildren(doc, doc.items[id].parent!, filter);
+  return siblings[siblings.indexOf(id) - 1] ?? null;
 }
 
 function nextShownSibling(doc: Doc, id: ItemId, filter: ViewFilter): ItemId | null {
-  const siblings = doc.items[doc.items[id].parent!].children;
-  const after = siblings.slice(siblings.indexOf(id) + 1);
-  return after.find((sibling) => isShown(doc, sibling, filter)) ?? null;
+  const siblings = shownChildren(doc, doc.items[id].parent!, filter);
+  const index = siblings.indexOf(id);
+  return index === -1 ? null : (siblings[index + 1] ?? null);
 }
 
 export function isBlank(item: Item): boolean {
@@ -135,7 +136,36 @@ export function isShown(doc: Doc, id: ItemId, filter: ViewFilter): boolean {
 }
 
 export function shownChildren(doc: Doc, id: ItemId, filter: ViewFilter): ItemId[] {
-  return doc.items[id].children.filter((child) => isShown(doc, child, filter));
+  return childrenInOrder(doc, id).filter((child) => isShown(doc, child, filter));
+}
+
+/** The children as shown: as written, or open ones first where a page above says `:completed: last`. */
+export function childrenInOrder(doc: Doc, id: ItemId): ItemId[] {
+  const children = doc.items[id].children;
+  if (!completedLast(doc, id)) return children;
+  const isCompleted = (child: ItemId) => doc.items[child].completed;
+  return [...children.filter((child) => !isCompleted(child)), ...children.filter(isCompleted)];
+}
+
+const completedLastByDoc = new WeakMap<Doc["items"], Map<ItemId, boolean>>();
+
+function completedLast(doc: Doc, id: ItemId): boolean {
+  const known = completedLastByDoc.get(doc.items) ?? new Map<ItemId, boolean>();
+  completedLastByDoc.set(doc.items, known);
+  const lookUp = (page: ItemId): boolean => {
+    if (known.has(page)) return known.get(page)!;
+    const { note, parent } = doc.items[page];
+    const placement = note.includes(":completed:") ? propertiesOf(note).get("completed") : undefined;
+    const answer = placement ? placement.toLowerCase() === "last" : parent !== null && lookUp(parent);
+    known.set(page, answer);
+    return answer;
+  };
+  return lookUp(id);
+}
+
+export function newChildIndex(doc: Doc, parent: ItemId): number {
+  const isNewOnTop = propertiesOf(doc.items[parent].note).get("new")?.toLowerCase() === "top";
+  return isNewOnTop ? 0 : doc.items[parent].children.length;
 }
 
 export function isExpanded(doc: Doc, id: ItemId, filter: ViewFilter): boolean {

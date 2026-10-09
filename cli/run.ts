@@ -3,10 +3,12 @@ import {
   ItemId,
   ROOT,
   ancestors,
+  childrenInOrder,
   indexInParent,
   insertChild,
   isDescendant,
   moveTo,
+  newChildIndex,
   remove,
   setFlags,
   setNote,
@@ -185,7 +187,7 @@ function place(doc: Doc, options: Options): Place {
   const beside = besideOf(options);
   if (beside === undefined) {
     const parent = resolve(doc, options.under ?? "/");
-    return { parent, at: options.first ? 0 : doc.items[parent].children.length };
+    return { parent, at: options.first ? 0 : newChildIndex(doc, parent) };
   }
   if (options.under !== undefined || options.first) throw new Error("--before and --after cannot go with --under or --first");
   const sibling = resolve(doc, beside);
@@ -306,7 +308,7 @@ function tree(doc: Doc, id: ItemId, depth = Infinity, cells?: Map<ItemId, Map<st
     ...(item.completed ? { completed: true } : {}),
     ...(properties.size > 0 ? { properties: Object.fromEntries(properties) } : {}),
     ...(row && row.size > 0 ? { columns: Object.fromEntries([...row].map(([key, cell]) => [key, cell.text])) } : {}),
-    children: depth > 0 ? item.children.map((child) => tree(doc, child, depth - 1, cells)) : [],
+    children: depth > 0 ? childrenInOrder(doc, id).map((child) => tree(doc, child, depth - 1, cells)) : [],
   };
 }
 
@@ -324,9 +326,9 @@ function showTable(doc: Doc, top: ItemId, options: Options): string {
     const label = `${"  ".repeat(depth)}${item.completed ? `~~${item.text}~~` : item.text}${options.ids ? `  [${id}]` : ""}`;
     rows.push({ label, values: keys.map((key) => cells.get(id)?.get(key)?.text ?? "") });
     if (options.depth !== undefined && depth >= options.depth) return;
-    for (const child of item.children) visit(child, depth + 1);
+    for (const child of childrenInOrder(doc, id)) visit(child, depth + 1);
   };
-  if (top === ROOT) doc.items[ROOT].children.forEach((child) => visit(child, 0));
+  if (top === ROOT) childrenInOrder(doc, ROOT).forEach((child) => visit(child, 0));
   else visit(top, 0);
   const labelWidth = Math.max(0, ...rows.map((row) => displayWidth(row.label)));
   const widths = keys.map((key, i) => Math.max(displayWidth(key), ...rows.map((row) => displayWidth(row.values[i]))));
@@ -356,7 +358,7 @@ function showText(doc: Doc, top: ItemId, options: Options): string {
   if (top !== ROOT) lines.push(line(doc, top, 0, options));
   const walk = (id: ItemId, depth: number) => {
     if (options.depth !== undefined && depth >= options.depth) return;
-    for (const child of doc.items[id].children) {
+    for (const child of childrenInOrder(doc, id)) {
       lines.push(line(doc, child, depth + (top === ROOT ? 0 : 1), options));
       walk(child, depth + 1);
     }

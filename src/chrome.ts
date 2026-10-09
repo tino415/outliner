@@ -1,4 +1,4 @@
-import { ItemId, ROOT, appendChild, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
+import { ItemId, ROOT, insertChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
@@ -26,7 +26,7 @@ export function bindChrome(): void {
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyAppearance);
 
   ui.addItem.addEventListener("click", () => {
-    const created = appendChild(doc(), state.zoom);
+    const created = insertChild(doc(), state.zoom, newChildIndex(doc(), state.zoom));
     commitAndRender(created.doc, { id: created.id, offset: 0 });
   });
 

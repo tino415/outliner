@@ -20,8 +20,8 @@ function withTemplates(): Doc {
 describe("capture templates", () => {
   it("are items with a :capture: property, anywhere in the outline", () => {
     expect(captureTemplates(withTemplates())).toEqual([
-      { name: "Meal", target: "Food/Monday", ask: ["kcal", "protein"], atTop: false, key: "m" },
-      { name: "Idea", target: "Journal/{date}", ask: [], atTop: true, key: "" },
+      { name: "Meal", target: "Food/Monday", ask: ["kcal", "protein"], key: "m" },
+      { name: "Idea", target: "Journal/{date}", ask: [], at: "top", key: "" },
     ]);
   });
 
@@ -45,6 +45,16 @@ describe("capturing", () => {
     doc = capture(doc, idea, "first", {}, DAY).doc;
     doc = capture(doc, idea, "second", {}, DAY).doc;
     expect(subtreesAsText(doc, [idOf(doc, "Journal")])).toBe("- Journal\n  - 2026-10-09\n    - second\n    - first");
+  });
+
+  it("files at the top of a page with :new: top, unless the template says :at: bottom", () => {
+    let doc = withTemplates();
+    doc = setNote(doc, idOf(doc, "Food"), ":new: top");
+    doc = setNote(doc, idOf(doc, "Meal"), ":capture: Food");
+    doc = capture(doc, captureTemplates(doc)[0], "Oats", {}, DAY).doc;
+    doc = setNote(doc, idOf(doc, "Meal"), ":capture: Food\n:at: bottom");
+    doc = capture(doc, captureTemplates(doc)[0], "Soup", {}, DAY).doc;
+    expect(subtreesAsText(doc, [idOf(doc, "Food")])).toBe("- Food\n  :new: top\n  - Oats\n  - Monday\n  - Soup");
   });
 
   it("does not file under a template whose name is its own target", () => {
