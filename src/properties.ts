@@ -35,6 +35,12 @@ export function withoutCode(note: string): string {
   return linesOutsideCode(note).join("\n");
 }
 
+export function mapLinesOutsideCode(note: string, change: (line: string) => string): string {
+  const lines = note.split("\n");
+  const outside = isOutsideCode(lines);
+  return lines.map((line, index) => (outside[index] ? change(line) : line)).join("\n");
+}
+
 /** True when the note text before the caret has opened a ``` fence and not closed it. */
 export function isInCode(noteBefore: string): boolean {
   return noteBefore.split("\n").filter((line) => /^\s*```/.test(line)).length % 2 === 1;
