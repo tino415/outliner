@@ -45,8 +45,17 @@ input.addEventListener("keydown", (event) => {
   } else if (event.key === "Enter") {
     event.preventDefault();
     choose(active);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    dismiss();
   }
 });
+
+/** The dialog's close event comes a task later; a key typed right after Escape must already find the caret back. */
+function dismiss(): void {
+  dialog.close();
+  restoreCaret();
+}
 
 function stepFor(event: KeyboardEvent): -1 | 1 | null {
   if (event.key === "ArrowDown") return 1;
@@ -63,7 +72,7 @@ list.addEventListener("click", (event) => {
 });
 
 dialog.addEventListener("click", (event) => {
-  if (event.target === dialog) dialog.close();
+  if (event.target === dialog) dismiss();
 });
 
 function refresh(): void {
