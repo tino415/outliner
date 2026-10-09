@@ -1,3 +1,4 @@
+import { bindAttachments } from "./attachments";
 import { Doc, ItemId, ROOT, ViewFilter, isDescendant } from "./model";
 import { Caret, History } from "./store";
 import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
@@ -8,7 +9,7 @@ import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
-import { isSyncing, startSync, syncedDoc } from "./syncing";
+import { isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
@@ -78,6 +79,7 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
+  bindAttachments(syncEndpoint);
   bindCapture();
   captureFromAddress();
 }

@@ -308,6 +308,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   complete: (c) => actions.complete(c),
   duplicate: (c) => actions.duplicate(c),
   move: (c) => actions.moveToPicker(c),
+  attach: (c) => actions.attachFile(c),
   copy: (c) => {
     copyItems([c.id]);
     toast("Copied as text");

@@ -629,6 +629,46 @@ code {
   cursor: text;
 }
 
+.att-image {
+  display: block;
+  max-width: min(100%, 520px);
+  max-height: 320px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+}
+
+.att-image:not([src]),
+.att-image.missing,
+:focus .att-image {
+  display: none;
+}
+
+.att-is-image .att-label {
+  display: none;
+}
+
+.att-is-file .att-label {
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.att-is-file .att-label::before {
+  content: "📎 ";
+}
+
+.att-is-image:has(.att-image.missing) .att-label,
+:focus .att .att-label {
+  display: inline;
+  color: inherit;
+  cursor: text;
+}
+
+:focus .att-is-file .att-label::before {
+  content: none;
+}
+
 .completion {
   position: absolute;
   z-index: 30;

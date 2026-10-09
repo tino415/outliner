@@ -1,7 +1,10 @@
 import { Browser, Page, expect, test } from "@playwright/test";
-import { clickEnd, editor, expectOutline, freshOutline, outlineText } from "./helpers";
+import { clickEnd, editor, expectOutline, freshOutline, outlineText, row } from "./helpers";
 import { RunningServer, startSyncServer } from "./sync-server";
 import { run } from "../cli/run";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 let server: RunningServer;
 
@@ -183,6 +186,32 @@ test("a note too long to sync is reported and does not hold back other changes",
   await expect(one.locator("#sync-status")).toHaveAttribute("data-status", "rejected");
   await syncNow(two);
   await expectOutline(two, "a\nb still syncs");
+});
+
+test("a file attached on one device shows on another and reaches the CLI", async ({ browser }) => {
+  const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+  const one = await device(browser, "glitch report");
+  await connect(one);
+  await synced(one);
+  await editor(one, "glitch report").click();
+  const chooser = one.waitForEvent("filechooser");
+  await one.keyboard.press("Alt+Shift+a");
+  await (await chooser).setFiles({ name: "glitch.png", mimeType: "image/png", buffer: pixel });
+  const preview = one.locator(".att-image");
+  await expect(preview).toHaveAttribute("src", /^blob:/);
+  const note = await row(one, "glitch report").locator(".note").textContent();
+  const hash = /att:([0-9a-f]{64})/.exec(note ?? "")![1];
+  expect(note).toBe(`![glitch.png](att:${hash})`);
+  await synced(one);
+
+  const two = await device(browser, "x");
+  await connect(two);
+  await expect(two.locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+
+  const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
+  const saved = join(mkdtempSync(join(tmpdir(), "outline-e2e-")), "copy.png");
+  expect((await run(["file", hash, saved], env)).code).toBe(0);
+  expect(readFileSync(saved)).toEqual(pixel);
 });
 
 test("a wrong token is reported and nothing is lost", async ({ browser }) => {

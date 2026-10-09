@@ -102,6 +102,7 @@ describe("renderInline", () => {
     "#tag at start, mid#nottag, and #two-words",
     "<script>alert('x')</script> & friends",
     "2 * 3 * 4 is not italic",
+    `see ![shot.png](att:${"a".repeat(64)}) and [report.pdf](att:${"b".repeat(64)})`,
   ])("keeps the raw text as the text content: %s", (text) => {
     expect(textOf(renderInline(text))).toBe(text);
   });

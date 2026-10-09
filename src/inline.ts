@@ -6,6 +6,7 @@
  */
 
 import { kindOf } from "./kinds";
+import { ATTACHMENT } from "./attachmentLinks";
 
 const TOKEN = new RegExp(
   [
@@ -13,6 +14,7 @@ const TOKEN = new RegExp(
     String.raw`(?<bold>\*\*[^*\n]+\*\*)`,
     String.raw`(?<italic>(?<![\w*])\*[^*\s](?:[^*\n]*[^*\s])?\*(?![\w*]))`,
     String.raw`(?<ref>\[\[[^\[\]\n]+\](?:\[[^\[\]\n]+\])?\])`,
+    String.raw`(?<att>!?\[[^\]\n]*\]\(att:[0-9a-f]{64}\))`,
     String.raw`(?<mdlink>\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))`,
     String.raw`(?<url>https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"])`,
     String.raw`(?<tag>(?<![\p{L}\p{N}_#])#[\p{L}\p{N}_-]*[\p{L}\p{N}_])`,
@@ -48,6 +50,14 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
     const opening = label === undefined ? "[[" : `[[${target}][`;
     const shown = label ?? target;
     return `${marker(opening)}<span class="ref" data-ref="${escape(target)}">${escape(shown)}</span>${marker("]]")}`;
+  }
+  if (groups.att) {
+    const [, bang, label, hash] = ATTACHMENT.exec(raw)!;
+    const preview = bang ? `<img class="att-image" data-att="${hash}" alt="${escape(label)}" contenteditable="false">` : "";
+    return (
+      `<span class="att ${bang ? "att-is-image" : "att-is-file"}" data-att="${hash}" data-name="${escape(label)}">` +
+      `${marker(`${bang}[`)}<span class="att-label">${escape(label)}</span>${marker(`](att:${hash})`)}${preview}</span>`
+    );
   }
   if (groups.mdlink) {
     const [, label, url] = /^\[([^\]]+)\]\((.+)\)$/.exec(raw)!;
