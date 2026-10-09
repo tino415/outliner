@@ -1026,6 +1026,119 @@ code {
   color: var(--muted);
 }
 
+/* ---- board view ---------------------------------------------------------------- */
+
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  --board-inset: max(28px, calc(50vw - 360px));
+  padding: 4px var(--board-inset) 24px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--board-inset);
+}
+
+.board-column {
+  flex: 0 0 272px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  scroll-snap-align: start;
+}
+
+.board-column-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px;
+  font-weight: 650;
+}
+
+.board-column-head .text {
+  flex: 1;
+  min-width: 0;
+}
+
+.board-count {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.board-cards {
+  display: grid;
+  gap: 8px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-card > .row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  column-gap: 6px;
+  padding: 9px 10px 9px 4px;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px light-dark(rgb(40 32 16 / 0.08), rgb(0 0 0 / 0.35));
+}
+
+.board-card .note,
+.board-card .board-inside {
+  grid-column: 2;
+  font-size: 0.86em;
+}
+
+.board-inside {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.board-handle {
+  padding: 0 2px;
+  color: var(--faint);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.board-card.dragging {
+  opacity: 0.4;
+}
+
+.board-drop {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.board-new-card,
+.board-new-column {
+  justify-self: start;
+  padding: 4px 6px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.board-new-card:hover,
+.board-new-column:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.board-new-column {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
 /* ---- properties and the column view ------------------------------------------ */
 
 .prop {
