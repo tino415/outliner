@@ -38,7 +38,14 @@ before writing and do not delete without being asked.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
-- The backlog for the next sessions is in NOTES.md, "Backlog".
+- The project is managed in the outline itself, under "Outliner" (since
+  2026-10-09): tasks in "TODO" (tagged #feature, #bug, #keyboard, #test),
+  Martin's remarks in "Comments", and an item per session with what needs
+  him. Read it with `bin/outline show Outliner --ids` at the start of a
+  session. Mark finished tasks done with a one-line note on how to use the
+  result, and put questions as "Question: …" children of the task they
+  belong to. NOTES.md keeps the session reports; its "Backlog" section is
+  history.
 
 ## Live services
 

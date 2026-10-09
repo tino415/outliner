@@ -150,6 +150,9 @@ Blocked:
 
 ## Backlog (from Martin, 2026-10-08)
 
+Since 2026-10-09 the backlog lives in the outline, under Outliner / TODO
+(see AGENTS.md). This section is kept as history.
+
 1. ~~**Phone usage.**~~ Done (ADR 0016): a fold target the height of the row
    and wider than the chevron, always visible on touch; swipe right to
    complete or reopen, swipe left to fold or, without children, to open the
