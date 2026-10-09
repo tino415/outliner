@@ -28,6 +28,21 @@ test("a new key is offered as typed", async ({ page }) => {
   await expect(row(page, "Task").locator(".prop-chip")).toHaveText("effort 45m");
 });
 
+test("a + button on the row under the mouse adds a property, without moving the rows", async ({ page }) => {
+  await freshOutline(page, "Oats\nSoup");
+  const add = row(page, "Soup").getByRole("button", { name: "Add a property" });
+  await expect(add).toBeHidden();
+  const before = await row(page, "Soup").boundingBox();
+  await row(page, "Soup").hover();
+  expect(await row(page, "Soup").boundingBox()).toEqual(before);
+  await add.click();
+  await page.keyboard.type("effort");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("1h");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("effort 1h");
+});
+
 test("a click on a chip changes or removes its value", async ({ page }) => {
   await freshOutline(page, "Task | :effort: 1h");
   await row(page, "Task").locator(".prop-chip").click();

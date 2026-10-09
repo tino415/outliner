@@ -35,7 +35,8 @@ podman compose exec app npx playwright test         # desktop Chromium, phone, W
 
 An item's properties are `key: value` pairs such as `calories: 350 kcal`,
 `effort: 1h30m`, `start: 9:00` (a time of day) or `protein: 12 g`, shown
-as chips under its text (doc/adr/0032). Ctrl-; (⌘; on a Mac), Set a
+as chips under its text (doc/adr/0032). The + at the right end of the
+item being edited or under the mouse, Ctrl-; (⌘; on a Mac), Set a
 property… in the item menu or the Property button in the phone's toolbar
 asks for a key, then a value, offering the ones in use; a click on a chip
 changes or removes it. Each property syncs on its own. Typing a line
@@ -81,8 +82,8 @@ in different units do not add.
 ## Boards
 
 Alt-Shift-B (or ⋯ → Board) shows the page as a Kanban board: its children
-are the columns, theirs the cards (doc/adr/0031). It writes `:view: board`
-into the page's note, so the page is a board on every device and the CLI
+are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
+property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item;
 drag one by its handle (mouse or finger) or press Alt-Shift-← / → to move
 it to the next column. The buttons add cards and columns.
@@ -127,9 +128,9 @@ bin/outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
 
 ## Private items
 
-Alt-Shift-P (or Make private… in the item menu) puts `:private: <key>` in an
-item's note: its note and everything under it are encrypted with that key
-before they are synced (doc/adr/0029). The headline stays readable.
+Alt-Shift-P (or Make private… in the item menu) sets the item's `private`
+property to a key: its note, properties and everything under it are
+encrypted with that key before they are synced (doc/adr/0029). The headline stays readable.
 Devices without the key, the server and the CLI see only the headline and
 a lock; the CLI refuses to write into it. Keys live in each browser: ⋯ →
 Private keys makes one and shows it as a line to copy to your other
@@ -138,8 +139,8 @@ a copy of each key.
 
 ## Plugins
 
-A plugin is an item with `:plugin: <name>` and JavaScript in a ```js block
-of its note (doc/adr/0030):
+A plugin is an item with a `plugin` property naming it and JavaScript in a
+```js block of its note (doc/adr/0030); typed as lines, it reads:
 
 ````
 Tools

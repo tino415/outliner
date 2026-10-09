@@ -1072,6 +1072,43 @@ code {
   background: var(--hover);
 }
 
+/* The + that adds a property: its place is kept on every row, so showing it moves nothing. */
+.row .body {
+  position: relative;
+}
+
+.row .text {
+  padding-right: 26px;
+}
+
+.prop-add {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  width: 22px;
+  height: calc(var(--line) * 1em);
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  line-height: 1;
+  visibility: hidden;
+}
+
+.row:focus-within .prop-add {
+  visibility: visible;
+}
+
+@media (hover: hover) {
+  .row:hover .prop-add {
+    visibility: visible;
+  }
+}
+
+.prop-add:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
 /* ---- board view ---------------------------------------------------------------- */
 
 .board {
