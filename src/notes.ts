@@ -60,3 +60,16 @@ export function setProperty(note: string, key: string, value: string): string {
   if (index === -1) return [...lines, written].join("\n");
   return lines.map((line, i) => (i === index ? written : line)).join("\n");
 }
+
+/** A private item's note as the sync server and devices without its key have it (doc/adr/0029). */
+export const SEALED_NOTE = /^🔒private:1:([^:\n]+):([A-Za-z0-9+/=]+)$/u;
+
+/** The key a private item is encrypted with: `:private: <key>` where it is open, the sealed note's key elsewhere. */
+export function privateKeyOf(note: string): string | null {
+  if (!note.includes("private")) return null;
+  return SEALED_NOTE.exec(note)?.[1] ?? propertiesOf(note).get("private") ?? null;
+}
+
+export function isSealed(note: string): boolean {
+  return SEALED_NOTE.test(note);
+}
