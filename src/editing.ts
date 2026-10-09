@@ -26,6 +26,7 @@ import {
 import { Caret } from "./store";
 import { Candidate, findItems } from "./search";
 import { PaletteOption, openPalette } from "./palette";
+import { keepFiles } from "./attachments";
 import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { referenceTo, resolveReference } from "./references";
@@ -143,6 +144,12 @@ export function bindEditorEvents(): void {
 
   document.addEventListener("paste", (event) => {
     const editor = editorOf(event.target);
+    const files = [...(event.clipboardData?.files ?? [])];
+    if (editor && files.length > 0) {
+      event.preventDefault();
+      void attachFilesTo(editor.dataset.id!, files);
+      return;
+    }
     const text = event.clipboardData?.getData("text/plain") ?? "";
     if (!editor || isNoteEditor(editor) || !text.includes("\n")) return;
     event.preventDefault();
@@ -152,6 +159,35 @@ export function bindEditorEvents(): void {
   ui.tree.addEventListener("click", (event) => {
     const toggle = (event.target as HTMLElement).closest<HTMLElement>(".toggle");
     if (toggle) toggleFold(toggle.closest<HTMLElement>(".item")!.dataset.id!);
+  });
+
+  ui.tree.addEventListener("dragover", (event) => {
+    if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+  });
+  ui.tree.addEventListener("drop", (event) => {
+    const files = [...(event.dataTransfer?.files ?? [])];
+    const item = (event.target as HTMLElement).closest<HTMLElement>(".item");
+    if (files.length === 0 || !item) return;
+    event.preventDefault();
+    void attachFilesTo(item.dataset.id!, files);
+  });
+}
+
+/** Files go into the item's note as links, one line each (doc/adr/0028). */
+export async function attachFilesTo(id: ItemId, files: File[]): Promise<void> {
+  const links = await keepFiles(files);
+  const item = doc().items[id];
+  if (!item) return;
+  state.openNotes.add(id);
+  commitAndRender(setNote(doc(), id, [item.note, ...links].filter(Boolean).join("\n")), caretNow());
+  toast(files.length === 1 ? `Attached ${files[0].name || "a file"}` : `Attached ${files.length} files`);
+}
+
+function pickFiles(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = Object.assign(document.createElement("input"), { type: "file", multiple: true });
+    input.addEventListener("change", () => resolve([...(input.files ?? [])]));
+    input.click();
   });
 }
 
@@ -492,6 +528,10 @@ export const actions = {
     select(c.editor, c.length);
     insertText(text === "" || /\s$/.test(text) ? "#" : " #");
   },
+
+  attachFile: onItem((c) => {
+    void pickFiles().then((files) => (files.length > 0 ? attachFilesTo(c.id, files) : undefined));
+  }),
 
   setKind: onItem((c) => {
     if (c.inNote) return;

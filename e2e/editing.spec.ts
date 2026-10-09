@@ -394,6 +394,23 @@ test.describe("drag and drop", () => {
   });
 });
 
+test("pasting an image attaches it to the item's note and shows it, without sync too", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
+  await freshOutline(page, "glitch");
+  await editor(page, "glitch").click();
+  await page.evaluate(async () => {
+    const pixel = await (await fetch("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")).blob();
+    const data = new DataTransfer();
+    data.items.add(new File([pixel], "shot.png", { type: "image/png" }));
+    document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  });
+  await expect(row(page, "glitch").locator(".note")).toHaveText(/^!\[shot\.png\]\(att:[0-9a-f]{64}\)$/);
+  await page.keyboard.press("Escape");
+  await expect(row(page, "glitch").locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+  await page.reload();
+  await expect(row(page, "glitch").locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+});
+
 test.describe("order of new and completed items", () => {
   test("a page with :completed: last shows its completed items after the open ones", async ({ page }) => {
     await freshOutline(page, "Tasks | :completed: last\n  done\n  open");

@@ -99,6 +99,19 @@ Type `[[` or press Alt-Shift-L to link to another item: it writes
 the first item with that text. A click follows a link; a zoomed item lists
 what links to it under its title.
 
+## Attachments
+
+Paste an image into an item, drop files on it, or press Alt-Shift-A (also
+in the item menu) to attach files (doc/adr/0028). Each becomes a line in
+the note, `![glitch.png](att:<sha256>)`; images show as pictures. Files are
+kept in the browser and uploaded to the sync server on the next sync. From
+a shell:
+
+```sh
+bin/outline attach "Outliner/TODO/Some bug" screenshot.png
+bin/outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
+```
+
 ## Capture
 
 Alt-Shift-N (or ⋯ → Capture…, or Ctrl-K) files a new item without leaving

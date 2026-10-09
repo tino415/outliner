@@ -9,6 +9,7 @@ import { zoomTo } from "./navigation";
 import { render } from "./render";
 import { saveDocSoon } from "./storage";
 import { toast } from "./chrome";
+import { uploadPendingFiles } from "./attachments";
 
 /*
  * The app's side of sync (doc/adr/0011, 0012). Every change made here is
@@ -47,6 +48,10 @@ export function syncedDoc(): Doc | null {
   if (!saved) return null;
   clock = clockFor(saved);
   return materialize(saved.replica);
+}
+
+export function syncEndpoint(): Endpoint | null {
+  return saved && { server: saved.server, token: saved.token };
 }
 
 export function isSyncing(): boolean {
@@ -108,6 +113,7 @@ async function roundTrip(): Promise<void> {
     write();
     if (fromTabs.length + fromServer.length > 0) showRemoteChanges();
     lastSynced = new Date();
+    void uploadPendingFiles();
     showQueueStatus();
   } catch (error) {
     if (!(error instanceof SyncError) || error.status === undefined) setStatus("offline");
