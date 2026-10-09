@@ -23,12 +23,12 @@ import {
   visibleOrder,
   childrenInOrder,
   newChildIndex,
-  setNote,
   shownChildren,
   insertChild,
   withPrivateIds,
 } from "../src/model";
 import { parseIndentedText, subtreesAsText } from "../src/transfer";
+import { setNoteAsTyped as setNote } from "./typed";
 import { findItems, search } from "../src/search";
 
 const all = { showCompleted: true };

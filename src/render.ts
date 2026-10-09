@@ -1,6 +1,6 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
 import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./properties";
-import { propertyLine } from "./notes";
+import { propertyChipsHtml } from "./propertyChips";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
 import { pluginsMayHaveChanged } from "./pluginHost";
@@ -64,6 +64,8 @@ function renderHead(): void {
   ui.titleNote.dataset.id = item.id;
   if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderItemText(item.text);
   ui.title.classList.toggle("empty", item.text === "");
+  ui.titleProps.dataset.id = item.id;
+  ui.titleProps.innerHTML = propertyChipsHtml(item);
   ui.titleNote.contentEditable = isSealed(item.note) ? "false" : "plaintext-only";
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
@@ -107,10 +109,9 @@ function renderColumnsHead(): void {
   ui.tree.classList.toggle("with-columns", Boolean(columns?.columns.length));
   if (!columns) return;
   if (columns.columns.length === 0) {
-    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one to a note as <code>:calories: 350</code>.</p>`;
+    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one with Set a property… (Ctrl-; or the item menu).</p>`;
     return;
   }
-  hidePropertiesShownAsColumns(columns.columns);
   const totals = columns.cells.get(state.zoom)!;
   head.innerHTML =
     `<div class="cells">` +
@@ -124,19 +125,9 @@ function renderColumnsHead(): void {
     `</div>`;
 }
 
-/** True when every line of the note is a property the column view already shows. */
-function noteShownAsColumns(note: string): boolean {
-  if (!columns || note === "") return false;
-  const keys = new Set(columns.columns.map((column) => column.key));
-  return note.split("\n").filter((line) => line.trim() !== "").every((line) => keys.has(propertyLine(line)?.key ?? ""));
-}
 
-/** A property already shown in a cell is not repeated in the note, unless the note is being edited. */
-function hidePropertiesShownAsColumns(shown: Column[]): void {
-  const style = document.getElementById("column-properties") ?? document.head.appendChild(Object.assign(document.createElement("style"), { id: "column-properties" }));
-  style.textContent = shown
-    .map((column) => `.tree.with-columns .note:not(:focus) .prop-line[data-key="${CSS.escape(column.key)}"] { display: none; }`)
-    .join("\n");
+function keysShownAsColumns(): Set<string> {
+  return new Set(columns?.columns.map((column) => column.key) ?? []);
 }
 
 function cellsOf(id: ItemId): string {
@@ -219,14 +210,13 @@ function renderItem(id: ItemId): HTMLLIElement {
   const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
-  const noteAsColumns = noteShownAsColumns(item.note);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${noteAsColumns} ${cells}`;
+  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(createRow(item, expanded, noteOpen, cells, noteAsColumns));
+    li.prepend(createRow(item, expanded, noteOpen, cells));
     rendered = { item, state: displayState, li };
     renderedRows.set(id, rendered);
   }
@@ -262,7 +252,7 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, noteAsColumns: boolean): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
@@ -270,7 +260,8 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
-    `<div class="note${noteAsColumns ? " as-columns" : ""}" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
+    propertyChipsHtml(item, keysShownAsColumns()) +
+    `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;
   return row;

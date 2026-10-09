@@ -1,8 +1,9 @@
 import { caretNow } from "./editing";
 import { commitAndRender, doc, filter, state, ui } from "./app";
-import { ItemId, indexInParent, insertChild, moveTo, setNote, shownChildren } from "./model";
-import { isBoard, isSealed, setProperty } from "./notes";
+import { ItemId, indexInParent, insertChild, isBoard, moveTo, setItemProperty, shownChildren } from "./model";
+import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
+import { propertyChipsHtml } from "./propertyChips";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -11,12 +12,12 @@ import { escape, renderItemText, renderNote } from "./inline";
  */
 
 export function boardShown(): boolean {
-  return !state.results && isBoard(doc().items[state.zoom].note);
+  return !state.results && isBoard(doc().items[state.zoom]);
 }
 
 export function toggleBoard(): void {
   const page = doc().items[state.zoom];
-  commitAndRender(setNote(doc(), page.id, setProperty(page.note, "view", isBoard(page.note) ? "" : "board")), caretNow());
+  commitAndRender(setItemProperty(doc(), page.id, "view", isBoard(page) ? "" : "board"), caretNow());
 }
 
 export function renderBoard(): void {
@@ -41,7 +42,7 @@ function cardHtml(id: ItemId): string {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   return (
     `<li class="item board-card${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
-    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}` +
+    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}${propertyChipsHtml(item)}` +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     (inside ? `<a class="board-inside" href="#/${encodeURIComponent(id)}">${inside} inside</a>` : "") +
     `</div></li>`

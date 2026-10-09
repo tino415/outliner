@@ -1,5 +1,4 @@
-import { ItemId, setNote } from "./model";
-import { propertiesOf, setProperty } from "./notes";
+import { ItemId, setItemProperty } from "./model";
 import { commitAndRender, doc, state, ui } from "./app";
 import { caretNow } from "./editing";
 import { columnViewShown, render } from "./render";
@@ -26,7 +25,7 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   const shown = [...cell.childNodes];
   const input = Object.assign(document.createElement("input"), {
     className: "cell-input",
-    value: propertiesOf(doc().items[id].note).get(key) ?? "",
+    value: doc().items[id].properties[key] ?? "",
   });
   input.setAttribute("aria-label", key);
   cell.replaceChildren(input);
@@ -36,13 +35,12 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   const finish = (save: boolean) => {
     if (done) return;
     done = true;
-    const note = doc().items[id]?.note;
-    const next = save && note !== undefined ? setProperty(note, key, input.value) : note;
-    if (next === note) {
+    const next = save && doc().items[id] ? setItemProperty(doc(), id, key, input.value) : doc();
+    if (next === doc()) {
       cell.replaceChildren(...shown);
       return;
     }
-    commitAndRender(setNote(doc(), id, next!), caretNow());
+    commitAndRender(next, caretNow());
   };
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") finish(true);

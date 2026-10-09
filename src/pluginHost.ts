@@ -1,6 +1,5 @@
 import { $, commitAndRender, doc, state } from "./app";
-import { ItemId, insertChild, isDescendant, newChildIndex, setNote, setText } from "./model";
-import { setProperty } from "./notes";
+import { ItemId, insertChild, isDescendant, newChildIndex, setItemProperty, setNote, setText } from "./model";
 import { Plugin, TRUST_KEY, approvalOf, isApproved, pluginsIn } from "./plugins";
 import { addKey, keys } from "./keyring";
 import { newKey } from "./sync/privacy";
@@ -225,7 +224,7 @@ async function onDialogClick(event: MouseEvent): Promise<void> {
     const plugin = pluginsIn(doc()).find((each) => each.id === approve.dataset.approve);
     if (!plugin) return;
     const approval = await approvalOf(plugin.code, keys()[TRUST_KEY]);
-    commitAndRender(setNote(doc(), plugin.id, setProperty(doc().items[plugin.id].note, "approved", approval)), null);
+    commitAndRender(setItemProperty(doc(), plugin.id, "approved", approval), null);
     await refreshPlugins();
     await showPlugins();
   }

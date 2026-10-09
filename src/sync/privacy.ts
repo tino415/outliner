@@ -1,5 +1,5 @@
 import { ItemId, ROOT } from "../model";
-import { SEALED_NOTE, isSealed, privateKeyOf } from "../notes";
+import { SEALED_NOTE, isSealed, sealedKeyOf } from "../notes";
 import { Change, Field, Replica, allChanges, merge } from "./replica";
 
 /*
@@ -32,7 +32,7 @@ export interface Outgoing {
   changes: Change[];
   /** Private items sealed in this round. */
   sealed: ItemId[];
-  /** Private changes that could not be sealed: this device lacks the key, or the item lost its `:private:` line. */
+  /** Private changes that could not be sealed: this device lacks the key, or the item lost its `private` property. */
   held: Change[];
 }
 
@@ -45,9 +45,10 @@ export async function sealOutgoing(pending: Change[], replica: Replica, keyring:
   for (const change of pending) {
     const root = privacy.rootOf(change.item, change.field);
     const key = root && keyring[privacy.keyNameOf(root) ?? ""];
-    if (!root) changes.push(...(privacy.wasRenamed(change) ? blanked(change, stamp) : [change]));
+    if (!root && change.field === "prop:private" && change.value === null) changes.push(change, ...ownFieldsAgain(change.item, replica, stamp));
+    else if (!root) changes.push(...(privacy.wasRenamed(change) ? blanked(change, stamp, replica) : [change]));
     else if (change.item !== root && !change.item.startsWith(`${root}~`)) {
-      if (change.field === "deleted" && change.value === true) changes.push(...blanked(change, stamp));
+      if (change.field === "deleted" && change.value === true) changes.push(...blanked(change, stamp, replica));
       else if (!key) held.push(change);
     } else if (key) touchedRoots.add(root);
     else held.push(change);
@@ -93,8 +94,7 @@ export async function mergeIncoming(replica: Replica, changes: Change[], keyring
     merged.accepted.push(...merge(replica, inside));
     merged.opened.push(change.item);
     if (hasNewerThan(new Privacy(replica).insideOf(change.item), inside)) merged.reseal.push(change.item);
-    const note = replica[change.item]?.note?.value;
-    if (typeof note === "string" && privateKeyOf(note) === null && !known.has(change.item)) merged.stranded.push(change.item);
+    if (typeof replica[change.item]?.["prop:private"]?.value !== "string" && !known.has(change.item)) merged.stranded.push(change.item);
   }
   return merged;
 }
@@ -125,16 +125,25 @@ function hasNewerThan(mine: Change[], theirs: Change[]): boolean {
   });
 }
 
-/** An item renamed into a private item leaves its old id deleted on the server, its text and note blanked. */
-function blanked(deletion: Change, stamp: () => string): Change[] {
-  return [deletion, { item: deletion.item, field: "text", value: "", clock: stamp() }, { item: deletion.item, field: "note", value: "", clock: stamp() }];
+/** An item made public: its note and properties replace the sealed note on the server, stamped now so they win over it. */
+function ownFieldsAgain(item: ItemId, replica: Replica, stamp: () => string): Change[] {
+  return allChanges(replica)
+    .filter((change) => change.item === item && (change.field === "note" || (change.field.startsWith("prop:") && change.field !== "prop:private")))
+    .map((change) => ({ ...change, clock: stamp() }));
+}
+
+/** An item renamed into a private item leaves its old id deleted on the server, its text, note and properties blanked. */
+function blanked(deletion: Change, stamp: () => string, replica: Replica): Change[] {
+  const properties = Object.keys(replica[deletion.item] ?? {}).filter((field) => field.startsWith("prop:")) as Field[];
+  const emptied = properties.map((field): Change => ({ item: deletion.item, field, value: null, clock: stamp() }));
+  return [deletion, { item: deletion.item, field: "text", value: "", clock: stamp() }, { item: deletion.item, field: "note", value: "", clock: stamp() }, ...emptied];
 }
 
 // ---- which items are private --------------------------------------------------------------
 
 /**
  * Reads the replica the way the model reads the outline: an item is private
- * while its note has a `:private:` line, it still holds live items whose
+ * while it has a `private` property, it still holds live items whose
  * ids start with its own and "~", or this device has sealed or opened it
  * and it was not made public here.
  */
@@ -158,7 +167,9 @@ class Privacy {
 
   keyNameOf(item: ItemId): string | null {
     const note = this.read(item, "note");
-    return typeof note === "string" ? privateKeyOf(note) : null;
+    const key = this.read(item, "prop:private");
+    if (typeof key === "string") return key;
+    return typeof note === "string" ? sealedKeyOf(note) : null;
   }
 
   isPrivate(item: ItemId): boolean {
@@ -167,7 +178,7 @@ class Privacy {
 
   /** The private item a field belongs to: the item's own note, an item whose id names it, or one below it. */
   rootOf(item: ItemId, field: Field): ItemId | null {
-    if (field === "note" && this.isPrivate(item)) return item;
+    if ((field === "note" || field.startsWith("prop:")) && this.isPrivate(item)) return item;
     const named = item.includes("~") ? item.slice(0, item.indexOf("~")) : null;
     if (named && this.isPrivate(named)) return named;
     const seen = new Set<ItemId>();
@@ -180,7 +191,7 @@ class Privacy {
 
   /** Every field inside a private item, and its own note: what its sealed note holds. */
   insideOf(root: ItemId): Change[] {
-    return allChanges(this.replica).filter((change) => change.item.startsWith(`${root}~`) || (change.item === root && change.field === "note"));
+    return allChanges(this.replica).filter((change) => change.item.startsWith(`${root}~`) || (change.item === root && (change.field === "note" || change.field.startsWith("prop:"))));
   }
 
   private read(item: ItemId, field: Field) {

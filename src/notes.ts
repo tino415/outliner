@@ -1,4 +1,4 @@
-/* Lines of an item's note: `:key: value` properties as in an org drawer, and ``` code blocks (doc/adr/0020, 0021). */
+/* Lines of an item's note: `:key: value` lines, which become properties when the note is left (doc/adr/0032), and ``` code blocks (doc/adr/0021). */
 
 const PROPERTY_LINE = /^:([\p{L}\p{N}_-]+):[ \t]*(.*)$/u;
 
@@ -49,32 +49,32 @@ function isOutsideCode(lines: string[]): boolean[] {
   });
 }
 
-/** The note with `key` set to `value`: the existing line is rewritten, a new one appended, an empty value removes it. */
-export function setProperty(note: string, key: string, value: string): string {
-  const wanted = key.toLowerCase();
-  const lines = note === "" ? [] : note.split("\n");
+/** The `:key: value` lines of a note taken out of it, and the note without them. */
+export function splitPropertyLines(note: string): { properties: Map<string, string>; rest: string } {
+  const lines = note.split("\n");
   const outside = isOutsideCode(lines);
-  const index = lines.findLastIndex((line, i) => outside[i] && propertyLine(line)?.key === wanted);
-  const written = `:${key}: ${value.trim()}`;
-  if (value.trim() === "") return lines.filter((_, i) => i !== index).join("\n");
-  if (index === -1) return [...lines, written].join("\n");
-  return lines.map((line, i) => (i === index ? written : line)).join("\n");
+  const properties = new Map<string, string>();
+  const rest = lines.filter((line, index) => {
+    const property = outside[index] ? propertyLine(line) : null;
+    if (property) properties.set(property.key, property.value);
+    return !property;
+  });
+  return { properties, rest: rest.join("\n").replace(/^(?:[ \t]*\n)+/, "").replace(/(?:\n[ \t]*)+$/, "") };
+}
+
+/** Properties written as the note lines exports use: `:key: value`, one per line. */
+export function propertyLines(properties: Readonly<Record<string, string>>): string[] {
+  return Object.entries(properties).map(([key, value]) => `:${key}: ${value}`);
 }
 
 /** A private item's note as the sync server and devices without its key have it (doc/adr/0029). */
 export const SEALED_NOTE = /^🔒private:1:([^:\n]+):([A-Za-z0-9+/=]+)$/u;
 
-/** The key a private item is encrypted with: `:private: <key>` where it is open, the sealed note's key elsewhere. */
-export function privateKeyOf(note: string): string | null {
-  if (!note.toLowerCase().includes("private")) return null;
-  return SEALED_NOTE.exec(note)?.[1] ?? propertiesOf(note).get("private") ?? null;
+/** The key a sealed note was sealed with. */
+export function sealedKeyOf(note: string): string | null {
+  return SEALED_NOTE.exec(note)?.[1] ?? null;
 }
 
 export function isSealed(note: string): boolean {
   return SEALED_NOTE.test(note);
-}
-
-/** An item shown as a board: its children are columns, theirs are cards (doc/adr/0031). */
-export function isBoard(note: string): boolean {
-  return note.includes(":view:") && propertiesOf(note).get("view")?.toLowerCase() === "board";
 }

@@ -22,7 +22,7 @@ test("Alt-Shift-N captures with a template picked by its key, asking for its pro
   await page.keyboard.press("Enter");
   await expect(page.locator("#capture-dialog")).toBeHidden();
   await expect(page.locator("#toast")).toContainText("Captured to “Monday”");
-  await expect(row(page, "Oats").locator(".note")).toHaveText(":kcal: 300 kcal");
+  await expect(row(page, "Oats").locator(".prop-chip")).toHaveText("kcal 300 kcal");
   await expectOutline(page, "Templates\n  Meal\n  Idea\nFood\n  Monday\n    Oats\nIdeas\n  older idea");
 });
 

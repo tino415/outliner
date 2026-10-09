@@ -29,6 +29,15 @@ test("the toolbar appears while editing and its buttons act on the item", async 
   await expect(page.locator("#toolbar")).toBeHidden();
 });
 
+test("the toolbar's Property button sets a property without typing a line", async ({ page }) => {
+  await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
+  await editor(page, "Soup").tap();
+  await page.getByRole("button", { name: "Property" }).tap();
+  await page.locator("#palette li", { hasText: "kcal" }).tap();
+  await page.locator("#palette li", { hasText: "300 kcal" }).tap();
+  await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
+});
+
 test("Enter and Backspace from a virtual keyboard split and join items", async ({ page }) => {
   await freshOutline(page, "hello world");
   await editor(page, "hello world").tap();

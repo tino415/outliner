@@ -1,9 +1,8 @@
 import { Doc, ItemId } from "./model";
-import { propertiesOf } from "./notes";
 
 /*
- * Plugins (doc/adr/0030): an item with `:plugin: <name>` and a ```js block
- * in its note. A plugin runs only where its code is approved: `:approved:`
+ * Plugins (doc/adr/0030): an item with a `plugin` property and a ```js block
+ * in its note. A plugin runs only where its code is approved: `approved`
  * holds an HMAC of the code made with the key named "trust", which only
  * trusted devices have. Changing the code, from anywhere, stops it
  * everywhere until a trusted device approves it again.
@@ -20,11 +19,9 @@ export interface Plugin {
 
 export function pluginsIn(doc: Doc): Plugin[] {
   return Object.values(doc.items).flatMap((item) => {
-    if (!item.note.includes(":plugin:")) return [];
-    const properties = propertiesOf(item.note);
-    const name = properties.get("plugin");
-    const code = codeOf(item.note);
-    return name && code !== null ? [{ id: item.id, name, code, approval: properties.get("approved") ?? null }] : [];
+    const name = item.properties.plugin;
+    const code = name ? codeOf(item.note) : null;
+    return name && code !== null ? [{ id: item.id, name, code, approval: item.properties.approved ?? null }] : [];
   });
 }
 

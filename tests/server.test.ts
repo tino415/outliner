@@ -61,6 +61,15 @@ describe("sync server", () => {
     expect(store.latestSeq()).toBe(0);
   });
 
+  it("stores a property as a field of its own, a removed one as null", async () => {
+    const set = { item: "a", field: "prop:effort", value: "1h", clock: "1" };
+    const removed = { item: "a", field: "prop:kcal", value: null, clock: "1" };
+    const answer = await (await sync({ since: 0, changes: [set, removed] })).json();
+    expect(answer.changes).toEqual([set, removed]);
+    const response = await sync({ since: 0, changes: [{ item: "a", field: "prop:bad key", value: "x", clock: "2" }] });
+    expect(response.status).toBe(400);
+  });
+
   it("answers CORS preflights for allowed origins only", async () => {
     const allowed = await fetch(`${base}/sync`, { method: "OPTIONS", headers: { Origin: "https://app.example" } });
     expect(allowed.status).toBe(204);

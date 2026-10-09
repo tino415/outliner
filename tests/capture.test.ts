@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT, setNote } from "../src/model";
+import { Doc, ItemId, ROOT } from "../src/model";
+import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { INBOX, capture, captureRequest, captureTemplates } from "../src/capture";
 import { subtreesAsText } from "../src/transfer";
@@ -36,7 +37,7 @@ describe("capturing", () => {
     const [meal] = captureTemplates(doc);
     const result = capture(doc, meal, "Oats", { kcal: "300 kcal", protein: "" }, DAY);
     expect(result.target).toBe(idOf(doc, "Monday"));
-    expect(result.doc.items[result.id]).toMatchObject({ text: "Oats", note: ":kcal: 300 kcal", parent: idOf(doc, "Monday") });
+    expect(result.doc.items[result.id]).toMatchObject({ text: "Oats", note: "", properties: { kcal: "300 kcal" }, parent: idOf(doc, "Monday") });
   });
 
   it("creates dated pages on the way and files at the top when asked", () => {

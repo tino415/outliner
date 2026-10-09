@@ -1,7 +1,7 @@
-import { Doc, Item, ItemId, ROOT, appendChild, emptyDoc, insertChild, setFlags, setNote } from "./model";
+import { Doc, Item, ItemId, ROOT, appendChild, emptyDoc, insertChild, liftNoteProperties, setFlags, setNote } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
-import { mapLinesOutsideCode } from "./notes";
+import { mapLinesOutsideCode, propertyLines } from "./notes";
 import { parseDoc } from "./storage";
 
 export function exportJson(doc: Doc): string {
@@ -14,7 +14,7 @@ export function exportOpml(doc: Doc, top: ItemId): string {
     const pad = "  ".repeat(depth);
     const attributes = [
       `text="${attribute(item.text)}"`,
-      item.note ? `_note="${attribute(item.note)}"` : "",
+      noteWithProperties(item) ? `_note="${attribute(noteWithProperties(item))}"` : "",
       item.completed ? `_complete="true"` : "",
     ]
       .filter(Boolean)
@@ -28,6 +28,11 @@ export function exportOpml(doc: Doc, top: ItemId): string {
     doc.items[top].children.map((child) => outline(child, 2)).join("") +
     `  </body>\n</opml>\n`
   );
+}
+
+/** Properties written back as `:key: value` lines above the note, for files read outside the app. */
+function noteWithProperties(item: Item): string {
+  return [...propertyLines(item.properties), item.note].filter(Boolean).join("\n");
 }
 
 /** XML normalises raw line breaks in attribute values to spaces, so they are written as references. */
@@ -54,7 +59,7 @@ export function subtreesAsText(doc: Doc, roots: ItemId[], written = (_: Doc, ite
     const item = written(doc, doc.items[id]);
     const pad = "  ".repeat(depth);
     lines.push(`${pad}- ${item.completed ? `~~${item.text}~~` : item.text}`);
-    for (const noteLine of item.note.split("\n").filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
+    for (const noteLine of [...propertyLines(item.properties), ...item.note.split("\n")].filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
     for (const child of item.children) walk(child, depth + 1);
   };
   for (const root of roots) walk(root, 0);
@@ -89,7 +94,7 @@ function importOpml(xml: string): Doc {
     }
   };
   walk(body, ROOT);
-  return doc;
+  return liftNoteProperties(doc);
 }
 
 const BULLET = /^([-*+]|\d+[.)])\s+/;
@@ -119,7 +124,7 @@ export function parseIndentedText(text: string): Doc {
     doc = struck ? setFlags(created.doc, created.id, { completed: true }) : created.doc;
     stack.push({ indent, id: created.id, bulleted });
   }
-  return doc;
+  return liftNoteProperties(doc);
 }
 
 /** Copies every top-level item of `incoming`, with fresh ids, into `parent` starting at `index`. */
@@ -132,6 +137,7 @@ export function graft(doc: Doc, incoming: Doc, parent: ItemId, index: number): {
     source.children.forEach((child, i) => copy(child, created.id, i));
     result = setFlags(result, created.id, {
       note: source.note,
+      properties: source.properties,
       completed: source.completed,
       collapsed: source.collapsed && source.children.length > 0,
     });
