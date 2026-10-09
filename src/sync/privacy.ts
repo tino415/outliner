@@ -30,13 +30,15 @@ export function keyFromText(text: string): { name: string; key: string } | null 
 
 export interface Outgoing {
   changes: Change[];
+  /** Private items sealed in this round. */
+  sealed: ItemId[];
   /** Private changes that could not be sealed: this device lacks the key, or the item lost its `:private:` line. */
   held: Change[];
 }
 
 /** What to send instead of `pending`: public changes as they are, each touched private item sealed whole. */
-export async function sealOutgoing(pending: Change[], replica: Replica, keyring: Keyring, stamp: () => string): Promise<Outgoing> {
-  const privacy = new Privacy(replica);
+export async function sealOutgoing(pending: Change[], replica: Replica, keyring: Keyring, stamp: () => string, known: ReadonlySet<ItemId> = new Set()): Promise<Outgoing> {
+  const privacy = new Privacy(replica, known);
   const changes: Change[] = [];
   const held: Change[] = [];
   const touchedRoots = new Set<ItemId>();
@@ -55,7 +57,7 @@ export async function sealOutgoing(pending: Change[], replica: Replica, keyring:
     const sealed = await seal(root, name, keyring[name], privacy.insideOf(root));
     changes.push({ item: root, field: "note", value: sealed, clock: stamp() });
   }
-  return { changes, held };
+  return { changes, held, sealed: [...touchedRoots] };
 }
 
 export interface Merged {
@@ -63,24 +65,38 @@ export interface Merged {
   accepted: Change[];
   /** Private items to seal again: what arrived for them lacks something this device has. */
   reseal: ItemId[];
+  /** Private items opened here. */
+  opened: ItemId[];
+  /** Sealed notes refused: this device has a key of that name, but a different one. */
+  unreadable: ItemId[];
+  /** Items this device made public that arrived with items inside, still private elsewhere: to publish. */
+  stranded: ItemId[];
 }
 
 /** Merges changes from the server, opening each sealed note this device has the key for. */
-export async function mergeIncoming(replica: Replica, changes: Change[], keyring: Keyring): Promise<Merged> {
-  const accepted: Change[] = [];
-  const reseal: ItemId[] = [];
+export async function mergeIncoming(replica: Replica, changes: Change[], keyring: Keyring, known: ReadonlySet<ItemId> = new Set()): Promise<Merged> {
+  const merged: Merged = { accepted: [], reseal: [], opened: [], unreadable: [], stranded: [] };
   for (const change of changes) {
-    const inside = await opened(change, keyring);
+    const sealed = change.field === "note" && typeof change.value === "string" ? SEALED_NOTE.exec(change.value) : null;
+    const key = sealed && keyring[sealed[1]];
+    if (!key) {
+      merged.accepted.push(...merge(replica, [change]));
+      continue;
+    }
+    const inside = await open(change.item, key, sealed[2]).catch(() => null);
     if (!inside) {
-      accepted.push(...merge(replica, [change]));
+      merged.unreadable.push(change.item);
       continue;
     }
     const current = replica[change.item]?.note;
     if (current && typeof current.value === "string" && isSealed(current.value)) delete replica[change.item].note;
-    accepted.push(...merge(replica, inside));
-    if (hasNewerThan(new Privacy(replica).insideOf(change.item), inside)) reseal.push(change.item);
+    merged.accepted.push(...merge(replica, inside));
+    merged.opened.push(change.item);
+    if (hasNewerThan(new Privacy(replica).insideOf(change.item), inside)) merged.reseal.push(change.item);
+    const note = replica[change.item]?.note?.value;
+    if (typeof note === "string" && privateKeyOf(note) === null && !known.has(change.item)) merged.stranded.push(change.item);
   }
-  return { accepted, reseal };
+  return merged;
 }
 
 /** The changes with each sealed note this device has the key for opened into its fields. */
@@ -118,17 +134,21 @@ function blanked(deletion: Change, stamp: () => string): Change[] {
 
 /**
  * Reads the replica the way the model reads the outline: an item is private
- * while its note has a `:private:` line or it still holds live items whose
- * ids start with its own and "~".
+ * while its note has a `:private:` line, it still holds live items whose
+ * ids start with its own and "~", or this device has sealed or opened it
+ * and it was not made public here.
  */
 class Privacy {
   private holders: Set<ItemId>;
   private renamedFrom: Set<ItemId>;
 
-  constructor(private replica: Replica) {
+  constructor(
+    private replica: Replica,
+    private known: ReadonlySet<ItemId> = new Set(),
+  ) {
     const marked = Object.keys(replica).filter((id) => id.includes("~"));
     this.holders = new Set(marked.filter((id) => replica[id].deleted?.value !== true).map((id) => id.slice(0, id.indexOf("~"))));
-    this.renamedFrom = new Set(marked.map((id) => id.slice(id.indexOf("~") + 1)));
+    this.renamedFrom = new Set(marked.filter((id) => replica[id].deleted?.value !== true).map((id) => id.slice(id.indexOf("~") + 1)));
   }
 
   /** A deletion of an id that was renamed into a private item, whose old text must not stay on the server. */
@@ -142,7 +162,7 @@ class Privacy {
   }
 
   isPrivate(item: ItemId): boolean {
-    return this.keyNameOf(item) !== null || this.holders.has(item);
+    return this.keyNameOf(item) !== null || this.holders.has(item) || this.known.has(item);
   }
 
   /** The private item a field belongs to: the item's own note, an item whose id names it, or one below it. */

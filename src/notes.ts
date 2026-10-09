@@ -66,7 +66,7 @@ export const SEALED_NOTE = /^🔒private:1:([^:\n]+):([A-Za-z0-9+/=]+)$/u;
 
 /** The key a private item is encrypted with: `:private: <key>` where it is open, the sealed note's key elsewhere. */
 export function privateKeyOf(note: string): string | null {
-  if (!note.includes("private")) return null;
+  if (!note.toLowerCase().includes("private")) return null;
   return SEALED_NOTE.exec(note)?.[1] ?? propertiesOf(note).get("private") ?? null;
 }
 

@@ -4,7 +4,7 @@ import { privateKeyOf, setProperty } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { addKey, keys } from "./keyring";
 import { keyFromText, keyText, newKey } from "./sync/privacy";
-import { openWithNewKeys } from "./syncing";
+import { forgetPrivate, openWithNewKeys } from "./syncing";
 import { toast } from "./chrome";
 import { escape } from "./inline";
 
@@ -78,6 +78,7 @@ export function choosePrivacy(id: ItemId): void {
     },
     choose: ({ key }) => {
       if (key && !keys()[key]) addKey(key, newKey());
+      if (!key) forgetPrivate(id);
       commitAndRender(key ? setNote(doc(), id, setProperty(doc().items[id].note, "private", key)) : makePublic(doc(), id), { id, offset: 0 });
       toast(key ? `Private with the key ${key}. Copy the key to your other devices in ⋯ → Private keys.` : "Public again");
     },
