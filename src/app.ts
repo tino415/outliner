@@ -18,6 +18,7 @@ import { bindCapture, captureFromAddress } from "./capturing";
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export const ui = {
+  page: $("page"),
   crumbs: $("crumbs"),
   title: $("title"),
   titleProps: $("title-props"),
