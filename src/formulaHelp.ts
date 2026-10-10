@@ -64,6 +64,7 @@ const REFERENCE: [string, [string, string][]][] = [
     [
       [":columns: effort start{=…}", "On a page: a column computed for every row below it that has no value of its own"],
       [":start: 14:00", "A row's own value wins over the formula"],
+      [":effort: =24:00 - start", "A value starting with = is a formula of that item's own, here the rest of the day"],
       ["error", "A formula that cannot be computed; hover the cell for the reason"],
     ],
   ],

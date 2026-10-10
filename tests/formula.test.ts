@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Doc, ItemId, ROOT } from "../src/model";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
-import { columnCells, declaredColumns } from "../src/properties";
+import { columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
 import { FORMULA_EXAMPLES } from "../src/formulaHelp";
 
@@ -188,4 +188,36 @@ describe("parsing formulas", () => {
   );
 
   it.each(["a +", "sum(1h)", "nope(a)", "grand.parent", "(a", "a b"])("refuses %s", (source) => expect(() => parseFormula(source)).toThrow(FormulaError));
+});
+
+describe("a formula as an item's own value", () => {
+  const DAY = [
+    "Day | :start: 0:00; :columns: effort start{=clock(parent.start + before(effort))}",
+    "  Sleep | :effort: 7h",
+    "  Work | :effort: 9h30m",
+    "  Evening | :effort: 3h",
+    "  Sleep again | :effort: =24:00 - start",
+  ].join("\n");
+
+  it("fills the rest of the day from the item's own start, and counts in the totals", () => {
+    const doc = outline(DAY);
+    expect(column(doc, "Day", "effort")).toMatchObject({ "Sleep again": "4h 30m", Day: "24h" });
+    const top = idOf(doc, "Day");
+    const cell = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Sleep again"))!.get("effort")!;
+    expect(cell.computed).toBe(true);
+  });
+
+  it("shows an error instead of looping when a value depends on itself", () => {
+    const doc = outline("Day | :columns: effort\n  Loop | :effort: =effort + 1h");
+    const top = idOf(doc, "Day");
+    const cell = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Loop"))!.get("effort")!;
+    expect(cell).toMatchObject({ text: "error", error: expect.stringContaining("depends on itself") });
+  });
+
+  it("works on a page without columns", () => {
+    const doc = outline("Shopping\n  Apples | :count: 3; :price: =count * 2");
+    const top = idOf(doc, "Shopping");
+    const cells = columnCells(doc, top, inferredColumns(doc, top));
+    expect(cells.get(idOf(doc, "Apples"))!.get("price")!.text).toBe("6");
+  });
 });

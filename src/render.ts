@@ -1,5 +1,5 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
-import { Cell, Column, columnCells, declaredColumns, inferredColumns } from "./properties";
+import { Cell, Column, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
@@ -24,6 +24,7 @@ export function render(request: FocusRequest): void {
   pluginsMayHaveChanged();
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
+  ownFormulaCells = null;
   columns = columnView();
   renderCrumbs();
   renderHead();
@@ -66,7 +67,7 @@ function renderHead(): void {
   if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderItemText(item.text);
   ui.title.classList.toggle("empty", item.text === "");
   ui.titleProps.dataset.id = item.id;
-  ui.titleProps.innerHTML = propertyChipsHtml(item);
+  ui.titleProps.innerHTML = propertyChipsHtml(item, undefined, ownFormulaResults(item.id));
   ui.titleNote.contentEditable = isSealed(item.note) ? "false" : "plaintext-only";
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
@@ -126,6 +127,29 @@ function renderColumnsHead(): void {
     `</div>`;
 }
 
+
+// ---- "=…" values of an item's own (doc/adr/0022) -------------------------------------------
+
+let ownFormulaCells: Map<ItemId, Map<string, Cell>> | null = null;
+
+/** The results of an item's "=…" property values, computed once per render over the page. */
+export function ownFormulaResults(id: ItemId): Map<string, Cell> {
+  const properties = doc().items[id].properties;
+  const keys = Object.keys(properties).filter((key) => formulaIn(properties[key]) !== null);
+  if (keys.length === 0) return new Map();
+  ownFormulaCells ??= columnCells(doc(), state.zoom, columnsForFormulas(), filter());
+  const row = ownFormulaCells.get(id);
+  return new Map(keys.flatMap((key) => (row?.get(key) ? [[key, row.get(key)!] as const] : [])));
+}
+
+/** The page's declared columns, which give formulas their computed columns, then every other key in use. */
+function columnsForFormulas(): Column[] {
+  const declared = declaredColumns(doc(), state.zoom) ?? [];
+  const others = [...Object.keys(doc().items[state.zoom].properties).map((key) => ({ key, summary: "sum" as const })), ...inferredColumns(doc(), state.zoom)];
+  const columns = [...declared];
+  for (const column of others) if (!columns.some((each) => each.key === column.key)) columns.push(column);
+  return columns;
+}
 
 function keysShownAsColumns(): Set<string> {
   return new Set(columns?.columns.map((column) => column.key) ?? []);
@@ -211,13 +235,14 @@ function renderItem(id: ItemId): HTMLLIElement {
   const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells}`;
+  const results = ownFormulaResults(id);
+  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}`).join(" ")}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(createRow(item, expanded, noteOpen, cells));
+    li.prepend(createRow(item, expanded, noteOpen, cells, results));
     rendered = { item, state: displayState, li };
     renderedRows.set(id, rendered);
   }
@@ -253,7 +278,7 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
@@ -262,7 +287,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
     `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>` +
-    propertyChipsHtml(item, keysShownAsColumns()) +
+    propertyChipsHtml(item, keysShownAsColumns(), results) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;
