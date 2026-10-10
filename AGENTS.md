@@ -45,14 +45,21 @@ before writing and do not delete without being asked.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
-- The project is managed in the outline itself, under "Outliner" (since
-  2026-10-09): tasks in "TODO" (tagged #feature, #bug, #keyboard, #test),
-  Martin's remarks in "Comments", and an item per session with what needs
-  him. Read it with `bin/outline show Outliner --ids` at the start of a
-  session. Mark finished tasks done with a one-line note on how to use the
-  result, and put questions as "Question: …" children of the task they
-  belong to. NOTES.md keeps the session reports; its "Backlog" section is
-  history.
+- The project's tasks are cards on the board at "Projects/Outliner"
+  (since 2026-10-10), tagged #feature, #bug, #keyboard, #test. Read it with
+  `bin/outline show Projects/Outliner --ids` at the start of a session.
+  The columns:
+  - Deciding: not agreed yet. Write a proposal (what, why, trade-off)
+    into the card's note, questions as "Question: …" children; Martin
+    moving the card to TODO approves it.
+  - TODO: agreed, or an obvious bug fix; take from here.
+  - Implementing: move a card here when starting it.
+  - Review: merged and published; add a one-line note on how to try it.
+  - Done: Martin moves cards here, or back with a comment.
+  Move cards with `bin/outline move <id> --under <column id>`. The item
+  "Outliner" at the top keeps Martin's remarks in "Comments" and an item
+  per session with what needs him; its old "TODO" is empty. NOTES.md keeps
+  the session reports; its "Backlog" section is history.
 
 ## Live services
 
