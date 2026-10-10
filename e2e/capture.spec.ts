@@ -58,3 +58,35 @@ test("the menu and Ctrl-K open capture", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.locator("#capture-dialog")).toBeVisible();
 });
+
+test("Capture from the app's icon while the app is already open opens capture there", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    const launches: { targetURL: string }[] = [{ targetURL: location.href }];
+    let consumer: ((params: { targetURL: string }) => void) | null = null;
+    Object.defineProperty(window, "launchQueue", { value: { setConsumer: (each: typeof consumer) => ((consumer = each), launches.splice(0).forEach((params) => consumer!(params))) } });
+    Object.defineProperty(window, "launchAgain", { value: (url: string) => (consumer ? consumer({ targetURL: url }) : launches.push({ targetURL: url })) });
+  });
+  await freshOutline(page, "Inbox");
+  await expect(page.locator("#capture-dialog")).toBeHidden();
+  await page.evaluate(() => (window as unknown as { launchAgain: (url: string) => void }).launchAgain(new URL("./?capture&text=from the dock", location.href).href));
+  await expect(page.locator("#capture-dialog")).toBeVisible();
+  await expect(page.locator("#capture-text")).toHaveValue("from the dock");
+  await page.evaluate(() => (window as unknown as { launchAgain: (url: string) => void }).launchAgain(new URL("./?capture", location.href).href));
+  await expect(page.locator("#capture-dialog")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("Capture from the app's icon when the app was closed opens capture once", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await freshOutline(page, "Inbox");
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "launchQueue", { value: { setConsumer: (consumer: (params: { targetURL: string }) => void) => consumer({ targetURL: location.href }) } });
+  });
+  await page.goto("./?capture&text=cold start");
+  await expect(page.locator("#capture-dialog")).toBeVisible();
+  await expect(page.locator("#capture-text")).toHaveValue("cold start");
+  expect(errors).toEqual([]);
+});
