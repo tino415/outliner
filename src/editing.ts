@@ -320,6 +320,13 @@ export function caretNow(): Caret | null {
 
 type Action = (c: EditorContext) => boolean | void;
 
+/** The properties of an item joined into another, which go with it: "effort 1h, kcal 300", or "" for none. */
+function propertiesLeftBy(id: ItemId): string {
+  return Object.entries(doc().items[id]?.properties ?? {})
+    .map(([key, value]) => `${key} ${value}`)
+    .join(", ");
+}
+
 /** Actions on a row of the outline; on the page title they do nothing. */
 const onItem =
   (run: Action): Action =>
@@ -383,7 +390,9 @@ export const actions = {
     }
     if (!previous || previous === ui.title) return;
     const merged = mergeInto(doc(), c.id, previous.dataset.id!);
+    const dropped = propertiesLeftBy(c.id);
     commitAndRender(merged.doc, { id: previous.dataset.id!, offset: merged.offset });
+    if (dropped) toastWithUndo(`Removed ${dropped}`);
   },
 
   deleteForward(c: EditorContext): boolean | void {
@@ -391,7 +400,9 @@ export const actions = {
     const next = neighbourEditor(c.editor, 1);
     if (!next) return;
     const merged = mergeInto(doc(), next.dataset.id!, c.id);
+    const dropped = propertiesLeftBy(next.dataset.id!);
     commitAndRender(merged.doc, { id: c.id, offset: merged.offset });
+    if (dropped) toastWithUndo(`Removed ${dropped}`);
   },
 
   arrowUp(c: EditorContext): boolean | void {
