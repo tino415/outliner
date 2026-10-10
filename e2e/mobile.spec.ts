@@ -244,3 +244,19 @@ test("a virtual keyboard's Enter in a note starts a new line", async ({ page }) 
   await page.keyboard.type("second");
   await expect(row(page, "item").locator(".note")).toHaveText("first\nsecond");
 });
+
+test("the Private keys dialog fits a narrow phone, keys and buttons included", async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await freshOutline(page, "a");
+  await page.locator("#menu-button").tap();
+  await page.getByRole("button", { name: "Private keys…" }).tap();
+  await page.locator("#key-new-name").fill("personal");
+  await page.getByRole("button", { name: "Make" }).tap();
+  await expect(page.locator("#key-list input")).toHaveCount(1);
+  const overflow = await page.locator("#keys-dialog").evaluate((dialog) => {
+    const edge = dialog.getBoundingClientRect().right;
+    return [...dialog.querySelectorAll("*")].filter((element) => element.getBoundingClientRect().right > edge + 1).map((element) => element.tagName + "." + element.className);
+  });
+  expect(overflow).toEqual([]);
+  await page.screenshot({ path: `screenshots/${info.project.name}-private-keys.png` });
+});
