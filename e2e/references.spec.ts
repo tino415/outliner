@@ -20,10 +20,11 @@ test("typing [[ picks an item and writes a link that opens it, and the item list
   await expect(page.locator("#title")).toHaveText(/^water the/);
 });
 
-test("Alt-Shift-L links to an item at the caret", async ({ page }) => {
+test("Ctrl-J L links to an item at the caret", async ({ page }) => {
   await freshOutline(page, "Reading list\nsee ");
   await clickEnd(page, "see");
-  await page.keyboard.press("Alt+Shift+l");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("l");
   await page.keyboard.type("reading");
   await page.keyboard.press("Enter");
   await expect(page.locator(".tree .text").nth(1)).toHaveText(/^see\[\[id:\w+\]\[Reading list\]\]$/);

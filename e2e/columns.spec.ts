@@ -72,7 +72,8 @@ test("the menu switches columns on for any page, inferring them from properties"
   await expect(page.locator("#columns-head .column-name")).toHaveText(["effort"]);
   await expect(cell(page, "Project", "effort")).toHaveText("49h 30m");
   await page.keyboard.press("Escape");
-  await page.keyboard.press("Alt+Shift+c");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("c");
   await expect(page.locator("#columns-head")).toBeHidden();
 });
 

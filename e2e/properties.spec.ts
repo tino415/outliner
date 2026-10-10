@@ -60,7 +60,8 @@ test("a click on a chip changes or removes its value", async ({ page }) => {
 test("the private chip offers to make the item public again, as Make private… does", async ({ page }) => {
   await freshOutline(page, "Journal\n  secret");
   await editor(page, "Journal").click();
-  await page.keyboard.press("Alt+Shift+p");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("x");
   await page.keyboard.type("personal");
   await page.keyboard.press("Enter");
   await row(page, "Journal").locator(".prop-chip").first().click();
