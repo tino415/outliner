@@ -48,9 +48,26 @@ export function openCapture(templateName = "", prefill = ""): void {
 /** A share, a home-screen shortcut or a link can open the app straight into capture. */
 export function captureFromAddress(): void {
   const request = captureRequest(location.search);
-  if (!request) return;
-  history.replaceState(null, "", location.pathname + location.hash);
-  openCapture(request.template, request.text);
+  if (request) history.replaceState(null, "", location.pathname + location.hash);
+  if (request && !dialog.open) openCapture(request.template, request.text);
+  captureFromLaunches();
+}
+
+interface LaunchQueue {
+  setConsumer(consumer: (params: { targetURL?: string }) => void): void;
+}
+
+/**
+ * The manifest's launch_handler keeps a running app's window and hands it
+ * the shortcut's or share's address here instead of loading it, which on a
+ * Mac is the only way Capture in the Dock reaches an app already open.
+ */
+function captureFromLaunches(): void {
+  const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue;
+  queue?.setConsumer(({ targetURL }) => {
+    const request = targetURL ? captureRequest(new URL(targetURL).search) : null;
+    if (request && !dialog.open) openCapture(request.template, request.text);
+  });
 }
 
 function choose(index: number): void {
