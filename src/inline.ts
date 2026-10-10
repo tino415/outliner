@@ -9,6 +9,14 @@ import { kindOf } from "./kinds";
 import { ATTACHMENT } from "./attachmentLinks";
 import { SEALED_NOTE } from "./notes";
 
+/** A tag starts a line, or follows a space or an opening bracket, and has a letter: not `.#flake`, `a#b` or `#123`. */
+const TAG = String.raw`(?<=^|[\s(\[])#(?=[\p{N}_-]*\p{L})[\p{L}\p{N}_-]*[\p{L}\p{N}_]`;
+
+/** The tags written in `text`, without their #. */
+export function tagsWritten(text: string): string[] {
+  return [...text.matchAll(new RegExp(TAG, "gu"))].map((match) => match[0].slice(1));
+}
+
 const TOKEN = new RegExp(
   [
     String.raw`(?<code>\x60[^\x60\n]+\x60)`,
@@ -18,7 +26,8 @@ const TOKEN = new RegExp(
     String.raw`(?<att>!?\[[^\]\n]*\]\(att:[0-9a-f]{64}\))`,
     String.raw`(?<mdlink>\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))`,
     String.raw`(?<url>https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"])`,
-    String.raw`(?<tag>(?<![\p{L}\p{N}_#])#[\p{L}\p{N}_-]*[\p{L}\p{N}_])`,
+    String.raw`(?<escaped>\\(?=#))`,
+    `(?<tag>${TAG})`,
   ].join("|"),
   "gu",
 );
@@ -65,6 +74,7 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
     return `${marker("[")}<a class="link" href="${escape(url)}" target="_blank" rel="noopener">${escape(label)}</a>${marker(`](${url})`)}`;
   }
   if (groups.url) return `<a class="link" href="${escape(raw)}" target="_blank" rel="noopener">${escape(raw)}</a>`;
+  if (groups.escaped) return marker(raw);
   if (groups.tag) return `<span class="tag" data-tag="${escape(raw.toLowerCase())}"><span class="tag-hash">#</span>${escape(raw.slice(1))}</span>`;
   return escape(raw);
 }

@@ -1,7 +1,7 @@
 import { Doc } from "./model";
 import { isInCode, withoutCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
-import { escape } from "./inline";
+import { escape, tagsWritten } from "./inline";
 import { insertText } from "./editing";
 import { kindsIn } from "./kinds";
 
@@ -22,8 +22,7 @@ interface Typed {
 
 const KEY_BEING_TYPED = /(^|\n)([ \t]*:)([\p{L}\p{N}_-]*)$/u;
 const KIND_BEING_TYPED = /^\p{Lu}\p{L}*(?: \p{L}+){0,2}$/u;
-const TAG_BEING_TYPED = /(^|[^\p{L}\p{N}_#])#([\p{L}\p{N}_-]*)$/u;
-const TAG = /(?<![\p{L}\p{N}_#])#([\p{L}\p{N}_-]*[\p{L}\p{N}_])/gu;
+const TAG_BEING_TYPED = /(^|[\s(\[])#([\p{L}\p{N}_-]*)$/u;
 const LIMIT = 8;
 
 const list = document.createElement("ul");
@@ -88,7 +87,7 @@ function keysIn(doc: Doc): string[] {
 }
 
 function tagsIn(doc: Doc): string[] {
-  return byUse(Object.values(doc.items).flatMap((item) => [...`${item.text}\n${withoutCode(item.note)}`.matchAll(TAG)].map((match) => match[1])));
+  return byUse(Object.values(doc.items).flatMap((item) => tagsWritten(`${item.text}\n${withoutCode(item.note)}`)));
 }
 
 /** Most used first; a word written in several cases keeps its most common spelling. */

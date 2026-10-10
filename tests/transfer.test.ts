@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ROOT, setFlags } from "../src/model";
 import { exportMarkdown, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
-import { renderInline, renderItemText, renderNote } from "../src/inline";
+import { renderInline, renderItemText, renderNote, tagsWritten } from "../src/inline";
 
 describe("export", () => {
   const doc = (() => {
@@ -162,6 +162,24 @@ describe("renderInline", () => {
 
   it("names the language of a code block", () => {
     expect(renderNote("```elixir\nIO.puts 1\n```")).toContain('data-language="elixir"');
+  });
+
+  it.each(["nix run .#outline-sync-server", "fixes #123", "mid#nottag", "\\#plain", "`#code`"])("reads no tag in %j", (text) => {
+    expect(renderInline(text)).not.toContain('class="tag"');
+    expect(textOf(renderInline(text))).toBe(text);
+  });
+
+  it("reads a tag at the start, after a space and after a bracket", () => {
+    const html = renderInline("#first then #second (#third) [#fourth] #v2");
+    for (const tag of ["#first", "#second", "#third", "#fourth", "#v2"]) expect(html).toContain(`data-tag="${tag}"`);
+  });
+
+  it("hides the backslash of \\# outside editing, as other markers", () => {
+    expect(renderInline("\\#plain")).toContain('<span class="md">\\</span>#plain');
+  });
+
+  it("collects the same tags it shows", () => {
+    expect(tagsWritten("#a b.#c #123 \\#d (#e)")).toEqual(["a", "e"]);
   });
 
   it("does not treat multiplication as italic", () => {
