@@ -77,3 +77,15 @@ test("settings of a page show as muted chips under its title", async ({ page }) 
   await expect(page.locator("#title-props .prop-chip.setting")).toHaveText("columns effort");
   await expect(row(page, "Task").locator(".prop-chip")).toHaveCount(0);
 });
+
+test("a value written as =… shows its result in the chip, the formula on hover, and follows the values it reads", async ({ page }) => {
+  await freshOutline(page, "Shopping\n  Apples | :count: 3; :price: =count * 2");
+  const price = row(page, "Apples").locator(".prop-chip", { hasText: "price" });
+  await expect(price).toHaveText("price 6");
+  await expect(price).toHaveClass(/computed/);
+  await expect(price).toHaveAttribute("title", "price: =count * 2");
+  await row(page, "Apples").locator(".prop-chip", { hasText: "count" }).click();
+  await page.keyboard.type("4");
+  await page.keyboard.press("Enter");
+  await expect(price).toHaveText("price 8");
+});

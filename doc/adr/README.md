@@ -43,3 +43,4 @@ session report; the records here hold the choices behind them.
 31. [A board shows an item's children as columns and theirs as cards](0031-a-board-shows-children-as-columns.md)
 32. [Properties are a field of their own, synced one by one](0032-properties-are-a-field-of-their-own.md)
 33. [One search for items and commands, and a prefix key for the rest](0033-one-search-for-items-and-commands-and-a-prefix-key.md)
+34. [An item's own value may be a formula](0034-an-items-own-value-may-be-a-formula.md)

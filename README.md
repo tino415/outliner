@@ -77,7 +77,10 @@ Monday
 
 Each item then starts when the items above it are done, counted from the
 parent's start. An item with its own `:start:` keeps it; the items after
-it still count from the parent's start.
+it still count from the parent's start. A value starting with `=` is a
+formula of the item's own, in any property and with or without columns:
+`effort: =24:00 - start` on the last item of a day fills the rest of it.
+Its chip shows the result, the formula on hover.
 A formula that cannot be computed shows `error`, the reason on hover.
 ⋯ → Formula help (or Ctrl-K, `formula`) lists the syntax below, with
 example pages it adds to the current page.

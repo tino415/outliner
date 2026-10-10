@@ -81,6 +81,12 @@ export function parseColumns(spec: string): Column[] {
   });
 }
 
+/** A value written as "=…" is a formula of the item's own: its source, or null for a plain value. */
+export function formulaIn(value: string | undefined): string | null {
+  const written = value?.trim() ?? "";
+  return written.startsWith("=") ? written.slice(1).trim() : null;
+}
+
 function formulaOrError(source: string): Formula | FormulaError {
   try {
     return parseFormula(source);
@@ -158,6 +164,8 @@ export function columnCells(
   const freshValue = (id: ItemId, key: string): Value => {
     const column = byKey.get(key) ?? { key, summary: "sum" as Summary };
     const raw = doc.items[id].properties[key];
+    const ownFormula = formulaIn(raw);
+    if (ownFormula !== null) return computed(id, formulaOrError(ownFormula));
     const formulaApplies = column.formula && raw === undefined && id !== (column.declaredOn ?? top) && !isAbove(id, column.declaredOn);
     if (formulaApplies) return computed(id, column.formula!);
     const fromChildren = () => children(id).flatMap((child) => valueOf(child, key).amount ?? []);

@@ -4,6 +4,7 @@ import { ItemId, indexInParent, insertChild, isBoard, moveTo, setItemProperty, s
 import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
 import { propertyChipsHtml } from "./propertyChips";
+import { ownFormulaResults } from "./render";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -42,7 +43,7 @@ function cardHtml(id: ItemId): string {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   return (
     `<li class="item board-card${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
-    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}${propertyChipsHtml(item)}` +
+    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}` +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     (inside ? `<a class="board-inside" href="#/${encodeURIComponent(id)}">${inside} inside</a>` : "") +
     `</div></li>`
