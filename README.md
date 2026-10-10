@@ -26,7 +26,8 @@ podman compose exec app npm run dev                 # http://127.0.0.1:5188/
 podman compose exec app npx tsc --noEmit
 podman compose exec app npx vitest run              # tree operations, import/export, inline rendering
 podman compose exec app npm run build               # the browser tests run against the build
-podman compose exec app npx playwright test         # desktop Chromium, phone, WebKit, Firefox
+podman compose exec app npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox
+podman compose exec app env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which crashes in the container
 ```
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.
@@ -38,8 +39,8 @@ with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
 P property, K kind, L link, A attach, X private, M move to, D duplicate,
 B board, C columns, N capture, and J again to jump to an item. Pausing
-after it shows what can follow. The Alt-Shift letters do the same until
-the next release; ? lists every shortcut.
+after it shows what can follow; ? lists every shortcut. Alt-Shift with a
+letter is left to typing, as many layouts need it.
 
 ## Properties and columns
 

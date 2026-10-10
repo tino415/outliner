@@ -11,9 +11,10 @@ Ideas
   older idea
 `;
 
-test("Alt-Shift-N captures with a template picked by its key, asking for its properties", async ({ page }) => {
+test("Ctrl-J N captures with a template picked by its key, asking for its properties", async ({ page }) => {
   await freshOutline(page, TEMPLATES);
-  await page.keyboard.press("Alt+Shift+n");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
   await expect(page.locator("#capture-dialog")).toBeVisible();
   await page.keyboard.press("m");
   await expect(page.locator("#capture-text")).toBeFocused();
@@ -28,7 +29,8 @@ test("Alt-Shift-N captures with a template picked by its key, asking for its pro
 
 test("a template filing at the top, and Go there", async ({ page }) => {
   await freshOutline(page, TEMPLATES);
-  await page.keyboard.press("Alt+Shift+n");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
   await page.keyboard.press("i");
   await page.keyboard.type("new idea");
   await page.keyboard.press("Enter");

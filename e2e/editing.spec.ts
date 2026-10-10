@@ -154,10 +154,11 @@ test.describe("keyboard editing", () => {
     await expectOutline(page, "a\nb\n  b1\nc");
   });
 
-  test("Alt-Shift-D duplicates an item with its children", async ({ page }) => {
+  test("Ctrl-J D duplicates an item with its children", async ({ page }) => {
     await freshOutline(page, "a\n  a1\nb");
     await clickEnd(page, "a");
-    await page.keyboard.press("Alt+Shift+d");
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("d");
     await expectOutline(page, "a\n  a1\na\n  a1\nb");
   });
 
@@ -365,10 +366,11 @@ test.describe("zoom and search", () => {
     await expect(page.locator(".palette-modes .active")).toHaveText("Items");
   });
 
-  test("Alt-Shift-M moves an item under another one", async ({ page }) => {
+  test("Ctrl-J M moves an item under another one", async ({ page }) => {
     await freshOutline(page, "inbox item\nprojects\n  garden");
     await clickEnd(page, "inbox item");
-    await page.keyboard.press("Alt+Shift+m");
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("m");
     await page.keyboard.type("garden");
     await page.keyboard.press("Enter");
     await expectOutline(page, "projects\n  garden\n    inbox item");
