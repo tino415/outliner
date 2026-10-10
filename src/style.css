@@ -1433,6 +1433,7 @@ code {
 
 .sync-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 4px 24px 22px;
   font-size: 14px;
@@ -1454,7 +1455,7 @@ code {
 
 .key-list li {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
 }
@@ -1472,9 +1473,25 @@ code {
 
 .key-form {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: end;
+}
+
+.key-form label {
+  min-width: 0;
+}
+
+/* On a narrow phone a key's name takes its own line above the key and Copy. */
+@media (max-width: 480px) {
+  .key-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 10px;
+  }
+
+  .key-list li > span {
+    grid-column: 1 / -1;
+  }
 }
 
 .plugin-list li {
@@ -1543,6 +1560,7 @@ code {
   color: var(--fg);
   font: inherit;
   font-weight: 400;
+  min-width: 0;
 }
 
 .sync-form input:focus {
