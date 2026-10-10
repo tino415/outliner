@@ -160,7 +160,8 @@ test("a property cannot be set on an item sealed with a key this device lacks", 
   await connect(one);
   await synced(one);
   await editor(one, "Journal").click();
-  await one.keyboard.press("Alt+Shift+p");
+  await one.keyboard.press("ControlOrMeta+j");
+  await one.keyboard.press("x");
   await one.keyboard.type("personal");
   await one.keyboard.press("Enter");
   await synced(one);
@@ -264,7 +265,8 @@ test("a file attached on one device shows on another and reaches the CLI", async
   await synced(one);
   await editor(one, "glitch report").click();
   const chooser = one.waitForEvent("filechooser");
-  await one.keyboard.press("Alt+Shift+a");
+  await one.keyboard.press("ControlOrMeta+j");
+  await one.keyboard.press("a");
   await (await chooser).setFiles({ name: "glitch.png", mimeType: "image/png", buffer: pixel });
   const preview = one.locator(".att-image");
   await expect(preview).toHaveAttribute("src", /^blob:/);
@@ -288,7 +290,8 @@ test("a private item reaches the server sealed and opens only where its key is",
   await connect(one);
   await synced(one);
   await editor(one, "Journal").click();
-  await one.keyboard.press("Alt+Shift+p");
+  await one.keyboard.press("ControlOrMeta+j");
+  await one.keyboard.press("x");
   await one.keyboard.type("personal");
   await expect(one.locator("#palette li.active")).toHaveText("New key: personal");
   await one.keyboard.press("Enter");

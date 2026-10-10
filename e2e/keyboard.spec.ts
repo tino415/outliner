@@ -124,7 +124,7 @@ test.describe("Ctrl-K", () => {
   });
 });
 
-test("Alt-Shift-C toggles columns from the palette too", async ({ page }) => {
+test("Ctrl-J C toggles columns from the palette too", async ({ page }) => {
   await freshOutline(page, "a");
   await editor(page, "a").click();
   await page.keyboard.press("ControlOrMeta+k");
@@ -133,4 +133,16 @@ test("Alt-Shift-C toggles columns from the palette too", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(row(page, "a")).toBeVisible();
   await expect(page.locator("#columns-head")).toBeVisible();
+});
+
+test("Alt-Shift with a letter is left to typing: the app takes none of them", async ({ page }) => {
+  await freshOutline(page, "item");
+  await clickEnd(page, "item");
+  const taken = await page.evaluate(() =>
+    [..."abcdefghijklmnopqrstuvwxyz"].filter((letter) => {
+      const event = new KeyboardEvent("keydown", { key: letter.toUpperCase(), code: `Key${letter.toUpperCase()}`, altKey: true, shiftKey: true, bubbles: true, cancelable: true });
+      return !document.activeElement!.dispatchEvent(event);
+    }),
+  );
+  expect(taken).toEqual([]);
 });

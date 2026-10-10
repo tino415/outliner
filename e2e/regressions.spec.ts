@@ -401,12 +401,14 @@ test("a command from Ctrl-K acts with the caret where it was", async ({ page }) 
 
 test("capture asks for properties afresh each time", async ({ page }) => {
   await freshOutline(page, "Spend | :capture: Money; :ask: amount\nMoney");
-  await page.keyboard.press("Alt+Shift+n");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
   await page.locator("#capture-text").fill("lunch");
   await page.locator("#capture-fields input").fill("12");
   await page.keyboard.press("Enter");
   await expect(page.locator("#toast")).toContainText("Captured");
-  await page.keyboard.press("Alt+Shift+n");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
   await expect(page.locator("#capture-fields input")).toHaveValue("");
 });
 

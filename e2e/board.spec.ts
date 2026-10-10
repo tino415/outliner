@@ -25,7 +25,8 @@ function card(page: Page, text: string) {
 async function openProject(page: Page) {
   await freshOutline(page, "Project\n  To do\n    write\n    test\n  Doing\n  Done");
   await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
-  await page.keyboard.press("Alt+Shift+b");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
   await expectBoard(page, "To do: write, test\nDoing: \nDone: ");
 }
 
@@ -92,7 +93,8 @@ test("buttons add cards and columns, and the board turns back into the outline",
   await page.keyboard.type("Later");
   await expectBoard(page, "To do: write, test\nDoing: \nDone: ship it\nLater: ");
   await page.locator("#title").click();
-  await page.keyboard.press("Alt+Shift+b");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
   await expect(page.locator("#board")).toBeHidden();
   await expect(page.locator("#tree")).toContainText("ship it");
 });

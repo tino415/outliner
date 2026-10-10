@@ -47,17 +47,19 @@ test.describe("kinds", () => {
     await expectOutline(page, "Question: one\nQuestion: two\nNeeds you: three\nlast\nNeeds you: four");
   });
 
-  test("Alt-Shift-K sets the kind and leaves the caret where it was", async ({ page }) => {
+  test("Ctrl-J K sets the kind and leaves the caret where it was", async ({ page }) => {
     await freshOutline(page, "Question: one\nwhy is it slow");
     await editor(page, "why is it slow").click();
     await page.keyboard.press("Home");
     for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("Alt+Shift+k");
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("k");
     await expect(page.locator("#palette li").first()).toHaveText("Question");
     await page.keyboard.press("Enter");
     await page.keyboard.type("!");
     await expectOutline(page, "Question: one\nQuestion: why! is it slow");
-    await page.keyboard.press("Alt+Shift+k");
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("k");
     await page.keyboard.type("Waiting");
     await expect(page.locator("#palette li").first()).toHaveText("New kind: Waiting");
     await page.keyboard.press("Enter");
@@ -74,11 +76,12 @@ test.describe("kinds", () => {
   });
 });
 
-test("Alt-Shift-T adds a tag at the end of the item", async ({ page }) => {
+test("Ctrl-J T adds a tag at the end of the item", async ({ page }) => {
   await freshOutline(page, "write report #work\nbuy milk");
   await editor(page, "buy milk").click();
   await page.keyboard.press("Home");
-  await page.keyboard.press("Alt+Shift+t");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("t");
   await expect(page.locator(".completion li")).toHaveText(["#work"]);
   await page.keyboard.press("Enter");
   await expectOutline(page, "write report #work\nbuy milk #work ");
