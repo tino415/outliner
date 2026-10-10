@@ -116,6 +116,10 @@ function isPrivateRoot(items: Doc["items"], id: ItemId): boolean {
   return privateKeyOf(item) !== null || item.children.some((child) => child.startsWith(`${id}~`));
 }
 
+export function isPrivateItem(doc: Doc, id: ItemId): boolean {
+  return isPrivateRoot(doc.items, id);
+}
+
 /** The nearest private item at or above `id`; its descendants' ids start with its own and "~". */
 function privateRootAtOrAbove(items: Doc["items"], id: ItemId | null): ItemId | null {
   for (let current = id; current; current = items[current].parent) {

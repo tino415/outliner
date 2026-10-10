@@ -337,3 +337,33 @@ test("a wrong token is reported and nothing is lost", async ({ browser }) => {
   await expect(one.locator("#sync-state")).toHaveText("the server refused the token");
   expect(await outlineText(one)).toBe("keep me");
 });
+
+test("properties lifted once back online leave the note being typed in alone", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  await one.context().setOffline(true);
+  await one.reload();
+  await clickEnd(one, "Soup");
+  await one.keyboard.press("Shift+Enter");
+  await one.keyboard.type(":effort: 1");
+  await one.context().setOffline(false);
+  await syncNow(one);
+  await synced(one);
+  await expect(row(one, "Soup").locator(".note")).toHaveText(":effort: 1");
+});
+
+test("a change the server refuses for its key, queued by an older build, is dropped so sync goes on", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  await one.evaluate(() => {
+    const sync = JSON.parse(localStorage.getItem("outliner-lab:sync:v1")!);
+    const id = Object.keys(sync.replica).find((each) => sync.replica[each].text?.value === "Soup")!;
+    sync.pending.push({ item: id, field: `prop:${"a".repeat(65)}`, value: "x", clock: sync.replica[id].text.clock });
+    localStorage.setItem("outliner-lab:sync:v1", JSON.stringify(sync));
+  });
+  await one.reload();
+  await syncNow(one);
+  await synced(one);
+});

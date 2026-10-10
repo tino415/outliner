@@ -75,9 +75,9 @@ describe("properties of an item", () => {
     expect(() => parseSyncRequest({ since: 0, changes: fields.map((field) => ({ item: id, field, value: "1", clock: "1" })) })).not.toThrow();
   });
 
-  it("drops keys the sync server would refuse from an outline read from JSON", () => {
-    const raw = JSON.stringify({ items: { ...base.items, [id]: { ...base.items[id], properties: { "my key": "1", effort: "2h" } } } });
-    expect(parseDoc(raw).items[id].properties).toEqual({ effort: "2h" });
+  it("drops keys the sync server would refuse from an outline read from JSON, and lower-cases the rest", () => {
+    const raw = JSON.stringify({ items: { ...base.items, [id]: { ...base.items[id], properties: { "my key": "1", effort: "2h", Kcal: "300" } } } });
+    expect(parseDoc(raw).items[id].properties).toEqual({ effort: "2h", kcal: "300" });
   });
 });
 

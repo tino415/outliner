@@ -25,7 +25,7 @@ const FIELDS: Record<Exclude<Field, PropertyField>, "string" | "boolean" | "stri
 
 export const MAX_TEXT = 100_000;
 
-function isPropertyField(field: unknown): field is PropertyField {
+export function isPropertyField(field: unknown): field is PropertyField {
   return typeof field === "string" && field.startsWith("prop:") && propertyKey(field.slice(5)) === field.slice(5);
 }
 

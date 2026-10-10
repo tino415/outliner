@@ -92,7 +92,9 @@ export function start(): void {
 
 /** Properties written as `:key: value` note lines, before they had a field of their own or by an older build, become properties (doc/adr/0032). */
 function liftPropertiesWrittenInNotes(): void {
-  const lifted = liftNoteProperties(doc());
+  const focused = document.activeElement;
+  const typingIn = focused instanceof HTMLElement && focused.classList.contains("note") ? focused.dataset.id : undefined;
+  const lifted = liftNoteProperties(doc(), Object.keys(doc().items).filter((id) => id !== typingIn));
   if (lifted !== doc()) commitAndRender(lifted, null);
 }
 

@@ -1,5 +1,5 @@
 import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
-import { Cell, Column, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
+import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
@@ -24,7 +24,7 @@ export function render(request: FocusRequest): void {
   pluginsMayHaveChanged();
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
-  ownFormulaCells = null;
+  formulaCellOf = null;
   columns = columnView();
   renderCrumbs();
   renderHead();
@@ -127,28 +127,17 @@ function renderColumnsHead(): void {
     `</div>`;
 }
 
-
 // ---- "=…" values of an item's own (doc/adr/0022) -------------------------------------------
 
-let ownFormulaCells: Map<ItemId, Map<string, Cell>> | null = null;
+let formulaCellOf: ((id: ItemId, key: string) => Cell | null) | null = null;
 
-/** The results of an item's "=…" property values, computed once per render over the page. */
+/** The results of an item's "=…" values, computed when a row asks, with only what they read; "–" when there is nothing to compute. */
 export function ownFormulaResults(id: ItemId): Map<string, Cell> {
   const properties = doc().items[id].properties;
   const keys = Object.keys(properties).filter((key) => formulaIn(properties[key]) !== null);
   if (keys.length === 0) return new Map();
-  ownFormulaCells ??= columnCells(doc(), state.zoom, columnsForFormulas(), filter());
-  const row = ownFormulaCells.get(id);
-  return new Map(keys.flatMap((key) => (row?.get(key) ? [[key, row.get(key)!] as const] : [])));
-}
-
-/** The page's declared columns, which give formulas their computed columns, then every other key in use. */
-function columnsForFormulas(): Column[] {
-  const declared = declaredColumns(doc(), state.zoom) ?? [];
-  const others = [...Object.keys(doc().items[state.zoom].properties).map((key) => ({ key, summary: "sum" as const })), ...inferredColumns(doc(), state.zoom)];
-  const columns = [...declared];
-  for (const column of others) if (!columns.some((each) => each.key === column.key)) columns.push(column);
-  return columns;
+  formulaCellOf ??= cellsUnder(doc(), state.zoom, declaredColumns(doc(), state.zoom) ?? [], filter());
+  return new Map(keys.map((key) => [key, formulaCellOf!(id, key) ?? { text: "–", rolled: false, computed: true }]));
 }
 
 function keysShownAsColumns(): Set<string> {
@@ -163,7 +152,7 @@ function cellsOf(id: ItemId): string {
     columns.columns
       .map((column) => {
         const cell = row?.get(column.key);
-        return `<button type="button" tabindex="-1" class="${cellClasses(cell)}" data-key="${escape(column.key)}"${cellTitle(cell, column)}>${escape(cell?.text ?? "")}</button>`;
+        return `<button type="button" tabindex="-1" class="${cellClasses(cell)}" data-key="${escape(column.key)}"${cellTitle(cell, column, doc().items[id].properties[column.key])}>${escape(cell?.text ?? "")}</button>`;
       })
       .join("") +
     `</div>`
@@ -174,9 +163,9 @@ function cellClasses(cell: Cell | undefined): string {
   return ["cell", cell?.rolled && "rolled", cell?.computed && "computed", cell?.error && "error"].filter(Boolean).join(" ");
 }
 
-function cellTitle(cell: Cell | undefined, column: Column): string {
+function cellTitle(cell: Cell | undefined, column: Column, ownValue: string | undefined): string {
   if (cell?.error) return ` title="${escape(`${cell.error}. See ⋯ → Formula help`)}"`;
-  if (cell?.computed) return ` title="Computed: ${escape(column.formulaSource ?? "")}"`;
+  if (cell?.computed) return ` title="Computed: ${escape(formulaIn(ownValue) !== null ? ownValue!.trim() : (column.formulaSource ?? ""))}"`;
   if (cell?.rolled) return ` title="${SUMMARY_LABELS[column.summary]} of the items below"`;
   return "";
 }
@@ -236,7 +225,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}`).join(" ")}`;
+  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState) {

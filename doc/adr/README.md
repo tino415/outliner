@@ -44,3 +44,4 @@ session report; the records here hold the choices behind them.
 32. [Properties are a field of their own, synced one by one](0032-properties-are-a-field-of-their-own.md)
 33. [One search for items and commands, and a prefix key for the rest](0033-one-search-for-items-and-commands-and-a-prefix-key.md)
 34. [An item's own value may be a formula](0034-an-items-own-value-may-be-a-formula.md)
+35. [The Alt-Shift letters are gone, and the prefix's wait ends](0035-alt-shift-letters-removed-and-the-prefix-wait-ends.md)
