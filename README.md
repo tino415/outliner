@@ -107,6 +107,15 @@ Ctrl-J K sets or removes the kind from anywhere in the item and leaves
 the caret where it was. A click on a badge searches for it. The text stays
 plain, so the CLI and search read `Question:` as written.
 
+## Tags
+
+A word with a `#` in front is a tag, in an item's text or its note: it
+shows as a chip, a click searches for it, and typing `#` offers the tags in
+use. The `#` must start a line or follow a space or an opening bracket, and
+the tag needs a letter, so `.#flake`, `a#b` and `#123` stay plain text.
+`\#word` writes a plain `#word` (the backslash shows only while editing), and
+so does anything in backticks.
+
 ## Order of new and completed items
 
 `:completed: last` on a page shows completed items after the open ones,
