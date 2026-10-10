@@ -51,6 +51,59 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 5 (2026-10-09 evening to 2026-10-10)
+
+From Martin's requests in the session; since 2026-10-10 the tasks are cards
+on the board at Projects/Outliner, and merging and publishing are left to
+the agent (AGENTS.md). Main published after this report's commit. The `sync` container was
+rebuilt once, for properties (backup in ~/backups/outliner-lab first).
+
+Done, each with tests (PRs #2 to #15):
+
+- Board view (ADR 31); the board fills the window so its scrollbar is at
+  the bottom (a `:has()` rule made edits five times slower; a class instead).
+- Gaps under items in column view.
+- Properties as their own synced field, `prop:<key>`, with chips, Ctrl-;,
+  the phone toolbar and a + on the row; note lines lifted once (ADR 32).
+  Two review agents found seven bugs in it (properties left readable when
+  an item is made private, a typed `:private:` line not sealing, a stale
+  device overwriting newer values on upgrade, keys the server refuses
+  stopping sync, …); all fixed.
+- Plugins: calls take an item or its id, read and set properties, errors
+  from calls not awaited are shown.
+- Keyboard (ADR 33): Ctrl-K searches items and commands at once with Tab
+  for All / Items / Commands; Ctrl-J (⌘J) is a prefix key; the Alt-Shift
+  letters are gone, left to typing.
+- Fixes from Martin's reports: properties moving to the item above on a
+  join, the Private keys dialog cut off on a phone, `.#flake` and `#123`
+  read as tags (`\#` now writes a plain #), Capture from the Mac's Dock
+  while the app is open (launch_handler and the launch queue).
+- A property value starting with `=` is a formula of the item's own
+  (ADR 34), for "the rest of the day".
+
+A closing review (two agents, after Martin left) read everything merged
+in the session. Fixed, each with a test that failed first (ADR 35):
+joining a private item, or its first child into its headline, sent its
+content in plain (my fix that left a joined item's properties behind had
+dropped `private` too); a stray ⌘J stayed armed until any later letter,
+its own key repeat ran Jump, and the tag list took the key after it; Enter
+in Ctrl-K could run "Clear this page" for "clear"; one `=…` value made
+every render compute the whole page (75 ms, now about 20); a refused key
+already queued kept sync stuck; coming back online lifted the note being
+typed; a plugin could write `:private:` through `setNote`; formula hovers
+and empty results; JSON import dropped capitalised keys. Left as a card:
+a typed but not yet lifted `:private:` line, where sync and the outline
+briefly disagree on what is private.
+
+Open, on the board under Deciding with proposals and questions: dates,
+views and an agenda, plugin events (or a column that completes cards),
+mirrors as embeds, `??` in formulas.
+
+Machine issue, not worked around: desktop WebKit dies in the app container
+("Failed to apply scheduling attributes … Operation not permitted", then
+"browser has been closed"). Martin chose to leave it out: it runs only with
+`WEBKIT=1`; the iPhone project still runs.
+
 ## Session 4 (2026-10-09, afternoon)
 
 Tasks from Outliner/TODO in the outline. Martin's answers (14:40, asked in
