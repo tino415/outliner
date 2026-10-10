@@ -1,6 +1,7 @@
 import { ItemId, ROOT, ancestors } from "./model";
 import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
 import { openPalette } from "./palette";
+import { plainText } from "./inline";
 import { Command } from "./keys";
 import { Focus, doc, filter, isUnder, state, ui } from "./app";
 import { render, replayAnimation } from "./render";
@@ -85,7 +86,7 @@ export function searchEverything(commands: Command[], mode: SearchMode = "All"):
       const items = matchingItems(query);
       const found = matchingCommands(commands, query);
       if (!query.trim() || items.some((option) => startsWithQuery(option.text, query))) return [...items, ...found];
-      const strong = found.filter((option) => "command" in option && namesIt(option.command, query)).slice(0, 3);
+      const strong = found.filter((option) => "command" in option && namesIt(option.command, query) && !DESTROYS.test(option.command.label)).slice(0, 3);
       return [...strong, ...items, ...found.filter((option) => !strong.includes(option))];
     },
     choose: (option) => ("command" in option ? option.command.run() : zoomTo(option.item.id)),
@@ -107,9 +108,12 @@ function matchingCommands(commands: Command[], query: string): JumpOption[] {
     .map((command) => ({ command, text: command.label, path: [], shortcut: command.shortcut }));
 }
 
+/** Commands Enter must never reach by surprise: they stay below the items, whatever was typed. */
+const DESTROYS = /\b(delete|clear|remove)\b/i;
+
 /** An item named by what was typed is what Enter opens, never a command of that name: "delete" must not delete. */
 function startsWithQuery(text: string, query: string): boolean {
-  return text.toLowerCase().startsWith(query.trim().toLowerCase());
+  return plainText(text).toLowerCase().startsWith(query.trim().toLowerCase());
 }
 
 /** Every word typed starts a word of the command's name: "board" names "Show this page as a board". */

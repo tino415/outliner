@@ -36,8 +36,9 @@ export function parseDoc(raw: string): Doc {
   return { items: Object.fromEntries(Object.entries(parsed.items).map(([id, item]) => [id, { ...item, properties: syncableProperties(item.properties ?? {}) }])) };
 }
 
+/** Keys as the sync server takes them, in lower case; one it would refuse is left out. */
 function syncableProperties(properties: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(properties).filter(([key, value]) => propertyKey(key) === key && typeof value === "string"));
+  return Object.fromEntries(Object.entries(properties).flatMap(([key, value]) => (propertyKey(key) && typeof value === "string" ? [[propertyKey(key)!, value]] : [])));
 }
 
 let pendingSave: number | undefined;

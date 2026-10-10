@@ -89,3 +89,10 @@ test("a value written as =… shows its result in the chip, the formula on hover
   await page.keyboard.press("Enter");
   await expect(price).toHaveText("price 8");
 });
+
+test("a formula with nothing to compute shows as computed and empty, not as its raw text", async ({ page }) => {
+  await freshOutline(page, "Shopping\n  Apples | :price: =count * 2");
+  const price = row(page, "Apples").locator(".prop-chip", { hasText: "price" });
+  await expect(price).toHaveClass(/computed/);
+  await expect(price).toHaveText("price –");
+});

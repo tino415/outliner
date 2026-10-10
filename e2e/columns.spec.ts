@@ -112,3 +112,11 @@ test("a computed column plans start times from the durations before each item", 
   await page.keyboard.press("Escape");
   await expect(cell(page, "Lunch", "start")).toHaveText("11:15");
 });
+
+test("a cell computed by the item's own formula shows that formula on hover", async ({ page }) => {
+  await freshOutline(page, "Shop | :columns: count price\n  Apples | :count: 3; :price: =count * 2");
+  await page.locator(".row").filter({ hasText: "Shop" }).first().locator(".bullet").click();
+  const cell = row(page, "Apples").locator('.cell[data-key="price"]');
+  await expect(cell).toHaveText("6");
+  await expect(cell).toHaveAttribute("title", "Computed: =count * 2");
+});
