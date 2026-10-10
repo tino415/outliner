@@ -508,3 +508,15 @@ test("leaving a note drops the blank lines at its end", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect.poll(() => row(page, "item").locator(".note").evaluate((note) => note.textContent)).toBe("a note");
 });
+
+test("Backspace on an emptied item with a property removes it, and the property does not move to the item above", async ({ page }) => {
+  await freshOutline(page, "Heading\nTask | :effort: 1h");
+  await clickEnd(page, "Task");
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Backspace");
+  await page.keyboard.press("Backspace");
+  await expectOutline(page, "Heading");
+  await expect(row(page, "Heading").locator(".prop-chip")).toHaveCount(0);
+  await expect(page.locator("#toast")).toContainText("effort 1h");
+  await page.locator("#toast").getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".tree .row").nth(1).locator(".prop-chip")).toHaveText("effort 1h");
+});

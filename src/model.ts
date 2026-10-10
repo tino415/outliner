@@ -522,7 +522,6 @@ export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offse
     const target = d.write(into);
     target.text += source.text;
     target.note = [target.note, source.note].filter(Boolean).join("\n");
-    target.properties = { ...source.properties, ...target.properties };
     const intoIsParent = source.parent === into;
     const insertAt = intoIsParent ? target.children.indexOf(id) : target.children.length;
     d.detach(id);
