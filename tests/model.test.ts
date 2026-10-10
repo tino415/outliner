@@ -26,6 +26,7 @@ import {
   shownChildren,
   insertChild,
   withPrivateIds,
+  setItemProperty,
 } from "../src/model";
 import { parseIndentedText, subtreesAsText } from "../src/transfer";
 import { setNoteAsTyped as setNote } from "./typed";
@@ -231,6 +232,13 @@ describe("merging and removing", () => {
     const doc = outline("a\nb\n  b1");
     const merged = mergeInto(doc, idOf(doc, "b"), idOf(doc, "a"));
     expect(render(merged.doc)).toBe("ab\n  b1");
+  });
+
+  it("leaves the joined item's properties behind: the item above keeps only its own", () => {
+    let doc = outline("a\nb");
+    doc = setItemProperty(setItemProperty(doc, idOf(doc, "a"), "effort", "1h"), idOf(doc, "b"), "kcal", "300");
+    const merged = mergeInto(doc, idOf(doc, "b"), idOf(doc, "a"));
+    expect(merged.doc.items[idOf(doc, "a")].properties).toEqual({ effort: "1h" });
   });
 
   it("removes a whole subtree", () => {
