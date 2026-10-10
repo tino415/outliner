@@ -11,6 +11,8 @@ import {
   isBlank,
   isDescendant,
   isShown,
+  isPrivateItem,
+  privateRootAbove,
   mergeInto,
   moveDown,
   moveTo,
@@ -320,6 +322,18 @@ export function caretNow(): Caret | null {
 
 type Action = (c: EditorContext) => boolean | void;
 
+/**
+ * Joining moves text, note and children into `target`. Only what is under a
+ * private item is sealed, not the private item's own headline, so a join
+ * that takes something out of there would send it in plain (doc/adr/0029).
+ */
+function refusedAsPrivate(source: ItemId, target: ItemId): boolean {
+  const root = privateRootAbove(doc(), source);
+  const publishes = isPrivateItem(doc(), source) || (root !== null && (target === root || !isDescendant(doc(), target, root)));
+  if (publishes) toast("Joining would take this out of a private item; move it, or make the item public first");
+  return publishes;
+}
+
 /** The properties of an item joined into another, which go with it: "effort 1h, kcal 300", or "" for none. */
 function propertiesLeftBy(id: ItemId): string {
   return Object.entries(doc().items[id]?.properties ?? {})
@@ -389,6 +403,7 @@ export const actions = {
       return;
     }
     if (!previous || previous === ui.title) return;
+    if (refusedAsPrivate(c.id, previous.dataset.id!)) return;
     const merged = mergeInto(doc(), c.id, previous.dataset.id!);
     const dropped = propertiesLeftBy(c.id);
     commitAndRender(merged.doc, { id: previous.dataset.id!, offset: merged.offset });
@@ -399,6 +414,7 @@ export const actions = {
     if (c.inNote || c.isTitle || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
     if (!next) return;
+    if (refusedAsPrivate(next.dataset.id!, c.id)) return;
     const merged = mergeInto(doc(), next.dataset.id!, c.id);
     const dropped = propertiesLeftBy(next.dataset.id!);
     commitAndRender(merged.doc, { id: c.id, offset: merged.offset });

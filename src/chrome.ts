@@ -112,7 +112,12 @@ function reaches(reach: Reach, target: FocusTarget): boolean {
 }
 
 function bindGlobalKeys(): void {
-  document.addEventListener("keydown", (event) => runPrefixedKeys(event), true);
+  window.addEventListener("keydown", (event) => runPrefixedKeys(event), true);
+  window.addEventListener("keyup", () => (heldAfterSequence = null), true);
+  const cancelPrefix = () => waitingAfterPrefix && stopWaitingAfterPrefix();
+  window.addEventListener("blur", cancelPrefix);
+  document.addEventListener("mousedown", cancelPrefix, true);
+  document.addEventListener("focusin", cancelPrefix, true);
   document.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.isComposing) return;
     const target = focusTarget(event.target);
@@ -131,13 +136,24 @@ function bindGlobalKeys(): void {
 let waitingAfterPrefix = false;
 let panelTimer: number | undefined;
 
+/** The key that finished a sequence, while it is held: its repeats neither type nor run it again. */
+let heldAfterSequence: string | null = null;
+
+/*
+ * On the window in the capture phase, so it sees the key before the editor
+ * and the completion list; a click, another field or another window cancels
+ * the wait, so a stray ⌘J cannot turn a later letter into a command.
+ */
 function runPrefixedKeys(event: KeyboardEvent): void {
   if (event.isComposing || (waitingAfterPrefix && isModifierAlone(event))) return;
-  if (!waitingAfterPrefix && !(isPrefix(event) && focusTarget(event.target) !== "overlay")) return;
+  const repeatOfHeld = event.repeat && (event.code === heldAfterSequence || (waitingAfterPrefix && isPrefix(event)));
+  if (!repeatOfHeld && !waitingAfterPrefix && !(isPrefix(event) && focusTarget(event.target) !== "overlay")) return;
   event.preventDefault();
   event.stopPropagation();
+  if (repeatOfHeld) return;
   if (!waitingAfterPrefix) return waitAfterPrefix();
   stopWaitingAfterPrefix();
+  heldAfterSequence = event.code;
   if (event.key !== "Escape") runSequence(sequenceAfterPrefix(event), event.target);
 }
 

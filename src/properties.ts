@@ -128,19 +128,33 @@ export interface Cell {
 
 type Value = { amount: Amount | null; cell: Cell | null };
 
+/** The cell of every column for `top` and everything under it, as `cellsUnder` computes them. */
+export function columnCells(doc: Doc, top: ItemId, columns: Column[], filter: ViewFilter = { showCompleted: true }): Map<ItemId, Map<string, Cell>> {
+  const cellOf = cellsUnder(doc, top, columns, filter);
+  const cells = new Map<ItemId, Map<string, Cell>>();
+  const visit = (id: ItemId) => {
+    const row = new Map<string, Cell>();
+    for (const column of columns) {
+      const cell = cellOf(id, column.key);
+      if (cell) row.set(column.key, cell);
+    }
+    cells.set(id, row);
+    shownChildren(doc, id, filter).forEach(visit);
+  };
+  visit(top);
+  return cells;
+}
+
 /**
- * The cell of every column for `top` and everything under it. An item whose
- * children have values shows their summary, recursively; otherwise its own
- * value. A computed column fills, below `top`, the items without a value of
- * their own from its formula. Items the view hides (completed ones, when
- * those are hidden) count for nothing.
+ * A lookup of the cell of any item under `top` for any key, computed when
+ * first asked for, with what it reads. An item whose children have values
+ * shows their summary, recursively; otherwise its own value, or the result of
+ * its own "=…" formula. A computed column fills, below `top`, the items
+ * without a value of their own from its formula; a key that is no column is
+ * summed. Items the view hides (completed ones, when those are hidden) count
+ * for nothing.
  */
-export function columnCells(
-  doc: Doc,
-  top: ItemId,
-  columns: Column[],
-  filter: ViewFilter = { showCompleted: true },
-): Map<ItemId, Map<string, Cell>> {
+export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: ViewFilter = { showCompleted: true }): (id: ItemId, key: string) => Cell | null {
   const byKey = new Map(columns.map((column) => [column.key, column]));
   const known = new Map<string, Value>();
   const computing = new Set<string>();
@@ -229,18 +243,7 @@ export function columnCells(
     };
   };
 
-  const cells = new Map<ItemId, Map<string, Cell>>();
-  const visit = (id: ItemId) => {
-    const row = new Map<string, Cell>();
-    for (const column of columns) {
-      const cell = valueOf(id, column.key).cell;
-      if (cell) row.set(column.key, cell);
-    }
-    cells.set(id, row);
-    children(id).forEach(visit);
-  };
-  visit(top);
-  return cells;
+  return (id, key) => valueOf(id, key).cell;
 }
 
 /**

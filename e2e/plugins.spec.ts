@@ -51,6 +51,8 @@ const HELPER = [
   'outline.command("Rate", async (item) => { const read = await outline.item(item); outline.toast("effort " + read.properties.effort); await outline.setProperty(item, "status", "rated") })',
   'outline.command("Broken", () => { outline.setText("nope", "x") })',
   'outline.command("Escalate", async (item) => outline.setProperty(item, "private", "mine"))',
+  'outline.command("Seal", async (item) => outline.setNote(item, ":private: mine\\nsecret"))',
+  'outline.command("Approval", async (item) => outline.toast("approved: " + (await outline.item(item)).properties.approved))',
   "```",
 ].join("; ");
 
@@ -70,6 +72,13 @@ test("plugin calls take an item or its id, read and set properties, and report e
 
   await runCommand(page, "task", "helper: escalate");
   await expect(page.locator("#toast")).toContainText("helper: a plugin cannot change the private setting");
+
+  await runCommand(page, "task", "helper: seal");
+  await expect(page.locator("#toast")).toContainText("helper: a plugin cannot change the private setting");
+  await expect(row(page, "task").locator(".note")).toBeHidden();
+
+  await runCommand(page, "Helper", "helper: approval");
+  await expect(page.locator("#toast")).toContainText("helper: approved: undefined");
 });
 
 async function approveAll(page: Page) {

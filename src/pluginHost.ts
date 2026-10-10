@@ -1,6 +1,6 @@
 import { $, commitAndRender, doc, state } from "./app";
 import { ItemId, insertChild, isDescendant, newChildIndex, setItemProperty, setNote, setText } from "./model";
-import { propertyKey } from "./notes";
+import { propertiesOf, propertyKey } from "./notes";
 import { Plugin, TRUST_KEY, approvalOf, isApproved, pluginsIn } from "./plugins";
 import { addKey, keys } from "./keyring";
 import { newKey } from "./sync/privacy";
@@ -106,8 +106,13 @@ function answer(event: MessageEvent): void {
   }
 }
 
-/** Settings that would let a plugin seal items, start another plugin or vouch for one. */
+/** Settings that would let a plugin seal items, start another plugin or vouch for one, set directly or as a note line. */
 const GUARDED_SETTINGS = new Set(["private", "plugin", "approved"]);
+
+function refuseGuarded(keys: string[]): void {
+  const guarded = keys.find((key) => GUARDED_SETTINGS.has(key));
+  if (guarded) throw new Error(`a plugin cannot change the ${guarded} setting`);
+}
 
 function perform(call: Call, plugin: Plugin): unknown {
   const active = call.run === null ? undefined : runs.get(call.run);
@@ -121,13 +126,14 @@ function perform(call: Call, plugin: Plugin): unknown {
   switch (call.method) {
     case "item": {
       const item = doc().items[reachable(call.args[0])];
-      return { id: item.id, text: item.text, note: item.note, properties: { ...item.properties }, children: item.children };
+      const { approved: _, ...properties } = item.properties;
+      return { id: item.id, text: item.text, note: item.note, properties, children: item.children };
     }
     case "setProperty": {
       const id = reachable(call.args[0]);
       const key = propertyKey(text(call.args[1]));
       if (!key) throw new Error("a property key is up to 64 letters, digits, - or _");
-      if (GUARDED_SETTINGS.has(key)) throw new Error(`a plugin cannot change the ${key} setting`);
+      refuseGuarded([key]);
       commitAndRender(setItemProperty(doc(), id, key, text(call.args[2])), null);
       return null;
     }
@@ -138,7 +144,9 @@ function perform(call: Call, plugin: Plugin): unknown {
     }
     case "setNote": {
       const id = reachable(call.args[0]);
-      commitAndRender(setNote(doc(), id, text(call.args[1])), null);
+      const note = text(call.args[1]);
+      refuseGuarded([...propertiesOf(note).keys()]);
+      commitAndRender(setNote(doc(), id, note), null);
       return null;
     }
     case "add": {

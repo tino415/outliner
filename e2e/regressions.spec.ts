@@ -522,3 +522,59 @@ test("Backspace on an emptied item with a property removes it, and the property 
   await page.locator("#toast").getByRole("button", { name: "Undo" }).click();
   await expect(page.locator(".tree .row").nth(1).locator(".prop-chip")).toHaveText("effort 1h");
 });
+
+test("nothing is joined out of a private item, its headline included, so nothing in it goes out in plain", async ({ page }) => {
+  await freshOutline(page, "Before\nJournal | :private: personal; my diary\n  secret");
+  await editor(page, "Journal").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Backspace");
+  await expect(page.locator("#toast")).toContainText("private");
+  await clickEnd(page, "Before");
+  await page.keyboard.press("Delete");
+  await expectOutline(page, "Before\nJournal\n  secret");
+  await editor(page, "secret").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Backspace");
+  await clickEnd(page, "Journal");
+  await page.keyboard.press("Delete");
+  await expectOutline(page, "Before\nJournal\n  secret");
+});
+
+test("Ctrl-J followed by a click elsewhere is cancelled, so the next letter types", async ({ page }) => {
+  await freshOutline(page, "one\ntwo");
+  await clickEnd(page, "one");
+  await page.keyboard.press("ControlOrMeta+j");
+  await editor(page, "two").click();
+  await page.keyboard.type("x");
+  await expect.poll(() => outlineText(page)).toContain("x");
+  await expect(page.locator("#palette")).toBeHidden();
+});
+
+test("holding Ctrl-J does not take its own repeat as the next key", async ({ page }) => {
+  await freshOutline(page, "one");
+  await clickEnd(page, "one");
+  await page.keyboard.down("ControlOrMeta");
+  await page.keyboard.down("j");
+  await page.keyboard.down("j");
+  await page.keyboard.up("j");
+  await page.keyboard.up("ControlOrMeta");
+  await expect(page.locator("#palette")).toBeHidden();
+});
+
+test("with the tag list open, the key after Ctrl-J goes to the prefix, not to the list", async ({ page }) => {
+  await freshOutline(page, "a #project\nb");
+  await clickEnd(page, "b");
+  await page.keyboard.type(" #pro");
+  await expect(page.locator(".completion")).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("x");
+  await expectOutline(page, "a #project\nb #prox");
+});
+
+test("Ctrl-K never puts a command that deletes above the items, so Enter cannot clear the page by surprise", async ({ page }) => {
+  await freshOutline(page, "Unclear requirements\nother");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type("clear");
+  await expect(page.locator(".palette-results li").first()).toContainText("Unclear requirements");
+});

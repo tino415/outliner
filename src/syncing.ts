@@ -1,8 +1,8 @@
 import { Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf } from "./model";
 import { Clock, newDeviceId } from "./sync/clock";
 import { Endpoint, SyncError, exchange } from "./sync/client";
-import { MAX_TEXT } from "./sync/protocol";
-import { Change, Replica, allChanges, diff, materialize, merge } from "./sync/replica";
+import { MAX_TEXT, isPropertyField } from "./sync/protocol";
+import { Change, Field, Replica, allChanges, diff, materialize, merge } from "./sync/replica";
 import { $, commitAndRender, doc, onChangeHere, state } from "./app";
 import { caretNow } from "./editing";
 import { zoomTo } from "./navigation";
@@ -322,10 +322,20 @@ function clockFor(state: Saved): Clock {
 
 function loadSaved(): Saved | null {
   try {
-    return JSON.parse(localStorage.getItem(SYNC_KEY) ?? "null");
+    const stored: Saved | null = JSON.parse(localStorage.getItem(SYNC_KEY) ?? "null");
+    return stored && withoutRefusedKeys(stored);
   } catch {
     return null;
   }
+}
+
+/** An older build could queue a property whose key the server refuses; one such change would stop every round. */
+function withoutRefusedKeys(stored: Saved): Saved {
+  const accepted = (field: string) => !field.startsWith("prop:") || isPropertyField(field);
+  for (const fields of Object.values(stored.replica)) {
+    for (const field of Object.keys(fields)) if (!accepted(field)) delete fields[field as Field];
+  }
+  return { ...stored, pending: stored.pending.filter((change) => accepted(change.field)) };
 }
 
 function write(): void {
