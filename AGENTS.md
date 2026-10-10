@@ -34,7 +34,9 @@ before writing and do not delete without being asked.
 
 - The remote is `git@github.com:tino415/outliner.git` (private); `main` there
   holds all work so far. Work on a branch and open a PR; do not push to
-  `main`.
+  `main` directly. Martin left merging and publishing to the agent
+  (2026-10-10): once the tests pass, merge the PR yourself and publish,
+  without waiting for him. Rebuilding `sync` still needs the backup first.
 - A session working in a worktree under `.claude/worktrees/` cannot run git
   in the main checkout (`<main checkout>`); to pull main there (needed
   before rebuilding `sync`), leave the worktree keeping it, run git in the
