@@ -1062,6 +1062,15 @@ code {
   color: var(--muted);
 }
 
+.prop-chip.computed .prop-value {
+  color: var(--accent);
+}
+
+.prop-chip.error .prop-value {
+  color: light-dark(#b3261e, #ff8a80);
+  font-style: italic;
+}
+
 .prop-chip.setting {
   color: var(--muted);
   background: none;
