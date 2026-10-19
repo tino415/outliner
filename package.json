@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5188",
-    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vite build && vite build -c vite.node.config.ts",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vite build && npm run build:node",
     "preview": "vite preview --host 0.0.0.0 --port 5188",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "build:node": "rm -rf dist-node && vite build -c vite.node.config.ts --mode server && vite build -c vite.node.config.ts --mode outline"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
