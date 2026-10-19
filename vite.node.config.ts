@@ -1,15 +1,17 @@
 import { defineConfig } from "vite";
 
-/** Bundles the sync server and the CLI into single files Node runs directly. */
-export default defineConfig({
+const entries: Record<string, string> = { server: "server/main.ts", outline: "cli/main.ts" };
+
+/** Bundles the sync server and the CLI each into a single file Node runs directly; `--mode` picks which. */
+export default defineConfig(({ mode }) => ({
   build: {
     ssr: true,
     target: "node24",
     outDir: "dist-node",
-    emptyOutDir: true,
+    emptyOutDir: false,
     rollupOptions: {
-      input: { server: "server/main.ts", outline: "cli/main.ts" },
-      output: { entryFileNames: "[name].mjs", format: "es" },
+      input: { [mode]: entries[mode] },
+      output: { entryFileNames: "[name].mjs", format: "es", inlineDynamicImports: true },
     },
   },
-});
+}));

@@ -29,7 +29,7 @@ buildNpmPackage {
 
   buildPhase = ''
     runHook preBuild
-    npx vite build -c vite.node.config.ts
+    npm run build:node
     runHook postBuild
   '';
 
