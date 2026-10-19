@@ -10,6 +10,7 @@ export interface RunningServer {
 }
 
 const attemptsAtAFreePort = 5;
+const graceBeforeKilling = 3000;
 
 /** A sync server of its own for one test: the bundled build, a fresh database, a free port. */
 export async function startSyncServer(): Promise<RunningServer> {
@@ -43,9 +44,20 @@ async function startAtRandomPort(): Promise<RunningServer> {
     url: `http://127.0.0.1:${port}`,
     token,
     stop: async () => {
-      child.kill();
-      await new Promise((resolve) => child.on("exit", resolve));
+      await stopWithin(child, graceBeforeKilling);
       rmSync(directory, { recursive: true, force: true });
     },
   };
+}
+
+async function stopWithin(child: ChildProcess, grace: number): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise((resolve) => child.on("exit", resolve));
+  child.kill("SIGTERM");
+  const killing = setTimeout(() => {
+    console.warn(`sync server ${child.pid} still running ${grace} ms after SIGTERM; killing it`);
+    child.kill("SIGKILL");
+  }, grace);
+  await exited;
+  clearTimeout(killing);
 }

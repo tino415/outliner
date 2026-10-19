@@ -1,4 +1,4 @@
-# 39. One check command, and Playwright projects pick tests by tag
+# 40. One check command, Playwright projects pick tests by tag, and flaky tests leave the gate
 
 - **Status:** accepted, 2026-10-20
 - **Applies to:** `package.json`, `playwright.config.ts`, `e2e/skip-gate.ts`, `tests/playwright-projects.test.ts`, the spec files' tags
@@ -31,10 +31,21 @@ none of them.
 
 **The performance tests run in a project of their own**, tagged
 `@performance`, which depends on every other project and so starts once
-they are done, its two tests one after the other, each retried up to twice. Under the
-full run they missed their 50 ms budget with the machine loaded and passed
-alone; other sessions' suites load the machine even when this one runs
+they are done, its two tests one after the other, each retried up to
+twice. Under the full run they missed their 50 ms budget with the machine
+loaded and passed alone; other sessions' suites load the machine even when this one runs
 nothing else, so a slowdown counts only when all three tries see it.
+
+**The sync tests' servers stop for sure.** `e2e/sync-server.ts` starts
+again at another random port when the first is taken (it was, once, in a
+full run), and kills a server still running 3 s after SIGTERM. In 320 runs
+of `sync.spec.ts` under load three servers were still running then,
+because `server.close()` waits for the browsers' open connections; the
+afterEach hook used to wait for them until the test's 30 s ran out, as
+the test "the CLI and the app see each other's changes" once did. The
+server's own fix is a card of its own, as it changes `server/`.
+
+**A new test runs with `--repeat-each 5` before a merge.**
 
 **No CI on GitHub.** The repository is private, the suite needs the
 Playwright image, and every merge already runs the suite on this machine.
