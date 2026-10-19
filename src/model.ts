@@ -288,7 +288,7 @@ export function setNote(doc: Doc, id: ItemId, note: string): Doc {
 // ---- properties (doc/adr/0032) ---------------------------------------------------------
 
 /** Properties that set up the app rather than describe the item: shown muted, never offered as columns. */
-export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved"]);
+export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved", "shortcuts"]);
 
 /** Sets `key` to `value` on the item; an empty value removes it, and a key the sync server would refuse changes nothing. */
 export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string): Doc {
