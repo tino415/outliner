@@ -304,8 +304,33 @@ bin/outline move <id> --under Archive
 bin/outline move <id> --after "Projects/Garden"   # beside it, under its parent
 bin/outline add "Call the plumber" --before "Inbox/Pay rent"
 bin/outline export --opml > outline.opml
+bin/outline watch --json                  # a line per change, made anywhere, until stopped
 bin/outline help
 ```
+
+`outline watch` asks the server for what is newer every 5 seconds
+(`--every N`) and prints each change made from then on, on any device:
+`{"event":"moved","id":…,"from":…,"to":…}`, and `added`, `completed`
+(also reopening) and `changed`, as plugins get them (doc/adr/0039).
+Private items print nothing. A script does the rest with `jq` and the
+other commands; this one is the `:completes: yes` plugin of the Plugins
+section, for moves made anywhere:
+
+```sh
+completes() { [ -n "$1" ] && outline show "$1" --json --depth 0 | jq -e '.properties.completes == "yes"' >/dev/null; }
+outline watch --json | jq --unbuffered -c 'select(.event == "moved" or .event == "added")' |
+  while read -r event; do
+    id=$(jq -r .id <<<"$event")
+    from=$(jq -r '.from // ""' <<<"$event")
+    to=$(jq -r .to <<<"$event")
+    done=$(outline show "$id" --json --depth 0 | jq -r '.completed // false')
+    if completes "$to"; then [ "$done" = true ] || outline done "$id" >/dev/null
+    elif completes "$from" && [ "$done" = true ]; then outline undone "$id" >/dev/null; fi
+  done
+```
+
+Its own `outline done` comes back as a `completed` event, which it does
+not listen to. Where it runs it has the token, with no sandbox or approval.
 
 `bin/outline` runs the CLI in the `app` container, which has the token and
 the server address. Elsewhere, install the `outline` package from the flake
