@@ -82,7 +82,7 @@ before writing and do not delete without being asked.
   Playwright project (desktop, phone, iPhone, Firefox). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
-- Projects pick tests by tag (doc/adr/0040). Untagged tests run on desktop
+- Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
   and iPhone, never desktop), `@keys` adds Firefox (and WebKit with
   `WEBKIT=1`). Tag a test `{ tag: "@phone" }`, or a whole `test.describe`;

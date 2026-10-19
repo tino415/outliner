@@ -1,4 +1,4 @@
-# 40. One check command, Playwright projects pick tests by tag, and flaky tests leave the gate
+# 41. One check command, Playwright projects pick tests by tag, and flaky tests leave the gate
 
 - **Status:** accepted, 2026-10-20
 - **Applies to:** `package.json`, `playwright.config.ts`, `e2e/skip-gate.ts`, `tests/playwright-projects.test.ts`, the spec files' tags
