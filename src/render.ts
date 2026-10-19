@@ -183,6 +183,7 @@ export function titleFor(id: ItemId): string {
 interface RenderedRow {
   item: Item;
   state: string;
+  noteOpen: boolean;
   li: HTMLLIElement;
 }
 
@@ -193,6 +194,12 @@ let rowsSeen = new Set<ItemId>();
 export function rowShowsTypedText(id: ItemId): void {
   const rendered = renderedRows.get(id);
   if (rendered) rendered.item = doc().items[id];
+}
+
+/** Opening a note un-hides it without a render; the row now shows it open. */
+export function rowShowsOpenedNote(id: ItemId): void {
+  const rendered = renderedRows.get(id);
+  if (rendered) rendered.noteOpen = true;
 }
 
 function renderTree(): void {
@@ -225,14 +232,14 @@ function renderItem(id: ItemId): HTMLLIElement {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
+  const displayState = `${hasChildren} ${expanded} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
 
   let rendered = renderedRows.get(id);
-  if (!rendered || rendered.item !== item || rendered.state !== displayState) {
+  if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
     li.prepend(createRow(item, expanded, noteOpen, cells, results));
-    rendered = { item, state: displayState, li };
+    rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
 
