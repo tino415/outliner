@@ -37,7 +37,7 @@ dev-run env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which
 Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
-P property, K kind, L link, A attach, X private, M move to, D duplicate,
+P property, K kind, L link, ; date, A attach, X private, M move to, D duplicate,
 B board, C columns, N capture, and J again to jump to an item. Pausing
 after it shows what can follow; ? lists every shortcut. Alt-Shift with a
 letter is left to typing, as many layouts need it.
@@ -119,6 +119,19 @@ use. The `#` must start a line or follow a space or an opening bracket, and
 the tag needs a letter, so `.#flake`, `a#b` and `#123` stay plain text.
 `\#word` writes a plain `#word` (the backslash shows only while editing), and
 so does anything in backticks.
+
+## Dates
+
+A date is written as ISO text, `2026-10-14` or `2026-10-14 9:00`, in an
+item, a note or a property, and shows as a chip: "today", "tomorrow",
+"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J ; (⌘J ;) or typing `!!`
+asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
+`14.10.`, `14 oct`, `25` (the next 25th), each with an optional `9:00`. A
+click on a chip changes or removes it. The properties `scheduled` and
+`due` take their value from the same picker. Search understands
+`due:today`, `due:<+7d`, `scheduled:this-week`, `date:>=2026-10-01` (any
+date of the item: `scheduled`, `due` or one in its text) and `is:overdue`
+(open, every date passed).
 
 ## Order of new and completed items
 

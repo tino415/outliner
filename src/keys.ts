@@ -99,6 +99,7 @@ const bindings: Binding[] = [
   editor(["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
   editor(["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor(["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
+  editor(["Mod+j ;"], "Insert a date…", (c) => actions.insertDate(c)),
   editor(["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor(["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
   editor(["Mod+z"], "Undo", () => globalActions.undo()),

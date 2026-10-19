@@ -133,15 +133,15 @@ test.describe("keyboard editing", () => {
     await freshOutline(page, "a\nb");
     await clickEnd(page, "b");
     await page.keyboard.press("Tab");
-    await page.keyboard.type("!!");
-    await expectOutline(page, "a\n  b!!");
+    await page.keyboard.type("++");
+    await expectOutline(page, "a\n  b++");
     await page.keyboard.press("ControlOrMeta+z");
     await expectOutline(page, "a\n  b");
     await page.keyboard.press("ControlOrMeta+z");
     await expectOutline(page, "a\nb");
     await page.keyboard.press("ControlOrMeta+Shift+z");
     await page.keyboard.press("ControlOrMeta+y");
-    await expectOutline(page, "a\n  b!!");
+    await expectOutline(page, "a\n  b++");
   });
 
   test("Ctrl-Shift-Backspace deletes an item with an undo toast", async ({ page }) => {
