@@ -132,8 +132,8 @@ function focusAfterRenaming(focus: FocusRequest, renamed: Map<ItemId, ItemId>): 
  */
 export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null, typingKey: string | null = null): void {
   const renamed = commit(next, typingKey, caretBefore);
-  if (renamed.size > 0) render(caretNow());
   rowShowsTypedText(id);
+  if (renamed.size > 0) render(caretNow());
   if (state.query) state.keptInResults.add(id);
 }
 
