@@ -44,7 +44,7 @@ import { bindingFor, bindingForKeys } from "./keys";
 import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
 import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
-import { END, editorFor, focusCaret, itemElementFor, replayAnimation, textEditorFor, titleFor, treeEditors } from "./render";
+import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
 
@@ -391,6 +391,7 @@ export const actions = {
     const note = editorFor(c.id, "note");
     if (!note) return;
     note.hidden = false;
+    rowShowsOpenedNote(c.id);
     focusCaret({ id: c.id, offset: END, inNote: true });
   },
 
