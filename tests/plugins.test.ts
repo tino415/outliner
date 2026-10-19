@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
-import { approvalOf, codeOf, isApproved, pluginsIn } from "../src/plugins";
+import { approvalOf, codeOf, isApproved, listenedEvents, pluginsIn } from "../src/plugins";
 import { newKey } from "../src/sync/privacy";
 
 const CODE = 'outline.command("Shout", async (item) => outline.setText(item.id, item.text.toUpperCase()));\n';
@@ -28,5 +28,10 @@ describe("plugins", () => {
     expect(await isApproved(approved, newKey())).toBe(false);
     const [changed] = pluginsIn(withPlugin(`:plugin: shout\n:approved: ${approval}\n\`\`\`js\n${CODE}fetch("x")\n\`\`\``));
     expect(await isApproved(changed, trust)).toBe(false);
+  });
+
+  it("show which events they listen to, read from the code before it runs", () => {
+    expect(listenedEvents('outline.on("moved", f); outline.on( \'added\', g); outline.on("moved", h)')).toEqual(["moved", "added"]);
+    expect(listenedEvents(CODE)).toEqual([]);
   });
 });

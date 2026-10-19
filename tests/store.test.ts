@@ -49,4 +49,20 @@ describe("undo history", () => {
     history.commit(history.doc, null);
     expect(history.undo(null)).toBeUndefined();
   });
+
+  it("joins a change into the newest step only while nothing came after the change it follows", () => {
+    const history = new History(start);
+    history.commit(setText(history.doc, a, "moved"), null);
+    const afterMove = history.version;
+    history.commitJoining(setText(history.doc, a, "moved, done"), afterMove);
+    history.undo(null);
+    expect(history.doc.items[a].text).toBe("a");
+
+    history.commit(setText(history.doc, a, "moved"), null);
+    const later = history.version;
+    history.commit(setText(history.doc, a, "typed"), null);
+    history.commitJoining(setText(history.doc, a, "typed, done"), later);
+    history.undo(null);
+    expect(history.doc.items[a].text).toBe("typed");
+  });
 });
