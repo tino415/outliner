@@ -28,6 +28,7 @@ import { isSealed, propertyKey, propertyLines, sealedKeyOf } from "../src/notes"
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
+import { watch } from "./watch";
 
 export const USAGE = `outline: read and change the synced outline
 
@@ -51,6 +52,9 @@ commands:
                            its hash
   file HASH PATH           save the attached file with that hash to PATH
   export [ITEM]            --md (default), --opml or --json
+  watch                    keep running and print a line per change made
+                           anywhere from now on: added, moved, completed
+                           (or reopened), changed; --json for scripts
 
 ITEM is an item id, or a path of item texts separated by "/", like
 "Projects/Garden". "/" alone is the top of the outline.
@@ -69,6 +73,7 @@ options:
   --template T   the capture template named T, or with :key: T
   --set K=V      a property for capture; repeat for more
   --limit N      how many items find prints (default 20)
+  --every N      how many seconds watch waits between asking (default 5)
   --server URL   the sync server (default: $OUTLINE_SERVER)
   --token TOKEN  its token (default: $OUTLINE_TOKEN)
 
@@ -95,18 +100,30 @@ interface Options {
   template?: string;
   set: string[];
   limit: number;
+  every: number;
   format: "md" | "opml" | "json";
   server?: string;
   token?: string;
 }
 
-export async function run(argv: string[], env: Record<string, string | undefined>, stdin = ""): Promise<Outcome> {
+export interface Streaming {
+  print: (line: string) => void;
+  signal?: AbortSignal;
+}
+
+const toStdout: Streaming = { print: (line) => process.stdout.write(`${line}\n`) };
+
+export async function run(argv: string[], env: Record<string, string | undefined>, stdin = "", streaming = toStdout): Promise<Outcome> {
   try {
     const { words, options } = parseArguments(argv);
     const [command, ...args] = words;
     if (!command || command === "help" || argv.includes("--help")) return { output: USAGE, code: command ? 0 : 1 };
     const endpoint = { server: options.server ?? env.OUTLINE_SERVER ?? "", token: options.token ?? env.OUTLINE_TOKEN ?? "" };
     if (!endpoint.server || !endpoint.token) return fail("set OUTLINE_SERVER and OUTLINE_TOKEN in the environment or ~/.config/outline/config, or pass --server and --token");
+    if (command === "watch") {
+      await watch(endpoint, { ...streaming, json: options.json, intervalMs: options.every * 1000 });
+      return { output: "", code: 0 };
+    }
     const outline = await Outline.fetch(endpoint);
     const output = await perform(command, args, options, outline, stdin);
     return { output, code: 0 };
@@ -433,7 +450,7 @@ function fail(message: string): Outcome {
 // ---- arguments ---------------------------------------------------------------------------
 
 function parseArguments(argv: string[]): { words: string[]; options: Options } {
-  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, format: "md", set: [] };
+  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, every: 5, format: "md", set: [] };
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -453,6 +470,7 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
     else if (arg === "--after") options.after = value();
     else if (arg === "--note") options.note = value();
     else if (arg === "--limit") options.limit = Number(value());
+    else if (arg === "--every") options.every = positive(arg, value());
     else if (arg === "--template") options.template = value();
     else if (arg === "--set") options.set.push(value());
     else if (arg === "--server") options.server = value();
@@ -464,3 +482,9 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
   return { words, options };
 }
 
+
+function positive(option: string, value: string): number {
+  const number = Number(value);
+  if (!(number > 0)) throw new Error(`${option} needs a number of seconds above 0`);
+  return number;
+}
