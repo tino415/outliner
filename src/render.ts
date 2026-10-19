@@ -14,6 +14,7 @@ import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
 import { today } from "./dates";
 import { agendaShown, renderAgenda } from "./agenda";
+import { followShortcutSettings } from "./keys";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -27,6 +28,7 @@ let dayRendered = today();
 export function render(request: FocusRequest): void {
   const candidates = request === null ? [] : [request].flat();
   pluginsMayHaveChanged();
+  followShortcutSettings(doc());
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
   formulaCellOf = null;
