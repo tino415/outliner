@@ -78,10 +78,22 @@ before writing and do not delete without being asked.
 
 ## Tests
 
-- Each Playwright project runs a subset picked by file name in
-  `playwright.config.ts` (`phone` runs only `mobile`, `screenshots` and
-  `columns` specs). A new spec file outside those names never runs on the
-  phone.
+- The merge gate is `dev-run npm run check`: build, unit suite, and every
+  Playwright project (desktop, phone, iPhone, Firefox). It fails on a
+  skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
+  `test.only`. Do not merge on anything less.
+- Projects pick tests by tag (doc/adr/0038). Untagged tests run on desktop
+  only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
+  and iPhone, never desktop), `@keys` adds Firefox (and WebKit with
+  `WEBKIT=1`). Tag a test `{ tag: "@phone" }`, or a whole `test.describe`;
+  a phone bug's test in `regressions.spec.ts` needs `@phone`.
+  `tests/playwright-projects.test.ts` checks that every spec file runs
+  somewhere, not that a test has the tag it needs.
+- The performance tests (`@performance`) run last, in a project of their
+  own that waits for all the others and retries twice, so a machine
+  loaded by other sessions does not push them over their budget. A
+  "flaky" performance test in the summary means it was slow at least once. Run them alone with
+  `npx playwright test --project=performance --no-deps`.
 - Real touch input goes through the Chrome DevTools protocol
   (`Input.dispatchTouchEvent`), so touch tests skip outside Chromium.
   Chrome itself swallows a tap that follows a fast swipe (it stops the
