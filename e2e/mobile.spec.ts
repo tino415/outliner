@@ -38,6 +38,21 @@ test("the toolbar's Property button sets a property without typing a line", asyn
   await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
 });
 
+test("typing !! on the phone picks a date, and a tap on its chip changes it", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
+  await freshOutline(page, "Soup");
+  await editor(page, "Soup").tap();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" !!");
+  await page.locator("#palette li", { hasText: "Tue 20 Oct" }).tap();
+  await expect.poll(async () => (await caret(page)).text).toBe("Soup 2026-10-20");
+  await page.getByRole("button", { name: "Done editing" }).tap();
+  await row(page, "Soup 2026-10-20").locator(".date").tap();
+  await page.locator("#palette input").fill("fri");
+  await page.locator("#palette li").first().tap();
+  await expect(row(page, "Soup 2026-10-23").locator(".date")).toHaveAttribute("data-label", "Fri 23 Oct");
+});
+
 test("the item being edited shows a button that adds a property", async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await expect(row(page, "Soup").getByRole("button", { name: "Add a property" })).toBeHidden();

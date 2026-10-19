@@ -14,6 +14,7 @@ import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from ".
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
+import { today } from "./dates";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -78,6 +79,8 @@ export function start(): void {
   }, isSyncing);
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && renderIfTheDayChanged());
+  window.addEventListener("focus", renderIfTheDayChanged);
   onSaveFailed(() => toast("Could not save: browser storage is full. Export a backup from the menu."));
   render(null);
   saveDocSoon(doc());
@@ -88,6 +91,15 @@ export function start(): void {
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();
   captureFromAddress();
+}
+
+let dayShown = today();
+
+/** Date chips say "today" and "tomorrow"; a page left open overnight says them of the new day once it is looked at again. */
+function renderIfTheDayChanged(): void {
+  if (today() === dayShown) return;
+  dayShown = today();
+  render(caretNow());
 }
 
 /** Properties written as `:key: value` note lines, before they had a field of their own or by an older build, become properties (doc/adr/0032). */
