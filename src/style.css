@@ -2187,3 +2187,69 @@ body.dragging {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* The agenda (doc/adr/0037): its own heading in place of the page's, rows without a fold toggle. */
+.page.with-agenda .page-head,
+.page.with-agenda .add-item,
+.page.with-agenda .columns-head {
+  display: none;
+}
+
+.agenda-title,
+.agenda-range,
+.agenda-section h2,
+.agenda-empty {
+  padding-left: calc(var(--bullet-col) - 2px);
+}
+
+.agenda-range {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.agenda-section {
+  margin-top: 22px;
+}
+
+.agenda-section h2 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.agenda-overdue h2 {
+  color: var(--overdue);
+}
+
+.agenda-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-item > .row {
+  grid-template-columns: var(--bullet-col) minmax(0, 1fr);
+}
+
+.agenda-path {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agenda-path:hover {
+  color: var(--accent);
+}
+
+.agenda-empty {
+  margin-top: 22px;
+  color: var(--muted);
+}

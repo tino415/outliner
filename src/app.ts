@@ -26,6 +26,7 @@ export const ui = {
   titleNote: $("title-note"),
   tree: $<HTMLUListElement>("tree"),
   board: $("board"),
+  agenda: $("agenda"),
   addItem: $<HTMLButtonElement>("add-item"),
   search: $<HTMLInputElement>("search"),
   searchSummary: $("search-summary"),

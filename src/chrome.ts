@@ -13,6 +13,7 @@ import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from 
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
 import { bindBoard, boardShown, toggleBoard } from "./board";
+import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
@@ -26,6 +27,7 @@ export function bindChrome(): void {
   endSelectionWhenSomethingTakesFocus();
   bindColumnCells();
   bindBoard();
+  bindAgenda();
   bindPropertyChips();
 
   window.addEventListener("hashchange", showZoom);
@@ -83,7 +85,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -233,6 +235,10 @@ function bindSearchBox(): void {
 }
 
 const menuActions: Record<string, () => void> = {
+  agenda: () => {
+    ui.menu.hidePopover();
+    openAgenda();
+  },
   jump: () => {
     ui.menu.hidePopover();
     searchEverything(paletteCommands());

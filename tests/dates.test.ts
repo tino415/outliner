@@ -106,8 +106,8 @@ describe("an item's dates", () => {
   it("are its scheduled and due properties and the dates in its text, not in code or its note", () => {
     const dated = item({ text: "Call 2026-10-20 or `2026-10-21`", note: "2026-10-22", properties: { due: "2026-10-23 9:00", scheduled: "soon" } });
     expect(datesOf(dated)).toEqual([
-      { day: "2026-10-23", role: "due" },
-      { day: "2026-10-20", role: "text" },
+      { day: "2026-10-23", time: "9:00", role: "due" },
+      { day: "2026-10-20", time: null, role: "text" },
     ]);
   });
 

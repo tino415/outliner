@@ -53,6 +53,21 @@ test("typing !! on the phone picks a date, and a tap on its chip changes it", as
   await expect(row(page, "Soup 2026-10-23").locator(".date")).toHaveAttribute("data-label", "Fri 23 Oct");
 });
 
+test("the phone opens the agenda from the menu, and its toolbar does not move items there", async ({ page }, info) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
+  await freshOutline(page, "Home\n  Pay rent 2026-10-15\n  Water plants 2026-10-21");
+  await page.locator("#menu-button").tap();
+  await page.locator('[data-action="agenda"]').tap();
+  await expect(page.locator("#agenda .agenda-section h2")).toHaveText(["Overdue", "Wed 21 Oct"]);
+  await page.screenshot({ path: `screenshots/${info.project.name}-agenda.png` });
+  await page.locator("#agenda .agenda-item .text", { hasText: "Water plants" }).tap({ position: { x: 4, y: 8 } });
+  await page.getByRole("button", { name: "Indent" }).tap();
+  await page.getByRole("button", { name: "Complete" }).tap();
+  await expect(page.locator("#agenda .agenda-item.completed .text")).toHaveText("Water plants 2026-10-21");
+  await page.goto("./#/i0");
+  await expectOutline(page, "Pay rent 2026-10-15\nWater plants 2026-10-21 [x]");
+});
+
 test("the item being edited shows a button that adds a property", async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await expect(row(page, "Soup").getByRole("button", { name: "Add a property" })).toBeHidden();
