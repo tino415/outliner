@@ -1,4 +1,4 @@
-# 38. One check command, and Playwright projects pick tests by tag
+# 39. One check command, and Playwright projects pick tests by tag
 
 - **Status:** accepted, 2026-10-20
 - **Applies to:** `package.json`, `playwright.config.ts`, `e2e/skip-gate.ts`, `tests/playwright-projects.test.ts`, the spec files' tags
