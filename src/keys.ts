@@ -2,7 +2,7 @@ import { EditorContext, actions } from "./editing";
 import { selectionActions } from "./selection";
 import { globalActions } from "./chrome";
 import { escape } from "./inline";
-import { isMac } from "./platform";
+import { Platform, isMac, platform } from "./platform";
 import { moveSideways, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
 import { Doc } from "./model";
@@ -196,20 +196,20 @@ function keysOfUnnamedCommands(): string[] {
  * first. Elsewhere Ctrl is Mod, and a Ctrl binding only gets the keys no Mod
  * binding wants, so Ctrl-F stays search and Ctrl-B bold.
  */
-export function bindingFor<C extends Binding["context"]>(event: KeyboardEvent, context: C): BindingIn<C> | null {
+export function bindingFor<C extends Binding["context"]>(event: KeyboardEvent, context: C, on: Platform = platform): BindingIn<C> | null {
   const keys = keyString(event);
   if (!pressesCtrlItself(event)) return bindingForKeys(keys, context);
   const ctrlKeys = keys.replace(/^Mod\+/, "Ctrl+");
-  if (isMac) return bindingForKeys(ctrlKeys, context) ?? bindingForKeys(keys, context);
-  return isShadowed(ctrlKeys) ? bindingForKeys(keys, context) : (bindingForKeys(keys, context) ?? bindingForKeys(ctrlKeys, context));
+  if (on === "mac") return bindingForKeys(ctrlKeys, context) ?? bindingForKeys(keys, context);
+  return isShadowed(ctrlKeys, on) ? bindingForKeys(keys, context) : (bindingForKeys(keys, context) ?? bindingForKeys(ctrlKeys, context));
 }
 
 function pressesCtrlItself(event: KeyboardEvent): boolean {
   return event.ctrlKey && !event.metaKey;
 }
 
-function isShadowed(keys: string): boolean {
-  if (isMac || !keys.startsWith("Ctrl+")) return false;
+function isShadowed(keys: string, on: Platform = platform): boolean {
+  if (on === "mac" || !keys.startsWith("Ctrl+")) return false;
   const asMod = keys.replace(/^Ctrl\+/, "Mod+");
   return bindings.some((binding) => binding.keys.includes(asMod));
 }
