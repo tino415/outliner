@@ -40,3 +40,8 @@ export async function approvalOf(code: string, trustKey: string): Promise<string
 export async function isApproved(plugin: Plugin, trustKey: string | undefined): Promise<boolean> {
   return Boolean(trustKey && plugin.approval && plugin.approval === (await approvalOf(plugin.code, trustKey)));
 }
+
+/** The events a plugin's code listens to, read from its text so they can be shown before it is approved and runs. */
+export function listenedEvents(code: string): string[] {
+  return [...new Set([...code.matchAll(/outline\.on\(\s*["'`](\w+)["'`]/g)].map((match) => match[1]))];
+}

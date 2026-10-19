@@ -23,6 +23,7 @@ export class History {
   private future: Snapshot[] = [];
   private lastTypingKey: string | null = null;
   private lastTypingAt = 0;
+  version = 0;
 
   constructor(public doc: Doc) {}
 
@@ -38,7 +39,15 @@ export class History {
     this.lastTypingKey = typingKey;
     this.lastTypingAt = now;
     this.future = [];
-    this.doc = next;
+    this.become(next);
+  }
+
+  /** Folds `next` into the newest undo step if the document is still at `version`; otherwise it is a step of its own. */
+  commitJoining(next: Doc, version: number): void {
+    if (next === this.doc) return;
+    if (version !== this.version || this.past.length === 0) return this.commit(next, null);
+    this.future = [];
+    this.become(next);
   }
 
   replaceFromElsewhere(next: Doc): void {
@@ -51,14 +60,14 @@ export class History {
     this.past = [];
     this.future = [];
     this.lastTypingKey = null;
-    this.doc = next;
+    this.become(next);
   }
 
   undo(caretNow: Caret | null): Caret | null | undefined {
     const previous = this.past.pop();
     if (!previous) return undefined;
     this.future.push({ doc: this.doc, caret: caretNow });
-    this.doc = previous.doc;
+    this.become(previous.doc);
     this.lastTypingKey = null;
     return previous.caret;
   }
@@ -67,8 +76,13 @@ export class History {
     const next = this.future.pop();
     if (!next) return undefined;
     this.past.push({ doc: this.doc, caret: caretNow });
-    this.doc = next.doc;
+    this.become(next.doc);
     this.lastTypingKey = null;
     return next.caret;
+  }
+
+  private become(next: Doc): void {
+    this.doc = next;
+    this.version++;
   }
 }
