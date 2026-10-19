@@ -6,6 +6,8 @@ import { declaredColumns } from "./properties";
 import { caretNow } from "./editing";
 import { choosePrivacy } from "./privateItems";
 import { toast } from "./chrome";
+import { DATE_PROPERTIES } from "./dates";
+import { pickDate } from "./datePicker";
 
 /*
  * Setting a property without typing it (doc/adr/0032): pick a key, then a
@@ -50,6 +52,7 @@ export function chooseValue(id: ItemId, key: string): void {
   if (key === "private") return choosePrivacy(id);
   if (sealedHere(id)) return;
   const current = doc().items[id]?.properties[key];
+  if (isDateProperty(key)) return chooseDate(id, key, current);
   openPalette<Choice>({
     placeholder: `${key}: ${current ?? "value…"}`,
     hint: hintFor(key),
@@ -63,6 +66,20 @@ export function chooseValue(id: ItemId, key: string): void {
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;
     },
     choose: ({ value }) => commitAndRender(setItemProperty(doc(), id, key, value), caretNow()),
+  });
+}
+
+function isDateProperty(key: string): boolean {
+  return (DATE_PROPERTIES as readonly string[]).includes(key);
+}
+
+function chooseDate(id: ItemId, key: string, current: string | undefined): void {
+  const write = (value: string) => commitAndRender(setItemProperty(doc(), id, key, value), caretNow());
+  pickDate({
+    current,
+    placeholder: `${key}: ${current ?? "date…"}`,
+    write,
+    remove: current === undefined ? undefined : { label: `Remove ${key}`, run: () => write("") },
   });
 }
 
