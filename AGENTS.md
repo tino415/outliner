@@ -94,6 +94,9 @@ before writing and do not delete without being asked.
   loaded by other sessions does not push them over their budget. A
   "flaky" performance test in the summary means it was slow at least once. Run them alone with
   `npx playwright test --project=performance --no-deps`.
+- Which binding a key gets, on a Mac and elsewhere, is unit-tested in
+  `tests/keys.test.ts`, passing the platform to `bindingFor`. Browser tests
+  fake `navigator.platform` only where the whole path matters.
 - Real touch input goes through the Chrome DevTools protocol
   (`Input.dispatchTouchEvent`), so touch tests skip outside Chromium.
   Chrome itself swallows a tap that follows a fast swipe (it stops the
