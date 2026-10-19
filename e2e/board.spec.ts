@@ -30,7 +30,7 @@ async function openProject(page: Page) {
   await expectBoard(page, "To do: write, test\nDoing: \nDone: ");
 }
 
-test("a page shown as a board has its children as columns and theirs as cards", async ({ page }, info) => {
+test("a page shown as a board has its children as columns and theirs as cards", { tag: "@phone" }, async ({ page }, info) => {
   await openProject(page);
   await expect(page.locator("#tree")).toBeHidden();
   await page.screenshot({ path: `screenshots/${info.project.name}-board.png` });
@@ -43,7 +43,7 @@ test("a page shown as a board has its children as columns and theirs as cards", 
   await expectBoard(page, "To do: write, review, test\nDoing: \nDone: ");
 });
 
-test("Alt-Shift-arrows move a card to the next column and back", async ({ page }) => {
+test("Alt-Shift-arrows move a card to the next column and back", { tag: "@phone" }, async ({ page }) => {
   await openProject(page);
   await card(page, "test").locator(".text").click();
   await page.keyboard.press("Alt+Shift+ArrowRight");
@@ -55,7 +55,7 @@ test("Alt-Shift-arrows move a card to the next column and back", async ({ page }
   await expectBoard(page, "To do: write\nDoing: tested\nDone: ");
 });
 
-test("a card dragged by its handle lands where it is dropped", async ({ page }) => {
+test("a card dragged by its handle lands where it is dropped", { tag: "@phone" }, async ({ page }) => {
   await openProject(page);
   const handle = card(page, "write").locator(".board-handle");
   const target = page.locator(".board-column").nth(1).locator(".board-cards");
@@ -68,7 +68,7 @@ test("a card dragged by its handle lands where it is dropped", async ({ page }) 
   await expectBoard(page, "To do: test\nDoing: write\nDone: ");
 });
 
-test("a card dragged with a finger moves to another column", async ({ page, browserName, isMobile }) => {
+test("a card dragged with a finger moves to another column", { tag: "@phone" }, async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== "chromium" || !isMobile, "real touch input is sent through the Chromium DevTools protocol, on the phone");
   await openProject(page);
   const from = (await card(page, "test").locator(".board-handle").boundingBox())!;
@@ -85,7 +85,7 @@ test("a card dragged with a finger moves to another column", async ({ page, brow
   await expectBoard(page, "To do: write\nDoing: test\nDone: ");
 });
 
-test("buttons add cards and columns, and the board turns back into the outline", async ({ page }) => {
+test("buttons add cards and columns, and the board turns back into the outline", { tag: "@phone" }, async ({ page }) => {
   await openProject(page);
   await page.locator(".board-column").nth(2).getByRole("button", { name: "+ Add a card" }).click();
   await page.keyboard.type("ship it");
@@ -99,7 +99,7 @@ test("buttons add cards and columns, and the board turns back into the outline",
   await expect(page.locator("#tree")).toContainText("ship it");
 });
 
-test("a short board reaches the bottom of the window, so its scrollbar is there, and the page does not scroll", async ({ page }) => {
+test("a short board reaches the bottom of the window, so its scrollbar is there, and the page does not scroll", { tag: "@phone" }, async ({ page }) => {
   await openProject(page);
   const box = (await page.locator("#board").boundingBox())!;
   const height = await page.evaluate(() => window.innerHeight);

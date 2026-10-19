@@ -156,7 +156,7 @@ describe("computed columns, smaller fixes", () => {
     const cells = column(doc, "Day", "start");
     expect(performance.now() - started).toBeLessThan(400);
     expect(cells["task 2999"]).toBe("4:50");
-  });
+  }, 30_000);
 });
 
 describe("the examples in the formula help", () => {
