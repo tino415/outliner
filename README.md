@@ -199,15 +199,39 @@ Tools
 Its commands appear in Ctrl-K as `tools: Shout` and act on the item being
 edited and what is under it:
 
-- `outline.item(item)` reads `{id, text, note, properties, children}`
+- `outline.item(item)` reads `{id, text, note, properties, children, completed}`
 - `outline.setText(item, text)`, `setNote(item, note)`
 - `outline.setProperty(item, key, value)`, an empty value removing it; not
   `private`, `plugin` or `approved`
+- `outline.complete(item, done)`, `done` false reopening it
 - `outline.add(parent, text)` adds a child and returns its id
 - `outline.toast(message)`
 
 Each takes an item as the action got it or its id, and returns a promise; a
-failed call shows its error as a toast, awaited or not. It runs in a sandbox without network, and only after a trusted
+failed call shows its error as a toast, awaited or not.
+
+`outline.on(event, handler)` runs a handler by itself when an item is
+`added`, `moved`, `completed` (or reopened) or `changed` (text, note or a
+property) in this tab (doc/adr/0038). It gets `{item, from, to}`: for a
+move the old and new parent, for an addition the parent as `to`; it may
+read those and change the item and what is under it. Undo, redo, other
+devices and a handler's own changes fire nothing, and what a handler does
+is undone with the change that fired it. A board column with
+`:completes: yes` that completes the cards put into it, and reopens those
+taken out:
+
+```js
+const completes = (column) => column?.properties.completes === "yes";
+outline.on("moved", async ({ item, from, to }) => {
+  if (completes(to) && !item.completed) await outline.complete(item, true);
+  if (completes(from) && !completes(to) && item.completed) await outline.complete(item, false);
+});
+outline.on("added", async ({ item, to }) => {
+  if (completes(to) && !item.completed) await outline.complete(item, true);
+});
+```
+
+A plugin runs in a sandbox without network, and only after a trusted
 device approved this exact code in ⋯ → Plugins; changing the code, from
 anywhere, stops it until it is approved again. A device is trusted when it
 has the key `trust` (Make it trusted, then copy it with ⋯ → Private keys).

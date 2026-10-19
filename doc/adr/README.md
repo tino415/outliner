@@ -39,7 +39,7 @@ session report; the records here hold the choices behind them.
 27. [Kinds are the leading words before a colon, shown as badges](0027-kinds-are-leading-words-shown-as-badges.md)
 28. [Attachments are files on the sync server, named by their hash](0028-attachments-are-files-on-the-sync-server-by-hash.md)
 29. [Private items are sealed whole at the sync boundary](0029-private-items-are-sealed-whole-at-the-sync-boundary.md)
-30. [Plugins run sandboxed, once a trusted device approves their code](0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md)
+30. [Plugins run sandboxed, once a trusted device approves their code](0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md) (hooks superseded by 38)
 31. [A board shows an item's children as columns and theirs as cards](0031-a-board-shows-children-as-columns.md)
 32. [Properties are a field of their own, synced one by one](0032-properties-are-a-field-of-their-own.md)
 33. [One search for items and commands, and a prefix key for the rest](0033-one-search-for-items-and-commands-and-a-prefix-key.md)
@@ -47,3 +47,4 @@ session report; the records here hold the choices behind them.
 35. [The Alt-Shift letters are gone, and the prefix's wait ends](0035-alt-shift-letters-removed-and-the-prefix-wait-ends.md)
 36. [Dates are ISO text, shown as chips](0036-dates-are-iso-text-shown-as-chips.md)
 37. [A built-in agenda lists items by date](0037-a-built-in-agenda-lists-items-by-date.md)
+38. [Plugins answer events made in this tab](0038-plugins-answer-events-made-in-this-tab.md) (supersedes part of 30)

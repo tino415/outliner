@@ -1563,6 +1563,11 @@ code {
   color: var(--muted);
 }
 
+.plugin-events {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
 .plugin-list pre {
   max-height: 180px;
   overflow: auto;
