@@ -116,6 +116,7 @@ describe("renderInline", () => {
     "<script>alert('x')</script> & friends",
     "2 * 3 * 4 is not italic",
     `see ![shot.png](att:${"a".repeat(64)}) and [report.pdf](att:${"b".repeat(64)})`,
+    "due 2026-10-14, call at 2026-10-15 9:00, not 2026-13-01 or v2026-10-14",
   ])("keeps the raw text as the text content: %s", (text) => {
     expect(textOf(renderInline(text))).toBe(text);
   });

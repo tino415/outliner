@@ -12,6 +12,7 @@ import { backlinks } from "./references";
 import { pathOf } from "./search";
 import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
+import { today } from "./dates";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -19,12 +20,16 @@ export const END = Number.POSITIVE_INFINITY;
 /** Where the caret should go after a render: the first candidate still on screen. */
 export type FocusRequest = Focus | Focus[] | null;
 
+/** Date chips say "today" and "tomorrow", so a row shows the day it was rendered on. */
+let dayRendered = today();
+
 export function render(request: FocusRequest): void {
   const candidates = request === null ? [] : [request].flat();
   pluginsMayHaveChanged();
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
   formulaCellOf = null;
+  dayRendered = today();
   columns = columnView();
   renderCrumbs();
   renderHead();
@@ -225,7 +230,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
+  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState) {
