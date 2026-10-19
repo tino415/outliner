@@ -49,3 +49,4 @@ session report; the records here hold the choices behind them.
 37. [A built-in agenda lists items by date](0037-a-built-in-agenda-lists-items-by-date.md)
 38. [Plugins answer events made in this tab](0038-plugins-answer-events-made-in-this-tab.md) (supersedes part of 30)
 39. [`outline watch` polls the sync endpoint](0039-outline-watch-polls-the-sync-endpoint.md)
+40. [Shortcuts are set on an item in the outline](0040-shortcuts-are-set-on-an-item-in-the-outline.md)
