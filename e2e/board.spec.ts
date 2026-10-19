@@ -25,6 +25,7 @@ function card(page: Page, text: string) {
 async function openProject(page: Page) {
   await freshOutline(page, "Project\n  To do\n    write\n    test\n  Doing\n  Done");
   await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+  await expect(page.locator("#title")).toHaveText("Project");
   await page.keyboard.press("ControlOrMeta+j");
   await page.keyboard.press("b");
   await expectBoard(page, "To do: write, test\nDoing: \nDone: ");
