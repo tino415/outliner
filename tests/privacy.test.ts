@@ -208,6 +208,27 @@ describe("private items at the sync boundary", () => {
     expect(JSON.stringify(changes)).not.toContain("diary");
   });
 
+  it("seals edits under an item whose :private: line is still being typed, and holds them once the line is deleted", async () => {
+    const base = parseIndentedText("Journal\n  secret one");
+    const journalId = idOf(base, "Journal");
+    const phone = device("phone", base);
+    const typed = phone.edit(withPrivateIds(setRawNote(phone.doc(), journalId, ":private: personal")).doc);
+    const child = phone.doc().items[journalId].children[0];
+    const edited = phone.edit(withPrivateIds(setText(phone.doc(), child, "secret one, edited")).doc);
+    const whileTyped = await sealOutgoing([...typed, ...edited], phone.replica, keyring, phone.stamp);
+    expect(whileTyped.held).toEqual([]);
+    expect(whileTyped.sealed).toEqual([journalId]);
+    expect(JSON.stringify(whileTyped.changes)).not.toContain("secret");
+    const mac = device("mac");
+    mac.receive(await openIncoming(whileTyped.changes, keyring));
+    expect(mac.replica[child]?.text?.value).toBe("secret one, edited");
+
+    const lineDeleted = phone.edit(withPrivateIds(setRawNote(phone.doc(), journalId, "")).doc);
+    const editedAgain = phone.edit(withPrivateIds(setText(phone.doc(), phone.doc().items[journalId].children[0], "secret one, edited again")).doc);
+    const afterDeleting = await sealOutgoing([...lineDeleted, ...editedAgain], phone.replica, keyring, phone.stamp);
+    expect(JSON.stringify(afterDeleting.changes)).not.toContain("secret");
+    expect(afterDeleting.held.map((change) => change.item)).toContain(phone.doc().items[journalId].children[0]);
+  });
   it("keeps an item sealed by an older build, whose key is a :private: line, private where it is opened", async () => {
     let doc = parseIndentedText("Journal\n  secret one");
     doc = withPrivateIds(setRawNote(doc, idOf(doc, "Journal"), ":private: personal\nmy diary")).doc;

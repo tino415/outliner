@@ -1,4 +1,4 @@
-import { propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
+import { privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
 
 export type ItemId = string;
 
@@ -319,9 +319,9 @@ export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.ite
   return next;
 }
 
-/** The key a private item is sealed with: its `private` property where it is open, the sealed note's key elsewhere (doc/adr/0029). */
+/** The key a private item is sealed with: its `private` property where it is open, else the key its note names (doc/adr/0029). */
 export function privateKeyOf(item: Item): string | null {
-  return item.properties.private ?? sealedKeyOf(item.note);
+  return item.properties.private ?? privateKeyInNote(item.note);
 }
 
 /** An item shown as a board: its children are columns, theirs are cards (doc/adr/0031). */

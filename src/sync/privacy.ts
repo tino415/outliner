@@ -1,5 +1,5 @@
 import { ItemId, ROOT } from "../model";
-import { SEALED_NOTE, isSealed, propertiesOf, sealedKeyOf } from "../notes";
+import { SEALED_NOTE, isSealed, privateKeyInNote } from "../notes";
 import { Change, Field, Replica, allChanges, merge } from "./replica";
 
 /*
@@ -179,12 +179,12 @@ class Privacy {
     return change.field === "deleted" && change.value === true && this.renamedFrom.has(change.item);
   }
 
-  /** The `private` property, or a `:private:` line not yet lifted from the note: typed just now, or written by an older build. */
+  /** The `private` property, or the key the note names. */
   keyNameOf(item: ItemId): string | null {
     const note = this.read(item, "note");
     const key = this.read(item, "prop:private");
     if (typeof key === "string") return key;
-    return typeof note === "string" ? (sealedKeyOf(note) ?? (propertiesOf(note).get("private") || null)) : null;
+    return typeof note === "string" ? privateKeyInNote(note) : null;
   }
 
   isPrivate(item: ItemId): boolean {
