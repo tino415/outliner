@@ -42,6 +42,16 @@ D duplicate, B board, G agenda, C columns, N capture, and J again to jump
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
+Shortcuts can be changed in the outline (doc/adr/0039), so the change
+reaches every device. Give any item the property `shortcuts: on`; each
+other property on it is a command name, as ? shows beside each command,
+and its keys: `tag: Mod+j g`, `zoom-in: Ctrl+]`, several separated by
+commas, `none` to unbind. Mod is ⌘ on a Mac and Ctrl elsewhere. A setting
+replaces the command's keys and takes them from any command that had them.
+Keys that type, that the browser keeps (Mod-N, T, W), copy and paste, or
+`Mod+j` alone are refused; ? lists what was refused and why. From a shell:
+`outline set "Settings/Shortcuts" tag "Mod+j g"`.
+
 ## Properties and columns
 
 An item's properties are `key: value` pairs such as `calories: 350 kcal`,

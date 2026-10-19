@@ -2258,3 +2258,33 @@ body.dragging {
   margin-top: 22px;
   color: var(--muted);
 }
+
+.help-name {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.help-note {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.help-refused,
+.help-how {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.help-refused h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.help-refused ul {
+  margin: 0;
+  padding-left: 18px;
+}

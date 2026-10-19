@@ -41,7 +41,6 @@ export function bindChrome(): void {
 
   $("help-close").addEventListener("click", () => ui.help.close());
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
-  ui.helpGrid.innerHTML = describeKeys();
   bindFormulaHelp();
   bindPrivateKeys();
   bindPlugins();
@@ -59,7 +58,7 @@ export const globalActions = {
     ui.search.focus();
     ui.search.select();
   },
-  help: () => (ui.help.open ? ui.help.close() : ui.help.showModal()),
+  help: () => (ui.help.open ? ui.help.close() : showHelp()),
   toggleCompleted: () => menuActions["toggle-completed"](),
   toggleColumns: () => toggleColumnView(),
   capture: () => openCapture(),
@@ -78,6 +77,11 @@ export const globalActions = {
     if (state.zoom !== ROOT) zoomTo(doc().items[state.zoom].parent ?? ROOT);
   },
 };
+
+function showHelp(): void {
+  ui.helpGrid.innerHTML = describeKeys();
+  ui.help.showModal();
+}
 
 function paletteCommands(): Command[] {
   const editor = editorOf(document.activeElement);
@@ -277,7 +281,7 @@ const menuActions: Record<string, () => void> = {
   import: () => ui.importFile.click(),
   help: () => {
     ui.menu.hidePopover();
-    ui.help.showModal();
+    showHelp();
   },
   "private-keys": () => {
     ui.menu.hidePopover();

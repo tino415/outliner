@@ -5,11 +5,14 @@ import { escape } from "./inline";
 import { isMac } from "./platform";
 import { moveSideways, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
+import { Doc } from "./model";
+import { CommandName, LostKeys, PREFIX, Refusal, applyShortcuts, chooseShortcuts, shortcutSettingsIn } from "./shortcuts";
 
 /** Where a global shortcut applies, judged by what has focus. */
 export type Reach = "anywhere" | "outsideFields" | "onPage";
 
 interface Shortcut {
+  name?: CommandName;
   keys: string[];
   label: string;
   hidden?: boolean;
@@ -35,7 +38,17 @@ interface GlobalBinding extends Shortcut {
 type Binding = EditorBinding | SelectionBinding | GlobalBinding;
 type BindingIn<C extends Binding["context"]> = Extract<Binding, { context: C }>;
 
-const editor = (keys: string[], label: string, run: EditorBinding["run"]): EditorBinding => ({
+const editor = (name: CommandName, keys: string[], label: string, run: EditorBinding["run"]): EditorBinding => ({
+  context: "editor",
+  name,
+  keys,
+  label,
+  run,
+  isCommand: true,
+});
+
+/** A command whose keys no setting changes. */
+const fixed = (keys: string[], label: string, run: EditorBinding["run"]): EditorBinding => ({
   context: "editor",
   keys,
   label,
@@ -53,16 +66,19 @@ const typing = (keys: string[], label: string, run: EditorBinding["run"], hidden
   isCommand: false,
 });
 
-const selection = (keys: string[], run: SelectionBinding["run"]): SelectionBinding => ({
+/** A named selection key follows the command of that name when a setting changes it. */
+const selection = (name: CommandName | undefined, keys: string[], run: SelectionBinding["run"]): SelectionBinding => ({
   context: "selection",
+  name,
   keys,
   label: "",
   run,
   hidden: true,
 });
 
-const global = (keys: string[], label: string, reach: Reach, run: GlobalBinding["run"], hidden = false): GlobalBinding => ({
+const global = (name: CommandName | undefined, keys: string[], label: string, reach: Reach, run: GlobalBinding["run"], hidden = false): GlobalBinding => ({
   context: "global",
+  name,
   keys,
   label,
   reach,
@@ -70,45 +86,45 @@ const global = (keys: string[], label: string, reach: Reach, run: GlobalBinding[
   hidden,
 });
 
-const bindings: Binding[] = [
+const defaultBindings: Binding[] = [
   typing(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
-  editor(["Tab"], "Indent", (c) => actions.indent(c)),
-  editor(["Shift+Tab"], "Outdent", (c) => actions.outdent(c)),
+  fixed(["Tab"], "Indent", (c) => actions.indent(c)),
+  fixed(["Shift+Tab"], "Outdent", (c) => actions.outdent(c)),
   typing(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
   typing(["Delete"], "At the end: pull the next item up", (c) => actions.deleteForward(c), true),
-  editor(["Shift+Enter"], "Add or leave a note", (c) => actions.toggleNote(c)),
-  editor(["Alt+Shift+Enter"], "New first child", (c) => actions.newFirstChild(c)),
-  editor(["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
-  editor(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
-  editor(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),
-  editor(["Alt+Shift+ArrowLeft"], "On a board: to the column on the left", (c) => moveSideways(c.id, -1, c.start)),
-  editor(["Alt+Shift+ArrowRight"], "On a board: to the column on the right", (c) => moveSideways(c.id, 1, c.start)),
-  editor(["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
-  editor(["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
-  editor(["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
-  editor(["Ctrl+u"], "Up to the parent item", (c) => actions.upToParent(c)),
-  editor(["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
-  editor(["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
-  editor(["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
-  editor(["Mod+j d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
-  editor(["Mod+j m"], "Move item to…", (c) => actions.moveToPicker(c)),
-  editor(["Mod+b"], "Bold", (c) => actions.bold(c)),
-  editor(["Mod+i"], "Italic", (c) => actions.italic(c)),
-  editor(["Mod+e"], "Code", (c) => actions.code(c)),
-  editor(["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
-  editor(["Mod+j t"], "Add a tag", (c) => actions.addTag(c)),
-  editor(["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
-  editor(["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
-  editor(["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
-  editor(["Mod+j ;"], "Insert a date…", (c) => actions.insertDate(c)),
-  editor(["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
-  editor(["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
-  editor(["Mod+z"], "Undo", () => globalActions.undo()),
-  editor(["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
+  editor("toggle-note", ["Shift+Enter"], "Add or leave a note", (c) => actions.toggleNote(c)),
+  editor("new-first-child", ["Alt+Shift+Enter"], "New first child", (c) => actions.newFirstChild(c)),
+  editor("complete", ["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
+  editor("move-up", ["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
+  editor("move-down", ["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),
+  editor("move-left", ["Alt+Shift+ArrowLeft"], "On a board: to the column on the left", (c) => moveSideways(c.id, -1, c.start)),
+  editor("move-right", ["Alt+Shift+ArrowRight"], "On a board: to the column on the right", (c) => moveSideways(c.id, 1, c.start)),
+  editor("fold", ["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
+  editor("collapse", ["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
+  editor("expand", ["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
+  editor("up-to-parent", ["Ctrl+u"], "Up to the parent item", (c) => actions.upToParent(c)),
+  editor("zoom-in", ["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
+  editor("zoom-out", ["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
+  editor("delete-item", ["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
+  editor("duplicate", ["Mod+j d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
+  editor("move-to", ["Mod+j m"], "Move item to…", (c) => actions.moveToPicker(c)),
+  editor("bold", ["Mod+b"], "Bold", (c) => actions.bold(c)),
+  editor("italic", ["Mod+i"], "Italic", (c) => actions.italic(c)),
+  editor("code", ["Mod+e"], "Code", (c) => actions.code(c)),
+  editor("code-block", ["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
+  editor("tag", ["Mod+j t"], "Add a tag", (c) => actions.addTag(c)),
+  editor("property", ["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
+  editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
+  editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
+  editor("date", ["Mod+j ;"], "Insert a date…", (c) => actions.insertDate(c)),
+  editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
+  editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
+  editor("undo", ["Mod+z"], "Undo", () => globalActions.undo()),
+  editor("redo", ["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   typing(["Escape"], "Stop editing", (c) => actions.blur(c)),
   typing(["Shift+ArrowUp"], "Select items (at the start or end)", (c) => actions.selectUp(c)),
   typing(["Shift+ArrowDown"], "Select items (at the start or end)", (c) => actions.selectDown(c)),
-  editor(["Mod+a"], "Select all items (press twice)", (c) => actions.selectAll(c)),
+  editor("select-all", ["Mod+a"], "Select all items (press twice)", (c) => actions.selectAll(c)),
   typing(["Ctrl+n"], "Next item", (c) => actions.nextItem(c)),
   typing(["Ctrl+p"], "Previous item", (c) => actions.previousItem(c)),
   typing(["Ctrl+f"], "Forward a character", (c) => actions.forwardChar(c)),
@@ -120,39 +136,59 @@ const bindings: Binding[] = [
   typing(["ArrowLeft"], "", (c) => actions.arrowLeft(c), true),
   typing(["ArrowRight"], "", (c) => actions.arrowRight(c), true),
 
-  selection(["Shift+ArrowUp"], () => selectionActions.extend(-1)),
-  selection(["Shift+ArrowDown"], () => selectionActions.extend(1)),
-  selection(["ArrowUp"], () => selectionActions.leaveAt("start")),
-  selection(["ArrowDown", "Enter"], () => selectionActions.leaveAt("end")),
-  selection(["Escape"], () => selectionActions.leave()),
-  selection(["Tab"], () => selectionActions.indent()),
-  selection(["Shift+Tab"], () => selectionActions.outdent()),
-  selection(["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], () => selectionActions.moveUp()),
-  selection(["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], () => selectionActions.moveDown()),
-  selection(["Mod+Enter"], () => selectionActions.complete()),
-  selection(["Backspace", "Delete", "Mod+Shift+Backspace"], () => selectionActions.remove()),
-  selection(["Mod+c"], () => selectionActions.copy()),
-  selection(["Mod+x"], () => selectionActions.cut()),
-  selection(["Mod+a"], () => selectionActions.selectPage()),
+  selection(undefined, ["Shift+ArrowUp"], () => selectionActions.extend(-1)),
+  selection(undefined, ["Shift+ArrowDown"], () => selectionActions.extend(1)),
+  selection(undefined, ["ArrowUp"], () => selectionActions.leaveAt("start")),
+  selection(undefined, ["ArrowDown", "Enter"], () => selectionActions.leaveAt("end")),
+  selection(undefined, ["Escape"], () => selectionActions.leave()),
+  selection(undefined, ["Tab"], () => selectionActions.indent()),
+  selection(undefined, ["Shift+Tab"], () => selectionActions.outdent()),
+  selection("move-up", ["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], () => selectionActions.moveUp()),
+  selection("move-down", ["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], () => selectionActions.moveDown()),
+  selection("complete", ["Mod+Enter"], () => selectionActions.complete()),
+  selection("delete-item", ["Backspace", "Delete", "Mod+Shift+Backspace"], () => selectionActions.remove()),
+  selection(undefined, ["Mod+c"], () => selectionActions.copy()),
+  selection(undefined, ["Mod+x"], () => selectionActions.cut()),
+  selection("select-all", ["Mod+a"], () => selectionActions.selectPage()),
 
-  global(["Mod+k"], "Search items and commands", "anywhere", () => globalActions.jump()),
-  global(["Mod+Shift+k"], "Run a command", "anywhere", () => globalActions.runCommand()),
-  global(["Mod+j j"], "Jump to an item", "anywhere", () => globalActions.jumpToItem()),
-  global(["/"], "Search", "outsideFields", () => globalActions.search()),
-  global(["Mod+f"], "Search", "anywhere", () => globalActions.search()),
-  global(["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
-  global(["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
-  global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
-  global(["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
-  global(["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
-  global(["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
-  global(["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
-  global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
-  global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
-  global(["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
-  global(["Enter", "ArrowDown"], "Start editing", "onPage", () => globalActions.startEditing(), true),
-  global(["Ctrl+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
+  global("search-all", ["Mod+k"], "Search items and commands", "anywhere", () => globalActions.jump()),
+  global("run-command", ["Mod+Shift+k"], "Run a command", "anywhere", () => globalActions.runCommand()),
+  global("jump-to-item", ["Mod+j j"], "Jump to an item", "anywhere", () => globalActions.jumpToItem()),
+  global("search", ["Mod+f"], "Search", "anywhere", () => globalActions.search()),
+  global("search", ["/"], "Search", "outsideFields", () => globalActions.search()),
+  global("help", ["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
+  global("help", ["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
+  global("toggle-completed", ["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
+  global("toggle-columns", ["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
+  global("toggle-board", ["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
+  global("agenda", ["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
+  global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
+  global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
+  global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
+  global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
+  global(undefined, ["Enter", "ArrowDown"], "Start editing", "onPage", () => globalActions.startEditing(), true),
+  global("zoom-out", ["Ctrl+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
 ];
+
+let bindings: Binding[] = defaultBindings;
+let lostKeys: LostKeys[] = [];
+let refusedSettings: Refusal[] = [];
+let settingsRead = "[]";
+
+export function followShortcutSettings(doc: Doc): void {
+  const written = shortcutSettingsIn(doc);
+  if (JSON.stringify(written) === settingsRead) return;
+  settingsRead = JSON.stringify(written);
+  const chosen = chooseShortcuts(written, keysOfUnnamedCommands());
+  const applied = applyShortcuts(defaultBindings, chosen.keys, isMac);
+  bindings = applied.bindings;
+  lostKeys = applied.lost;
+  refusedSettings = chosen.refused;
+}
+
+function keysOfUnnamedCommands(): string[] {
+  return defaultBindings.filter((binding) => !binding.name && binding.context !== "selection").flatMap((binding) => binding.keys);
+}
 
 /**
  * "Mod" is Ctrl or ⌘ alike; "Ctrl" bindings are for the Ctrl key itself, as
@@ -211,8 +247,6 @@ function baseKey(event: KeyboardEvent): string {
 }
 
 // ---- the prefix: ⌘J or Ctrl-J, then a key, as C-x in Emacs ----------------------------
-
-export const PREFIX = "Mod+j";
 
 export function isPrefix(event: KeyboardEvent): boolean {
   return keyString(event) === PREFIX;
@@ -297,17 +331,31 @@ function usableKeys(binding: Binding): string[] {
 }
 
 export function describeKeys(): string {
-  const keysByLabel = new Map<string, string[]>();
-  for (const binding of bindings.filter((binding) => !binding.hidden && binding.label && usableKeys(binding).length)) {
-    keysByLabel.set(binding.label, [...(keysByLabel.get(binding.label) ?? []), ...usableKeys(binding)]);
+  return describeCommands() + describeRefusals() + `<p class="help-how">Set your own on an item with the property <code>shortcuts: on</code>: one property per command, e.g. <code>tag: Mod+j g</code>, several keys separated by commas, <code>none</code> to unbind.</p>`;
+}
+
+function describeCommands(): string {
+  const shown = new Map<string, { name?: CommandName; keys: string[] }>();
+  for (const binding of bindings.filter((binding) => !binding.hidden && binding.label && (binding.name || usableKeys(binding).length))) {
+    const row = shown.get(binding.label) ?? { name: binding.name, keys: [] };
+    row.keys.push(...usableKeys(binding));
+    shown.set(binding.label, row);
   }
-  return [...keysByLabel]
-    .map(
-      ([label, keys]) =>
-        `<div class="help-label">${escape(label)}</div><div class="help-keys">${keys
-          .slice(0, 2)
-          .map(pretty)
-          .join(`<span class="help-or">or</span>`)}</div>`,
-    )
-    .join("");
+  return [...shown].map(([label, { name, keys }]) => `<div class="help-label">${escape(label)}${name ? nameAndLostKeys(name) : ""}</div><div class="help-keys">${keysShown(keys)}</div>`).join("");
+}
+
+function nameAndLostKeys(name: CommandName): string {
+  const lost = lostKeys.filter((each) => each.name === name).map((each) => `<div class="help-note">${pretty(each.keys)} now runs <code>${each.to}</code></div>`);
+  return ` <code class="help-name">${name}</code>${lost.join("")}`;
+}
+
+function keysShown(keys: string[]): string {
+  if (keys.length === 0) return `<span class="help-or">none</span>`;
+  return keys.slice(0, 2).map(pretty).join(`<span class="help-or">or</span>`);
+}
+
+function describeRefusals(): string {
+  if (refusedSettings.length === 0) return "";
+  const rows = refusedSettings.map(({ name, keys, reason }) => `<li><code>${escape(name)}: ${escape(keys)}</code> ${escape(reason)}</li>`);
+  return `<div class="help-refused"><h3>Not used from your shortcuts</h3><ul>${rows.join("")}</ul></div>`;
 }
