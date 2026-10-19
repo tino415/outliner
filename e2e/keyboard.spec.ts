@@ -5,7 +5,7 @@ async function onAMac(page: Page) {
   await page.addInitScript(() => Object.defineProperty(navigator, "platform", { get: () => "MacIntel" }));
 }
 
-test.describe("Emacs keys on a Mac", () => {
+test.describe("Emacs keys on a Mac", { tag: "@phone" }, () => {
   test.beforeEach(async ({ page }) => onAMac(page));
 
   test("Ctrl-A and Ctrl-E go to the start and end of the item", async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe("Emacs keys on a Mac", () => {
   });
 });
 
-test.describe("Ctrl keys elsewhere", () => {
+test.describe("Ctrl keys elsewhere", { tag: "@phone" }, () => {
   test("Ctrl-F searches and Ctrl-E formats code, as before", async ({ page }) => {
     await freshOutline(page, "word");
     await clickEnd(page, "word");
@@ -59,7 +59,7 @@ test.describe("Ctrl keys elsewhere", () => {
   });
 });
 
-test("Ctrl-. folds and unfolds the item", async ({ page }) => {
+test("Ctrl-. folds and unfolds the item", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "parent\n  child\nother");
   await clickEnd(page, "parent");
   await page.keyboard.press("Control+.");
@@ -69,7 +69,7 @@ test("Ctrl-. folds and unfolds the item", async ({ page }) => {
   expect((await caret(page)).text).toBe("parent");
 });
 
-test("Ctrl-U goes up to the parent item, from a note to its own item, and from the top to the page title", async ({ page }) => {
+test("Ctrl-U goes up to the parent item, from a note to its own item, and from the top to the page title", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "parent\n  child | a note");
   await row(page, "child").locator(".note").click();
   await page.keyboard.press("Control+u");
@@ -80,14 +80,14 @@ test("Ctrl-U goes up to the parent item, from a note to its own item, and from t
   await expect(page.locator("#title")).toBeFocused();
 });
 
-test("⌥→ no longer zooms in, it moves by word on a Mac", async ({ page }) => {
+test("⌥→ no longer zooms in, it moves by word on a Mac", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await clickEnd(page, "projects");
   await page.keyboard.press("Alt+ArrowRight");
   await expect(page.locator("#title")).toHaveText("Test");
 });
 
-test.describe("Ctrl-K", () => {
+test.describe("Ctrl-K", { tag: "@phone" }, () => {
   test("runs a command on the item being edited and shows its shortcut", async ({ page }) => {
     await freshOutline(page, "a\nb");
     await clickEnd(page, "b");
@@ -124,7 +124,7 @@ test.describe("Ctrl-K", () => {
   });
 });
 
-test("Ctrl-J C toggles columns from the palette too", async ({ page }) => {
+test("Ctrl-J C toggles columns from the palette too", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "a");
   await editor(page, "a").click();
   await page.keyboard.press("ControlOrMeta+k");
@@ -135,7 +135,7 @@ test("Ctrl-J C toggles columns from the palette too", async ({ page }) => {
   await expect(page.locator("#columns-head")).toBeVisible();
 });
 
-test("Alt-Shift with a letter is left to typing: the app takes none of them", async ({ page }) => {
+test("Alt-Shift with a letter is left to typing: the app takes none of them", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "item");
   await clickEnd(page, "item");
   const taken = await page.evaluate(() =>

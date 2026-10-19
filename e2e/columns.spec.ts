@@ -17,7 +17,7 @@ function cell(page: Page, text: string, key: string) {
   return row(page, text).locator(`.cell[data-key="${key}"]`);
 }
 
-test("a page with :columns: shows sums per meal, day and week", async ({ page }, info) => {
+test("a page with :columns: shows sums per meal, day and week", { tag: "@phone" }, async ({ page }, info) => {
   await freshOutline(page, WEEK);
   await row(page, "Week 41").locator(".bullet").click();
   await expect(page.locator("#columns-head")).toBeVisible();
@@ -32,7 +32,7 @@ test("a page with :columns: shows sums per meal, day and week", async ({ page },
   await page.screenshot({ path: `screenshots/${info.project.name}-columns.png` });
 });
 
-test("editing a cell writes the property and updates every total above it", async ({ page }) => {
+test("editing a cell writes the property and updates every total above it", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, WEEK);
   await row(page, "Week 41").locator(".bullet").click();
   await cell(page, "Coffee", "calories").click();
@@ -53,7 +53,7 @@ test("editing a cell writes the property and updates every total above it", asyn
   await expect(cell(page, "Breakfast", "protein")).toHaveText("10 g");
 });
 
-test("typing a property into a note updates the columns when the note is left", async ({ page }) => {
+test("typing a property into a note updates the columns when the note is left", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, WEEK);
   await row(page, "Week 41").locator(".bullet").click();
   await editor(page, "Soup").click();
@@ -64,7 +64,7 @@ test("typing a property into a note updates the columns when the note is left", 
   await expect(cell(page, "Lunch", "calories")).toHaveText("300 kcal");
 });
 
-test("the menu switches columns on for any page, inferring them from properties", async ({ page }) => {
+test("the menu switches columns on for any page, inferring them from properties", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Project\n  Design | :effort: 1h30m\n  Build | :effort: 2d\nPlain");
   await expect(page.locator("#columns-head")).toBeHidden();
   await page.locator("#menu-button").click();
@@ -77,7 +77,7 @@ test("the menu switches columns on for any page, inferring them from properties"
   await expect(page.locator("#columns-head")).toBeHidden();
 });
 
-test("properties show as chips of key and value, the note keeps the rest", async ({ page }) => {
+test("properties show as chips of key and value, the note keeps the rest", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Oats | from the market; :calories: 300 kcal");
   const property = row(page, "Oats").locator(".prop-chip");
   await expect(property.locator(".prop-key")).toHaveText("calories");
@@ -85,7 +85,7 @@ test("properties show as chips of key and value, the note keeps the rest", async
   await expect(row(page, "Oats").locator(".note")).toHaveText("from the market");
 });
 
-test("the formula help explains the syntax and adds a working example to the page", async ({ page }) => {
+test("the formula help explains the syntax and adds a working example to the page", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Plans");
   await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type(">formula");
@@ -100,7 +100,7 @@ test("the formula help explains the syntax and adds a working example to the pag
   await expect(cell(page, "Lunch", "end")).toHaveText("12:15");
 });
 
-test("a computed column plans start times from the durations before each item", async ({ page }) => {
+test("a computed column plans start times from the durations before each item", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Monday | :start: 9:00; :columns: effort start{=parent.start + before(effort)}\n  Standup | :effort: 15m\n  Write | :effort: 1h30m\n  Lunch | :effort: 1h");
   await row(page, "Monday").locator(".bullet").click();
   await expect(cell(page, "Lunch", "start")).toHaveText("10:45");
@@ -113,7 +113,7 @@ test("a computed column plans start times from the durations before each item", 
   await expect(cell(page, "Lunch", "start")).toHaveText("11:15");
 });
 
-test("a cell computed by the item's own formula shows that formula on hover", async ({ page }) => {
+test("a cell computed by the item's own formula shows that formula on hover", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Shop | :columns: count price\n  Apples | :count: 3; :price: =count * 2");
   await page.locator(".row").filter({ hasText: "Shop" }).first().locator(".bullet").click();
   const cell = row(page, "Apples").locator('.cell[data-key="price"]');
