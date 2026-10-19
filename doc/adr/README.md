@@ -46,3 +46,4 @@ session report; the records here hold the choices behind them.
 34. [An item's own value may be a formula](0034-an-items-own-value-may-be-a-formula.md)
 35. [The Alt-Shift letters are gone, and the prefix's wait ends](0035-alt-shift-letters-removed-and-the-prefix-wait-ends.md)
 36. [Dates are ISO text, shown as chips](0036-dates-are-iso-text-shown-as-chips.md)
+37. [A built-in agenda lists items by date](0037-a-built-in-agenda-lists-items-by-date.md)

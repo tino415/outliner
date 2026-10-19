@@ -185,6 +185,7 @@ export type DateRole = (typeof DATE_PROPERTIES)[number] | "text";
 
 export interface ItemDate {
   day: Day;
+  time: string | null;
   role: DateRole;
 }
 
@@ -192,14 +193,14 @@ export interface ItemDate {
 export function datesOf(item: Item): ItemDate[] {
   const fromProperties = DATE_PROPERTIES.flatMap((role) => {
     const written = item.properties[role] === undefined ? null : readWrittenDate(item.properties[role]);
-    return written ? [{ day: written.day, role }] : [];
+    return written ? [{ ...written, role }] : [];
   });
-  return [...fromProperties, ...datesInText(item.text).map((day) => ({ day, role: "text" as const }))];
+  return [...fromProperties, ...datesInText(item.text).map((written) => ({ ...written, role: "text" as const }))];
 }
 
-export function datesInText(text: string): Day[] {
+export function datesInText(text: string): WrittenDate[] {
   const outsideCode = text.replace(/`[^`\n]+`/g, "");
-  return [...outsideCode.matchAll(new RegExp(DATE_WRITTEN, "gu"))].flatMap((match) => readWrittenDate(match[0])?.day ?? []);
+  return [...outsideCode.matchAll(new RegExp(DATE_WRITTEN, "gu"))].flatMap((match) => readWrittenDate(match[0]) ?? []);
 }
 
 /** An open item whose every date has passed. */

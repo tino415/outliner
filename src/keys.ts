@@ -4,6 +4,7 @@ import { globalActions } from "./chrome";
 import { escape } from "./inline";
 import { isMac } from "./platform";
 import { moveSideways, toggleBoard } from "./board";
+import { openAgenda } from "./agenda";
 
 /** Where a global shortcut applies, judged by what has focus. */
 export type Reach = "anywhere" | "outsideFields" | "onPage";
@@ -144,6 +145,7 @@ const bindings: Binding[] = [
   global(["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
   global(["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
   global(["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
+  global(["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
   global(["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
   global(["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global(["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),

@@ -37,10 +37,10 @@ dev-run env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which
 Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
-P property, K kind, L link, ; date, A attach, X private, M move to, D duplicate,
-B board, C columns, N capture, and J again to jump to an item. Pausing
-after it shows what can follow; ? lists every shortcut. Alt-Shift with a
-letter is left to typing, as many layouts need it.
+P property, K kind, L link, ; date, A attach, X private, M move to,
+D duplicate, B board, G agenda, C columns, N capture, and J again to jump
+to an item. Pausing after it shows what can follow; ? lists every shortcut.
+Alt-Shift with a letter is left to typing, as many layouts need it.
 
 ## Properties and columns
 
@@ -132,6 +132,16 @@ click on a chip changes or removes it. The properties `scheduled` and
 `due:today`, `due:<+7d`, `scheduled:this-week`, `date:>=2026-10-01` (any
 date of the item: `scheduled`, `due` or one in its text) and `is:overdue`
 (open, every date passed).
+
+## Agenda
+
+⋯ → Agenda (Ctrl-J G) lists, from all over the outline, the open items
+whose dates have passed, then each day of the coming week with the items
+dated on it, then the `#todo` items without a date (doc/adr/0037). An
+item's dates are its `scheduled` and `due` properties and the dates in its
+text. The rows are the items themselves: edit, complete or date them in
+place; the line under each says where it lives and goes there. Keys that
+would move an item in the outline do nothing in the agenda.
 
 ## Order of new and completed items
 
