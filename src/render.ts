@@ -13,6 +13,7 @@ import { pathOf } from "./search";
 import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
 import { today } from "./dates";
+import { agendaShown, renderAgenda } from "./agenda";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -34,13 +35,19 @@ export function render(request: FocusRequest): void {
   renderCrumbs();
   renderHead();
   renderColumnsHead();
-  const board = boardShown();
+  const agenda = agendaShown();
+  const board = !agenda && boardShown();
+  ui.agenda.hidden = !agenda;
   ui.board.hidden = !board;
+  ui.page.classList.toggle("with-agenda", agenda);
   ui.page.classList.toggle("with-board", board);
-  ui.tree.hidden = board;
-  if (board) renderBoard();
+  ui.tree.hidden = board || agenda;
+  if (agenda) renderAgenda();
+  else if (board) renderBoard();
   else renderTree();
-  if (board) ui.addItem.hidden = ui.columnsHead.hidden = true;
+  if (!agenda) ui.agenda.replaceChildren();
+  if (board || agenda) ui.addItem.hidden = ui.columnsHead.hidden = true;
+  if (agenda) document.title = "Agenda · Outliner";
   renderSearchSummary();
   renderMenuState();
   highlightMatches();
@@ -51,7 +58,7 @@ export function render(request: FocusRequest): void {
 }
 
 function renderCrumbs(): void {
-  const trail = ancestors(doc(), state.zoom);
+  const trail = agendaShown() ? [ROOT] : ancestors(doc(), state.zoom);
   ui.crumbs.classList.toggle("at-home", trail.length === 0);
   if (trail.length === 0) {
     ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
@@ -338,8 +345,9 @@ function highlightMatches(): void {
 }
 
 /** Text editors of the visible rows, in reading order: the order arrow keys and selection follow. */
-/** The outline as it is shown: the tree, or the board when the page is one. */
+/** The outline as it is shown: the agenda, the tree, or the board when the page is one. */
 export function shownOutline(): HTMLElement {
+  if (agendaShown()) return ui.agenda;
   return boardShown() ? ui.board : ui.tree;
 }
 
