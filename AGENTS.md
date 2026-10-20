@@ -2,8 +2,9 @@
 
 ## Using the outline
 
-Martin's outline is reachable from a shell with `bin/outline` (see README,
-"CLI"). Prefer `--json` and item ids when acting on it; `bin/outline help`
+Martin's outline is reachable from a shell with `outline`, installed for
+the account at the commit the server runs (see README, "CLI"). Prefer `--json`
+and item ids when acting on it; `outline help`
 lists the commands. It changes the real outline on every device, so read
 before writing and do not delete without being asked.
 
@@ -32,22 +33,24 @@ before writing and do not delete without being asked.
 
 ## Where the work is
 
-- The remote is `git@github.com:tino415/outliner.git` (private); `main` there
+- The remote is `git@github.com:tino415/outliner.git` (public, so the
+  machine's `configuration.nix` can fetch it); `main` there
   holds all work so far. Work on a branch and open a PR; do not push to
   `main` directly. Martin left merging and publishing to the agent
   (2026-10-10): once the tests pass, merge the PR yourself and publish,
-  without waiting for him. Rebuilding `sync` still needs the backup first.
+  without waiting for him. Deploying the sync server still needs the backup
+  first.
 - A session working in a worktree under `.claude/worktrees/` cannot run git
-  in the main checkout (`<main checkout>`); to pull main there (needed
-  before rebuilding `sync`), leave the worktree keeping it, run git in the
-  checkout, and enter the worktree again. A worktree has no `.env.sync`, so
-  its own compose stack needs a separate project name and an empty one.
+  in the main checkout (`<main checkout>`); to pull main there, leave the
+  worktree keeping it, run git in the checkout, and enter the worktree
+  again. A worktree's own compose stack needs a separate project name and
+  no published ports.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
 - The project's tasks are cards on the board at "Projects/Outliner"
   (since 2026-10-10), tagged #feature, #bug, #keyboard, #test. Read it with
-  `bin/outline show Projects/Outliner --ids` at the start of a session.
+  `outline show Projects/Outliner --ids` at the start of a session.
   The columns:
   - Deciding: not agreed yet. Write a proposal (what, why, trade-off)
     into the card's note, questions as "Question: …" children; Martin
@@ -56,22 +59,23 @@ before writing and do not delete without being asked.
   - Implementing: move a card here when starting it.
   - Review: merged and published; add a one-line note on how to try it.
   - Done: Martin moves cards here, or back with a comment.
-  Move cards with `bin/outline move <id> --under <column id>`. The item
+  Move cards with `outline move <id> --under <column id>`. The item
   "Outliner" at the top keeps Martin's remarks in "Comments" and an item
   per session with what needs him; its old "TODO" is empty. NOTES.md keeps
   the session reports; its "Backlog" section is history.
 
 ## Live services
 
-- The `sync` container holds Martin's real outline and is reached by his
-  phone and Mac. Browser and unit tests start their own server
-  (`e2e/sync-server.ts`); never point a test at the live one.
-- Rebuild and restart `sync` (`podman compose up -d --build --force-recreate
-  --no-deps sync`; without `--force-recreate` the old container keeps
-  running the old image) only when
-  `server/` or the wire format in `src/sync/protocol.ts` changes, and say so
-  in the report. Changing what the server accepts needs the app and the
-  server to agree; old clients keep running on phones.
+- The NixOS service `outline-sync` holds Martin's real outline and is
+  reached by his phone and Mac (README, "Sync server"). Browser and unit
+  tests start their own server (`e2e/sync-server.ts`); never point a test
+  at the live one.
+- Deploy the server only when `server/` or the wire format in
+  `src/sync/protocol.ts` changes, and say so in the report: back up, move
+  `rev` in `configuration.nix` (repository the machine's configuration repository) to the merged
+  commit, and ask Martin before `nixos-rebuild switch`. Changing what the
+  server accepts needs the app and the server to agree; old clients keep
+  running on phones.
 - Publishing: build with `BUILD_COMMIT=<short sha>`, remove the old files in
   `a static host directory`, then copy `dist/.` there. The commit shows at the
   bottom of the ⋯ menu, which is how Martin checks what his phone runs.

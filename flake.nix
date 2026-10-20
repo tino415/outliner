@@ -15,6 +15,8 @@
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      nixosModules.default = ./nix/module.nix;
+
       packages = forEachSystem (pkgs: rec {
         outline = pkgs.callPackage ./nix/outline.nix { };
         outline-sync-server = pkgs.lib.addMetaAttrs { mainProgram = "outline-sync-server"; } outline;
