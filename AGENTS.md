@@ -2,8 +2,9 @@
 
 ## Using the outline
 
-Martin's outline is reachable from a shell with `bin/outline` (see README,
-"CLI"). Prefer `--json` and item ids when acting on it; `bin/outline help`
+Martin's outline is reachable from a shell with `outline`, installed for
+the account at the commit the server runs (see README, "CLI"). Prefer `--json`
+and item ids when acting on it; `outline help`
 lists the commands. It changes the real outline on every device, so read
 before writing and do not delete without being asked.
 
@@ -42,14 +43,14 @@ before writing and do not delete without being asked.
 - A session working in a worktree under `.claude/worktrees/` cannot run git
   in the main checkout (`<main checkout>`); to pull main there, leave the
   worktree keeping it, run git in the checkout, and enter the worktree
-  again. A worktree has no `.env.sync`, so its own compose stack needs a
-  separate project name, an empty one, and no published ports.
+  again. A worktree's own compose stack needs a separate project name and
+  no published ports.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
 - The project's tasks are cards on the board at "Projects/Outliner"
   (since 2026-10-10), tagged #feature, #bug, #keyboard, #test. Read it with
-  `bin/outline show Projects/Outliner --ids` at the start of a session.
+  `outline show Projects/Outliner --ids` at the start of a session.
   The columns:
   - Deciding: not agreed yet. Write a proposal (what, why, trade-off)
     into the card's note, questions as "Question: …" children; Martin
@@ -58,7 +59,7 @@ before writing and do not delete without being asked.
   - Implementing: move a card here when starting it.
   - Review: merged and published; add a one-line note on how to try it.
   - Done: Martin moves cards here, or back with a comment.
-  Move cards with `bin/outline move <id> --under <column id>`. The item
+  Move cards with `outline move <id> --under <column id>`. The item
   "Outliner" at the top keeps Martin's remarks in "Comments" and an item
   per session with what needs him; its old "TODO" is empty. NOTES.md keeps
   the session reports; its "Backlog" section is history.

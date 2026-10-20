@@ -179,8 +179,8 @@ kept in the browser and uploaded to the sync server on the next sync. From
 a shell:
 
 ```sh
-bin/outline attach "Outliner/TODO/Some bug" screenshot.png
-bin/outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
+outline attach "Outliner/TODO/Some bug" screenshot.png
+outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
 ```
 
 ## Private items
@@ -295,8 +295,7 @@ tailscale serve --bg --https=10001 http://127.0.0.1:8791
 
 In the app: ⋯ → Sync…, server `https://server.example.ts.net:10001`, and the
 token from `.env.sync`. The first device uploads its outline; every device
-after it switches to the server's outline. The `app` container reaches the
-server by the same address, so `bin/outline` needs that route too.
+after it switches to the server's outline.
 
 A new server version reaches the server when `rev` in `configuration.nix` names a
 commit that has it and the machine is rebuilt. Back up the database first:
@@ -314,20 +313,20 @@ OUTLINE_TOKEN=… OUTLINE_DB=$HOME/outline.db PORT=8791 HOST=127.0.0.1 \
 ## CLI
 
 ```sh
-bin/outline show                          # the whole outline
-bin/outline show "Projects/Garden" --ids
-bin/outline find "#ideas" --json
-bin/outline add "Buy seeds" --under Projects --note "before March"
-printf '%s\n' "- Week" "  - Monday" | bin/outline add - --under Plans
-bin/outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal
-bin/outline show "Week 41" --columns      # a table, parents summing their children
-bin/outline done <id>
-bin/outline move <id> --under Archive
-bin/outline move <id> --after "Projects/Garden"   # beside it, under its parent
-bin/outline add "Call the plumber" --before "Inbox/Pay rent"
-bin/outline export --opml > outline.opml
-bin/outline watch --json                  # a line per change, made anywhere, until stopped
-bin/outline help
+outline show                          # the whole outline
+outline show "Projects/Garden" --ids
+outline find "#ideas" --json
+outline add "Buy seeds" --under Projects --note "before March"
+printf '%s\n' "- Week" "  - Monday" | outline add - --under Plans
+outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal
+outline show "Week 41" --columns      # a table, parents summing their children
+outline done <id>
+outline move <id> --under Archive
+outline move <id> --after "Projects/Garden"   # beside it, under its parent
+outline add "Call the plumber" --before "Inbox/Pay rent"
+outline export --opml > outline.opml
+outline watch --json                  # a line per change, made anywhere, until stopped
+outline help
 ```
 
 `outline watch` asks the server for what is newer every 5 seconds
@@ -354,19 +353,21 @@ outline watch --json | jq --unbuffered -c 'select(.event == "moved" or .event ==
 Its own `outline done` comes back as a `completed` event, which it does
 not listen to. Where it runs it has the token, with no sandbox or approval.
 
-`bin/outline` runs the CLI in the `app` container, which has the token and
-the server address. Elsewhere, install the `outline` package from the flake
-(Linux and macOS), or run `node dist-node/outline.mjs` (Node 22 or later).
+On the server, the account's home-manager installs `outline` from this repository at the
+commit the server runs, and `~/.config/outline/config` names
+`http://127.0.0.1:8791` and the token. Elsewhere, install the `outline`
+package from the flake (Linux and macOS), or run `node dist-node/outline.mjs`
+(Node 22 or later).
 
 ```sh
-nix profile install git+ssh://git@github.com/tino415/outliner.git#outline
+nix profile install github:tino415/outliner#outline
 ```
 
 In a nix-darwin or home-manager configuration, add the repository as a
 flake input and the package to the user's packages:
 
 ```nix
-inputs.outliner.url = "git+ssh://git@github.com/tino415/outliner.git";
+inputs.outliner.url = "github:tino415/outliner";
 # ...
 home.packages = [ inputs.outliner.packages.${pkgs.stdenv.hostPlatform.system}.outline ];
 ```
