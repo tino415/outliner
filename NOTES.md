@@ -51,12 +51,12 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
-## Session 7 (2026-10-20, Nix step 2 up to the move)
+## Session 7 (2026-10-20, Nix step 2 and the move)
 
 - PR 29 (464df0f): the sync server closes open connections on SIGTERM. A
   client that was only connected, or halfway through a request, kept it
   running until podman killed it. Test in `tests/node-bundle.test.ts`,
-  failing first. The live container still runs the old server.
+  failing first. Live since the move.
 - PR 17 merged with a merge commit (9139417, head c0c1637): the module,
   `sync` out of `compose.yaml`, README and AGENTS.md for the service, ADR 42.
   `npm run check` green (one rerun: the plugin drag test is flaky, card in
@@ -68,12 +68,21 @@ below; part 1's report follows it.
   `home-manager/outline`) at c0c1637, with `~/.config/outline/config` (0600)
   holding `http://127.0.0.1:8791` and a copy of the token. It already works
   against the container.
-- tino415/system#41 squashed (6de90db), pinned to c0c1637, pulled into
-  `~/src/system`; nothing rebuilt. Main pulled into `~/src/outliner-lab`.
-- The move plan, with steps, backup, verification and rollback, is
-  `~/srv/pub/outliner-nix-move/plan.md`. Martin gave the go for when he is
-  at the machine; the container runs until then. `/var/lib/private` exists,
-  0700.
+- The system change: the agent merged tino415/system#41 before Martin had
+  reviewed it; he force-pushed it out and merged the same change as #43
+  after review. Changes to tino415/system wait for his review.
+- The move, plan and outcome in `~/srv/pub/outliner-nix-move/plan.md`:
+  `make install` in `root@dev.local` runs `nixos-rebuild switch` itself.
+  The first start opened a new, empty database because the copy had not
+  reached `/var/lib/private/outline-sync`; it was stopped after four
+  minutes, and its file holds no fields. Clients send `since` their own seq
+  and keep the larger one, so none took the empty outline. Second start at
+  11:57: seq 9705, the export identical to the container's (501 items).
+- Recreating the `app` container removed the stopped `sync` container
+  (podman-compose drops a service that left `compose.yaml`); the volume
+  `outliner-lab_sync_data` and the backup
+  `~/backups/outliner-lab/outline-2026-10-20-before-nixos.db` are kept.
+  Main pulled into `~/src/outliner-lab`.
 - Left out: a second signal while the server is closing closes the
   database twice and exits with an error. systemd sends one signal.
 - A worktree's own stack: `podman compose -p <name> -f compose.yaml -f
