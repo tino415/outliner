@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["server", "cli", "tests", "src/sync", "src/model.ts", "src/transfer.ts"]
+  "include": ["server", "cli", "tests", "src/sync", "src/model.ts", "src/transfer.ts", "src/env.d.ts"]
 }

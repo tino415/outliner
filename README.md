@@ -26,6 +26,7 @@ podman compose exec app npm run dev                 # http://127.0.0.1:5188/
 podman compose exec app npx tsc --noEmit
 podman compose exec app npx vitest run              # tree operations, import/export, inline rendering
 podman compose exec app npm run build               # the browser tests run against the build
+podman compose exec app npm run check               # all of it: build, unit suite, every Playwright project, unlisted skips
 podman compose exec app npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox
 podman compose exec app env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which crashes in the container
 ```
@@ -37,10 +38,20 @@ podman compose exec app env WEBKIT=1 npx playwright test   # also desktop Safari
 Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
-P property, K kind, L link, A attach, X private, M move to, D duplicate,
-B board, C columns, N capture, and J again to jump to an item. Pausing
-after it shows what can follow; ? lists every shortcut. Alt-Shift with a
-letter is left to typing, as many layouts need it.
+P property, K kind, L link, ; date, A attach, X private, M move to,
+D duplicate, B board, G agenda, C columns, N capture, and J again to jump
+to an item. Pausing after it shows what can follow; ? lists every shortcut.
+Alt-Shift with a letter is left to typing, as many layouts need it.
+
+Shortcuts can be changed in the outline (doc/adr/0040), so the change
+reaches every device. Give any item the property `shortcuts: on`; each
+other property on it is a command name, as ? shows beside each command,
+and its keys: `tag: Mod+j g`, `zoom-in: Ctrl+]`, several separated by
+commas, `none` to unbind. Mod is ⌘ on a Mac and Ctrl elsewhere. A setting
+replaces the command's keys and takes them from any command that had them.
+Keys that type, that the browser keeps (Mod-N, T, W), copy and paste, or
+`Mod+j` alone are refused; ? lists what was refused and why. From a shell:
+`outline set "Settings/Shortcuts" tag "Mod+j g"`.
 
 ## Properties and columns
 
@@ -120,6 +131,29 @@ the tag needs a letter, so `.#flake`, `a#b` and `#123` stay plain text.
 `\#word` writes a plain `#word` (the backslash shows only while editing), and
 so does anything in backticks.
 
+## Dates
+
+A date is written as ISO text, `2026-10-14` or `2026-10-14 9:00`, in an
+item, a note or a property, and shows as a chip: "today", "tomorrow",
+"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J ; (⌘J ;) or typing `!!`
+asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
+`14.10.`, `14 oct`, `25` (the next 25th), each with an optional `9:00`. A
+click on a chip changes or removes it. The properties `scheduled` and
+`due` take their value from the same picker. Search understands
+`due:today`, `due:<+7d`, `scheduled:this-week`, `date:>=2026-10-01` (any
+date of the item: `scheduled`, `due` or one in its text) and `is:overdue`
+(open, every date passed).
+
+## Agenda
+
+⋯ → Agenda (Ctrl-J G) lists, from all over the outline, the open items
+whose dates have passed, then each day of the coming week with the items
+dated on it, then the `#todo` items without a date (doc/adr/0037). An
+item's dates are its `scheduled` and `due` properties and the dates in its
+text. The rows are the items themselves: edit, complete or date them in
+place; the line under each says where it lives and goes there. Keys that
+would move an item in the outline do nothing in the agenda.
+
 ## Order of new and completed items
 
 `:completed: last` on a page shows completed items after the open ones,
@@ -176,15 +210,39 @@ Tools
 Its commands appear in Ctrl-K as `tools: Shout` and act on the item being
 edited and what is under it:
 
-- `outline.item(item)` reads `{id, text, note, properties, children}`
+- `outline.item(item)` reads `{id, text, note, properties, children, completed}`
 - `outline.setText(item, text)`, `setNote(item, note)`
 - `outline.setProperty(item, key, value)`, an empty value removing it; not
   `private`, `plugin` or `approved`
+- `outline.complete(item, done)`, `done` false reopening it
 - `outline.add(parent, text)` adds a child and returns its id
 - `outline.toast(message)`
 
 Each takes an item as the action got it or its id, and returns a promise; a
-failed call shows its error as a toast, awaited or not. It runs in a sandbox without network, and only after a trusted
+failed call shows its error as a toast, awaited or not.
+
+`outline.on(event, handler)` runs a handler by itself when an item is
+`added`, `moved`, `completed` (or reopened) or `changed` (text, note or a
+property) in this tab (doc/adr/0038). It gets `{item, from, to}`: for a
+move the old and new parent, for an addition the parent as `to`; it may
+read those and change the item and what is under it. Undo, redo, other
+devices and a handler's own changes fire nothing, and what a handler does
+is undone with the change that fired it. A board column with
+`:completes: yes` that completes the cards put into it, and reopens those
+taken out:
+
+```js
+const completes = (column) => column?.properties.completes === "yes";
+outline.on("moved", async ({ item, from, to }) => {
+  if (completes(to) && !item.completed) await outline.complete(item, true);
+  if (completes(from) && !completes(to) && item.completed) await outline.complete(item, false);
+});
+outline.on("added", async ({ item, to }) => {
+  if (completes(to) && !item.completed) await outline.complete(item, true);
+});
+```
+
+A plugin runs in a sandbox without network, and only after a trusted
 device approved this exact code in ⋯ → Plugins; changing the code, from
 anywhere, stops it until it is approved again. A device is trusted when it
 has the key `trust` (Make it trusted, then copy it with ⋯ → Private keys).
@@ -257,8 +315,33 @@ bin/outline move <id> --under Archive
 bin/outline move <id> --after "Projects/Garden"   # beside it, under its parent
 bin/outline add "Call the plumber" --before "Inbox/Pay rent"
 bin/outline export --opml > outline.opml
+bin/outline watch --json                  # a line per change, made anywhere, until stopped
 bin/outline help
 ```
+
+`outline watch` asks the server for what is newer every 5 seconds
+(`--every N`) and prints each change made from then on, on any device:
+`{"event":"moved","id":…,"from":…,"to":…}`, and `added`, `completed`
+(also reopening) and `changed`, as plugins get them (doc/adr/0039).
+Private items print nothing. A script does the rest with `jq` and the
+other commands; this one is the `:completes: yes` plugin of the Plugins
+section, for moves made anywhere:
+
+```sh
+completes() { [ -n "$1" ] && outline show "$1" --json --depth 0 | jq -e '.properties.completes == "yes"' >/dev/null; }
+outline watch --json | jq --unbuffered -c 'select(.event == "moved" or .event == "added")' |
+  while read -r event; do
+    id=$(jq -r .id <<<"$event")
+    from=$(jq -r '.from // ""' <<<"$event")
+    to=$(jq -r .to <<<"$event")
+    done=$(outline show "$id" --json --depth 0 | jq -r '.completed // false')
+    if completes "$to"; then [ "$done" = true ] || outline done "$id" >/dev/null
+    elif completes "$from" && [ "$done" = true ]; then outline undone "$id" >/dev/null; fi
+  done
+```
+
+Its own `outline done` comes back as a `completed` event, which it does
+not listen to. Where it runs it has the token, with no sandbox or approval.
 
 `bin/outline` runs the CLI in the `app` container, which has the token and
 the server address. Elsewhere, install the `outline` package from the flake

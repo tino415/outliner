@@ -33,6 +33,7 @@ import { PaletteOption, openPalette } from "./palette";
 import { keepFiles } from "./attachments";
 import { choosePrivacy } from "./privateItems";
 import { chooseProperty } from "./propertyPicker";
+import { pickDate } from "./datePicker";
 import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { privateHolderOf, referenceTo, resolveReference } from "./references";
@@ -43,7 +44,7 @@ import { bindingFor, bindingForKeys } from "./keys";
 import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
 import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
-import { END, editorFor, focusCaret, itemElementFor, replayAnimation, textEditorFor, titleFor, treeEditors } from "./render";
+import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
 
@@ -72,6 +73,7 @@ export function bindEditorEvents(): void {
     const context = editorContext(editor);
     const before = value.slice(0, context.start);
     if ((event as InputEvent).data === "[" && before.endsWith("[[") && !(context.inNote && isInCode(before))) pickReference(context, 2);
+    if ((event as InputEvent).data === "!" && before.endsWith("!!") && !(context.inNote && isInCode(before))) pickDateAt(context, 2);
   });
 
   document.addEventListener("focusout", (event) => {
@@ -128,7 +130,7 @@ export function bindEditorEvents(): void {
     }
     if (!target.closest("#toolbar, #toast")) clearSelection();
     if (!editor || document.activeElement === editor) return;
-    if (target.closest("a.link, .tag, .kind, .ref")) event.preventDefault();
+    if (target.closest("a.link, .tag, .kind, .ref, .date")) event.preventDefault();
     else if (isNoteEditor(editor) && editor.querySelector(".prop-line")) placeCaretBeforeLinesAppear(event, editor);
   });
 
@@ -140,6 +142,7 @@ export function bindEditorEvents(): void {
     const tag = target.closest<HTMLElement>(".tag");
     const kind = target.closest<HTMLElement>(".kind");
     const reference = target.closest<HTMLElement>(".ref");
+    const date = target.closest<HTMLElement>(".date");
     if (link) {
       event.preventDefault();
       window.open(link.href, "_blank", "noopener");
@@ -149,6 +152,8 @@ export function bindEditorEvents(): void {
       setQuery(tag.dataset.tag!);
     } else if (reference) {
       followReference(reference.dataset.ref!);
+    } else if (date) {
+      changeDate(editor, date);
     }
   });
 
@@ -289,6 +294,7 @@ export interface EditorContext {
   id: ItemId;
   inNote: boolean;
   isTitle: boolean;
+  inAgenda: boolean;
   start: number;
   end: number;
   length: number;
@@ -304,6 +310,7 @@ export function editorContext(editor: HTMLElement): EditorContext {
     id: editor.dataset.id!,
     inNote: isNoteEditor(editor),
     isTitle: editor === ui.title || editor === ui.titleNote,
+    inAgenda: ui.agenda.contains(editor),
     start,
     end,
     length,
@@ -348,6 +355,13 @@ const onItem =
     if (!c.isTitle) return run(c);
   };
 
+/** Actions that change where an item sits; on the page title and in the agenda, which shows items from all over, they do nothing. */
+const inPlace =
+  (run: Action): Action =>
+  (c) => {
+    if (!c.isTitle && !c.inAgenda) return run(c);
+  };
+
 export const actions = {
   enter(c: EditorContext): void {
     if (c.inNote) {
@@ -356,6 +370,7 @@ export const actions = {
       insertText("\n" + indentation);
       return;
     }
+    if (c.inAgenda) return actions.blur(c);
     if (c.isTitle) {
       const created = insertChild(doc(), state.zoom, 0);
       commitAndRender(created.doc, startOf(created.id));
@@ -386,6 +401,7 @@ export const actions = {
     const note = editorFor(c.id, "note");
     if (!note) return;
     note.hidden = false;
+    rowShowsOpenedNote(c.id);
     focusCaret({ id: c.id, offset: END, inNote: true });
   },
 
@@ -396,6 +412,7 @@ export const actions = {
       actions.toggleNote(c);
       return;
     }
+    if (c.inAgenda) return false;
     const previous = neighbourEditor(c.editor, -1);
     if (isBlank(doc().items[c.id])) {
       const target = previous ?? neighbourEditor(c.editor, 1);
@@ -411,7 +428,7 @@ export const actions = {
   },
 
   deleteForward(c: EditorContext): boolean | void {
-    if (c.inNote || c.isTitle || !c.atEnd) return false;
+    if (c.inNote || c.isTitle || c.inAgenda || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
     if (!next) return;
     if (refusedAsPrivate(next.dataset.id!, c.id)) return;
@@ -481,12 +498,12 @@ export const actions = {
 
   indent(c: EditorContext): void {
     if (inCodeBlock(c)) insertText("  ");
-    else if (!c.isTitle) commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
+    else if (!c.isTitle && !c.inAgenda) commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
   },
 
   outdent(c: EditorContext): void {
     if (inCodeBlock(c)) takeBackIndentation(c);
-    else if (!c.isTitle) commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
+    else if (!c.isTitle && !c.inAgenda) commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
   },
 
   codeBlock(c: EditorContext): void {
@@ -502,9 +519,9 @@ export const actions = {
     select(note, at + lead.length + 4);
   },
 
-  moveUp: onItem((c) => commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c))),
+  moveUp: inPlace((c) => commitAndRender(moveUp(doc(), c.id, filter()), keepCaret(c))),
 
-  moveDown: onItem((c) => commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c))),
+  moveDown: inPlace((c) => commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c))),
 
   complete: onItem((c) => {
     const next = toggleCompleted(doc(), c.id);
@@ -526,24 +543,24 @@ export const actions = {
     toastWithUndo(hidden > 0 ? `${label} and ${hidden} more deleted` : `${label} deleted`);
   }),
 
-  collapse: onItem((c) => {
+  collapse: inPlace((c) => {
     if (!state.results) commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
   }),
 
-  expand: onItem((c) => {
+  expand: inPlace((c) => {
     if (state.results) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
     animateOpening(c.id);
   }),
 
-  toggleFold: onItem((c) => {
+  toggleFold: inPlace((c) => {
     if (doc().items[c.id].children.length > 0) toggleFold(c.id);
   }),
 
-  newFirstChild(c: EditorContext): void {
+  newFirstChild: inPlace((c) => {
     const created = insertChild(doc(), c.id, 0);
     commitAndRender(created.doc, startOf(created.id));
-  },
+  }),
 
   upToParent: onItem((c) => {
     if (c.inNote) focusCaret({ id: c.id, offset: 0 });
@@ -572,6 +589,10 @@ export const actions = {
 
   insertReference(c: EditorContext): void {
     pickReference(c, 0);
+  },
+
+  insertDate(c: EditorContext): void {
+    pickDateAt(c, 0);
   },
 
   addTag(c: EditorContext): void {
@@ -636,19 +657,19 @@ export const actions = {
   }),
 
   selectUp(c: EditorContext): boolean | void {
-    if (c.inNote || c.isTitle || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
+    if (c.inNote || c.isTitle || c.inAgenda || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
     const previous = neighbourEditor(c.editor, -1);
     startSelection(c.id, previous && previous !== ui.title ? previous.dataset.id! : c.id);
   },
 
   selectAll(c: EditorContext): boolean | void {
     const wholeTextSelected = c.start === 0 && c.end === c.length;
-    if (c.inNote || c.isTitle || !wholeTextSelected) return false;
+    if (c.inNote || c.isTitle || c.inAgenda || !wholeTextSelected) return false;
     selectWholePage();
   },
 
   selectDown(c: EditorContext): boolean | void {
-    if (c.inNote || c.isTitle || c.end !== c.length || !isCaretOnLastLine(c.editor)) return false;
+    if (c.inNote || c.isTitle || c.inAgenda || c.end !== c.length || !isCaretOnLastLine(c.editor)) return false;
     startSelection(c.id, neighbourEditor(c.editor, 1)?.dataset.id ?? c.id);
   },
 };
@@ -666,6 +687,50 @@ function pickReference(c: EditorContext, typed: number): void {
       insertText(referenceTo(target.id, plainText(target.text)));
     },
   });
+}
+
+/** Picks a date and writes it at the caret, over the `typed` characters before it (the "!!" that asked), apart from the words around it. */
+function pickDateAt(c: EditorContext, typed: number): void {
+  const { editor, start, end } = c;
+  pickDate({
+    placeholder: "Date…",
+    write: (written) => {
+      const text = editor.textContent ?? "";
+      const before = text.slice(0, start - typed);
+      const after = text.slice(end);
+      const lead = before === "" || /[\s(\[]$/.test(before) ? "" : " ";
+      const trail = /^[\p{L}\p{N}]/u.test(after) ? " " : "";
+      editor.focus();
+      select(editor, start - typed, end);
+      insertText(lead + written + trail);
+    },
+  });
+}
+
+/** A click on a date chip outside editing changes or removes that date. */
+function changeDate(editor: HTMLElement, chip: HTMLElement): void {
+  const id = editor.dataset.id!;
+  const inNote = isNoteEditor(editor);
+  const raw = chip.dataset.date!;
+  const start = offsetBefore(editor, chip);
+  const replace = (written: string) => {
+    const current = inNote ? doc().items[id]?.note : doc().items[id]?.text;
+    if (current?.slice(start, start + raw.length) !== raw) return;
+    let before = current.slice(0, start);
+    let after = current.slice(start + raw.length);
+    if (written === "" && before.endsWith(" ")) before = before.slice(0, -1);
+    else if (written === "" && after.startsWith(" ")) after = after.slice(1);
+    const next = before + written + after;
+    commitAndRender(inNote ? setNote(doc(), id, next) : setText(doc(), id, next), null);
+  };
+  pickDate({ current: raw, placeholder: `Change ${raw} to…`, write: replace, remove: { label: "Remove the date", run: () => replace("") } });
+}
+
+function offsetBefore(editor: HTMLElement, node: Node): number {
+  const range = document.createRange();
+  range.setStart(editor, 0);
+  range.setEndBefore(node);
+  return range.toString().length;
 }
 
 interface KindChoice extends PaletteOption {
@@ -762,7 +827,7 @@ function animateOpening(id: ItemId): void {
 }
 
 function neighbourEditor(editor: HTMLElement, direction: -1 | 1): HTMLElement | null {
-  const editors = [ui.title, ...treeEditors()];
+  const editors = ui.agenda.contains(editor) ? treeEditors() : [ui.title, ...treeEditors()];
   const textEditor = isNoteEditor(editor) ? (textEditorFor(editor.dataset.id!) ?? editor) : editor;
   return editors[editors.indexOf(textEditor) + direction] ?? null;
 }

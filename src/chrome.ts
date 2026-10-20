@@ -13,6 +13,7 @@ import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from 
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
 import { bindBoard, boardShown, toggleBoard } from "./board";
+import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
@@ -26,6 +27,7 @@ export function bindChrome(): void {
   endSelectionWhenSomethingTakesFocus();
   bindColumnCells();
   bindBoard();
+  bindAgenda();
   bindPropertyChips();
 
   window.addEventListener("hashchange", showZoom);
@@ -39,7 +41,6 @@ export function bindChrome(): void {
 
   $("help-close").addEventListener("click", () => ui.help.close());
   ui.help.addEventListener("click", (event) => event.target === ui.help && ui.help.close());
-  ui.helpGrid.innerHTML = describeKeys();
   bindFormulaHelp();
   bindPrivateKeys();
   bindPlugins();
@@ -57,7 +58,7 @@ export const globalActions = {
     ui.search.focus();
     ui.search.select();
   },
-  help: () => (ui.help.open ? ui.help.close() : ui.help.showModal()),
+  help: () => (ui.help.open ? ui.help.close() : showHelp()),
   toggleCompleted: () => menuActions["toggle-completed"](),
   toggleColumns: () => toggleColumnView(),
   capture: () => openCapture(),
@@ -77,13 +78,18 @@ export const globalActions = {
   },
 };
 
+function showHelp(): void {
+  ui.helpGrid.innerHTML = describeKeys();
+  ui.help.showModal();
+}
+
 function paletteCommands(): Command[] {
   const editor = editorOf(document.activeElement);
   const editing = editor ? editorContext(editor) : null;
   return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -233,6 +239,10 @@ function bindSearchBox(): void {
 }
 
 const menuActions: Record<string, () => void> = {
+  agenda: () => {
+    ui.menu.hidePopover();
+    openAgenda();
+  },
   jump: () => {
     ui.menu.hidePopover();
     searchEverything(paletteCommands());
@@ -271,7 +281,7 @@ const menuActions: Record<string, () => void> = {
   import: () => ui.importFile.click(),
   help: () => {
     ui.menu.hidePopover();
-    ui.help.showModal();
+    showHelp();
   },
   "private-keys": () => {
     ui.menu.hidePopover();

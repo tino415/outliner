@@ -578,3 +578,14 @@ test("Ctrl-K never puts a command that deletes above the items, so Enter cannot 
   await page.keyboard.type("clear");
   await expect(page.locator(".palette-results li").first()).toContainText("Unclear requirements");
 });
+
+test("an item whose :private: line is still being typed is private at once, and typing in its note goes on undisturbed", async ({ page }) => {
+  await freshOutline(page, "Journal\n  secret");
+  await clickEnd(page, "Journal");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type(":private: personal");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("my diary");
+  await expect(row(page, "secret").locator("xpath=..")).toHaveAttribute("data-id", /^i0~/);
+  expect(await caret(page)).toEqual({ text: ":private: personal\nmy diary", offset: 27 });
+});

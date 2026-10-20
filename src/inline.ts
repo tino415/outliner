@@ -8,6 +8,7 @@
 import { kindOf } from "./kinds";
 import { ATTACHMENT } from "./attachmentLinks";
 import { SEALED_NOTE } from "./notes";
+import { DATE_WRITTEN, dateLabel, readWrittenDate, today } from "./dates";
 
 /** A tag starts a line, or follows a space or an opening bracket, and has a letter: not `.#flake`, `a#b` or `#123`. */
 const TAG = String.raw`(?<=^|[\s(\[])#(?=[\p{N}_-]*\p{L})[\p{L}\p{N}_-]*[\p{L}\p{N}_]`;
@@ -26,6 +27,7 @@ const TOKEN = new RegExp(
     String.raw`(?<att>!?\[[^\]\n]*\]\(att:[0-9a-f]{64}\))`,
     String.raw`(?<mdlink>\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))`,
     String.raw`(?<url>https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"])`,
+    `(?<date>${DATE_WRITTEN})`,
     String.raw`(?<escaped>\\(?=#))`,
     `(?<tag>${TAG})`,
   ].join("|"),
@@ -74,6 +76,7 @@ function renderToken(groups: Record<string, string | undefined>, raw: string): s
     return `${marker("[")}<a class="link" href="${escape(url)}" target="_blank" rel="noopener">${escape(label)}</a>${marker(`](${url})`)}`;
   }
   if (groups.url) return `<a class="link" href="${escape(raw)}" target="_blank" rel="noopener">${escape(raw)}</a>`;
+  if (groups.date) return dateChip(raw);
   if (groups.escaped) return marker(raw);
   if (groups.tag) return `<span class="tag" data-tag="${escape(raw.toLowerCase())}"><span class="tag-hash">#</span>${escape(raw.slice(1))}</span>`;
   return escape(raw);
@@ -83,6 +86,15 @@ function wrapped(tag: string, raw: string, markerLength: number): string {
   const open = raw.slice(0, markerLength);
   const inner = raw.slice(markerLength, raw.length - markerLength);
   return `<${tag}>${marker(open)}${escape(inner)}${marker(open)}</${tag}>`;
+}
+
+/** The ISO text stays in the DOM and shows while editing; otherwise the chip shows its label (doc/adr/0036). */
+function dateChip(raw: string): string {
+  const written = readWrittenDate(raw);
+  if (!written) return escape(raw);
+  const now = today();
+  const when = written.day < now ? " past" : written.day === now ? " today" : "";
+  return `<span class="date${when}" data-date="${escape(raw)}" data-label="${escape(dateLabel(written, now))}"><span class="date-raw">${escape(raw)}</span></span>`;
 }
 
 function marker(text: string): string {

@@ -12,6 +12,9 @@ import { backlinks } from "./references";
 import { pathOf } from "./search";
 import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
+import { today } from "./dates";
+import { agendaShown, renderAgenda } from "./agenda";
+import { followShortcutSettings } from "./keys";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -19,23 +22,34 @@ export const END = Number.POSITIVE_INFINITY;
 /** Where the caret should go after a render: the first candidate still on screen. */
 export type FocusRequest = Focus | Focus[] | null;
 
+/** Date chips say "today" and "tomorrow", so a row shows the day it was rendered on. */
+let dayRendered = today();
+
 export function render(request: FocusRequest): void {
   const candidates = request === null ? [] : [request].flat();
   pluginsMayHaveChanged();
+  followShortcutSettings(doc());
   state.results = searchResults(candidates[0] ?? null);
   const started = performance.now();
   formulaCellOf = null;
+  dayRendered = today();
   columns = columnView();
   renderCrumbs();
   renderHead();
   renderColumnsHead();
-  const board = boardShown();
+  const agenda = agendaShown();
+  const board = !agenda && boardShown();
+  ui.agenda.hidden = !agenda;
   ui.board.hidden = !board;
+  ui.page.classList.toggle("with-agenda", agenda);
   ui.page.classList.toggle("with-board", board);
-  ui.tree.hidden = board;
-  if (board) renderBoard();
+  ui.tree.hidden = board || agenda;
+  if (agenda) renderAgenda();
+  else if (board) renderBoard();
   else renderTree();
-  if (board) ui.addItem.hidden = ui.columnsHead.hidden = true;
+  if (!agenda) ui.agenda.replaceChildren();
+  if (board || agenda) ui.addItem.hidden = ui.columnsHead.hidden = true;
+  if (agenda) document.title = "Agenda · Outliner";
   renderSearchSummary();
   renderMenuState();
   highlightMatches();
@@ -46,7 +60,7 @@ export function render(request: FocusRequest): void {
 }
 
 function renderCrumbs(): void {
-  const trail = ancestors(doc(), state.zoom);
+  const trail = agendaShown() ? [ROOT] : ancestors(doc(), state.zoom);
   ui.crumbs.classList.toggle("at-home", trail.length === 0);
   if (trail.length === 0) {
     ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
@@ -183,6 +197,7 @@ export function titleFor(id: ItemId): string {
 interface RenderedRow {
   item: Item;
   state: string;
+  noteOpen: boolean;
   li: HTMLLIElement;
 }
 
@@ -193,6 +208,12 @@ let rowsSeen = new Set<ItemId>();
 export function rowShowsTypedText(id: ItemId): void {
   const rendered = renderedRows.get(id);
   if (rendered) rendered.item = doc().items[id];
+}
+
+/** Opening a note un-hides it without a render; the row now shows it open. */
+export function rowShowsOpenedNote(id: ItemId): void {
+  const rendered = renderedRows.get(id);
+  if (rendered) rendered.noteOpen = true;
 }
 
 function renderTree(): void {
@@ -225,14 +246,14 @@ function renderItem(id: ItemId): HTMLLIElement {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
-  const displayState = `${hasChildren} ${expanded} ${noteOpen} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
+  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
 
   let rendered = renderedRows.get(id);
-  if (!rendered || rendered.item !== item || rendered.state !== displayState) {
+  if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
     li.prepend(createRow(item, expanded, noteOpen, cells, results));
-    rendered = { item, state: displayState, li };
+    rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
 
@@ -326,8 +347,9 @@ function highlightMatches(): void {
 }
 
 /** Text editors of the visible rows, in reading order: the order arrow keys and selection follow. */
-/** The outline as it is shown: the tree, or the board when the page is one. */
+/** The outline as it is shown: the agenda, the tree, or the board when the page is one. */
 export function shownOutline(): HTMLElement {
+  if (agendaShown()) return ui.agenda;
   return boardShown() ? ui.board : ui.tree;
 }
 

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { caret, clickEnd, editor, expectOutline, freshOutline, row } from "./helpers";
 
-test.describe("keyboard editing", () => {
+test.describe("keyboard editing", { tag: "@keys" }, () => {
   test("Enter creates and splits items, Tab and Shift-Tab change depth", async ({ page }) => {
     await freshOutline(page, "alpha");
     await clickEnd(page, "alpha");
@@ -133,15 +133,15 @@ test.describe("keyboard editing", () => {
     await freshOutline(page, "a\nb");
     await clickEnd(page, "b");
     await page.keyboard.press("Tab");
-    await page.keyboard.type("!!");
-    await expectOutline(page, "a\n  b!!");
+    await page.keyboard.type("++");
+    await expectOutline(page, "a\n  b++");
     await page.keyboard.press("ControlOrMeta+z");
     await expectOutline(page, "a\n  b");
     await page.keyboard.press("ControlOrMeta+z");
     await expectOutline(page, "a\nb");
     await page.keyboard.press("ControlOrMeta+Shift+z");
     await page.keyboard.press("ControlOrMeta+y");
-    await expectOutline(page, "a\n  b!!");
+    await expectOutline(page, "a\n  b++");
   });
 
   test("Ctrl-Shift-Backspace deletes an item with an undo toast", async ({ page }) => {
@@ -207,7 +207,7 @@ test.describe("keyboard editing", () => {
   });
 });
 
-test.describe("selecting several items", () => {
+test.describe("selecting several items", { tag: "@keys" }, () => {
   test("Shift-arrows select items; Tab, move and complete act on the block", async ({ page }) => {
     await freshOutline(page, "a\nb\nc\nd");
     await editor(page, "b").click();
@@ -275,7 +275,7 @@ test.describe("selecting several items", () => {
   });
 });
 
-test.describe("zoom and search", () => {
+test.describe("zoom and search", { tag: "@keys" }, () => {
   test("clicking a bullet zooms in, breadcrumbs and Back zoom out", async ({ page }) => {
     await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
     await row(page, "garden").locator(".bullet").click();
@@ -387,7 +387,7 @@ test.describe("zoom and search", () => {
   });
 });
 
-test.describe("appearance", () => {
+test.describe("appearance", { tag: "@keys" }, () => {
   test("theme and text size are chosen in the menu and survive a reload", async ({ page }) => {
     await freshOutline(page, "a");
     const size = () => editor(page, "a").evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
@@ -403,7 +403,7 @@ test.describe("appearance", () => {
   });
 });
 
-test.describe("item menu", () => {
+test.describe("item menu", { tag: "@keys" }, () => {
   test("right-clicking a bullet offers actions on that item", async ({ page }) => {
     await freshOutline(page, "a\nb\n  b1\nc");
     await row(page, "b").locator(".bullet").click({ button: "right" });
@@ -417,7 +417,7 @@ test.describe("item menu", () => {
   });
 });
 
-test.describe("drag and drop", () => {
+test.describe("drag and drop", { tag: "@keys" }, () => {
   test("dragging a bullet below another item moves it there", async ({ page }) => {
     await freshOutline(page, "a\nb\nc");
     const bullet = row(page, "a").locator(".bullet");
@@ -431,7 +431,7 @@ test.describe("drag and drop", () => {
   });
 });
 
-test("pasting an image attaches it to the item's note and shows it, without sync too", async ({ page, browserName }) => {
+test("pasting an image attaches it to the item's note and shows it, without sync too", { tag: "@keys" }, async ({ page, browserName }) => {
   test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
   await freshOutline(page, "glitch");
   await editor(page, "glitch").click();
@@ -448,7 +448,7 @@ test("pasting an image attaches it to the item's note and shows it, without sync
   await expect(row(page, "glitch").locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
 });
 
-test.describe("order of new and completed items", () => {
+test.describe("order of new and completed items", { tag: "@keys" }, () => {
   test("a page with :completed: last shows its completed items after the open ones", async ({ page }) => {
     await freshOutline(page, "Tasks | :completed: last\n  done\n  open");
     await editor(page, "done").click();
