@@ -2,7 +2,7 @@ import { test } from "@playwright/test";
 import { clickEnd, freshOutline, row } from "./helpers";
 
 for (const theme of ["light", "dark"] as const) {
-  test(`screenshots ${theme}`, async ({ page }, info) => {
+  test(`screenshots ${theme}`, { tag: "@phone" }, async ({ page }, info) => {
     const shot = (name: string) => page.screenshot({ path: `screenshots/${info.project.name}-${theme}-${name}.png` });
     await page.emulateMedia({ colorScheme: theme });
     await freshOutline(page);

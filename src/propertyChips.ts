@@ -1,6 +1,7 @@
 import { Item, SETTINGS } from "./model";
 import { escape } from "./inline";
 import { Cell } from "./properties";
+import { dateLabel, readWrittenDate, today } from "./dates";
 
 /* An item's properties as chips under its text (doc/adr/0032); a click on one edits it. */
 
@@ -17,6 +18,14 @@ function chipHtml(key: string, value: string, result: Cell | undefined): string 
   const classes = ["prop-chip", SETTINGS.has(key) && "setting", result && "computed", result?.error && "error"].filter(Boolean).join(" ");
   const shown = result?.text ?? value;
   const title = result?.error ? `${key}: ${value} (${result.error})` : `${key}: ${value}`;
-  const label = key === "private" ? `🔒 ${escape(value)}` : `<span class="prop-key">${escape(key)}</span> <span class="prop-value">${escape(shown)}</span>`;
+  const label = key === "private" ? `🔒 ${escape(value)}` : `<span class="prop-key">${escape(key)}</span> ${valueHtml(shown)}`;
   return `<button type="button" tabindex="-1" class="${classes}" data-key="${escape(key)}" title="${escape(title)}">${label}</button>`;
+}
+
+/** A date shows as a date chip does, "tomorrow" or "Tue 14 Oct", red once past (doc/adr/0036). */
+function valueHtml(shown: string): string {
+  const date = readWrittenDate(shown);
+  if (!date) return `<span class="prop-value">${escape(shown)}</span>`;
+  const now = today();
+  return `<span class="prop-value${date.day < now ? " past" : ""}" data-date="${escape(shown)}">${escape(dateLabel(date, now))}</span>`;
 }

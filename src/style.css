@@ -14,6 +14,10 @@
   --accent-soft: light-dark(#e6ebfc, #262c45);
   --tag: light-dark(#8146b8, #c9a6f1);
   --tag-bg: light-dark(#f2eafa, #2c2536);
+  --date: light-dark(#1f6f5c, #8fd6c0);
+  --date-bg: light-dark(#e3f3ee, #1f3330);
+  --overdue: light-dark(#b3261e, #ff8a80);
+  --overdue-bg: light-dark(#fbe9e7, #3a2323);
   --kind: light-dark(#ffffff, #1b1d22);
   --kind-bg: light-dark(#3d4250, #c3c8d4);
   --mark: light-dark(#fbe38e, #6a5418);
@@ -602,6 +606,53 @@ code {
 :focus .tag-hash {
   opacity: 1;
   margin: 0;
+}
+
+.date {
+  color: var(--date);
+  background: var(--date-bg);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 0.92em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.date::before {
+  content: attr(data-label);
+}
+
+.date.past {
+  color: var(--overdue);
+  background: var(--overdue-bg);
+}
+
+.completed > .row .date.past {
+  color: inherit;
+  background: var(--surface-2);
+}
+
+.date-raw {
+  display: none;
+}
+
+:focus .date {
+  border-radius: 5px;
+  padding: 0 2px;
+  font-size: inherit;
+  cursor: text;
+}
+
+:focus .date::before {
+  content: none;
+}
+
+:focus .date-raw {
+  display: inline;
+}
+
+.prop-chip .prop-value.past {
+  color: var(--overdue);
 }
 
 .kind {
@@ -1512,6 +1563,11 @@ code {
   color: var(--muted);
 }
 
+.plugin-events {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
 .plugin-list pre {
   max-height: 180px;
   overflow: auto;
@@ -2135,4 +2191,100 @@ body.dragging {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* The agenda (doc/adr/0037): its own heading in place of the page's, rows without a fold toggle. */
+.page.with-agenda .page-head,
+.page.with-agenda .add-item,
+.page.with-agenda .columns-head {
+  display: none;
+}
+
+.agenda-title,
+.agenda-range,
+.agenda-section h2,
+.agenda-empty {
+  padding-left: calc(var(--bullet-col) - 2px);
+}
+
+.agenda-range {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.agenda-section {
+  margin-top: 22px;
+}
+
+.agenda-section h2 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.agenda-overdue h2 {
+  color: var(--overdue);
+}
+
+.agenda-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-item > .row {
+  grid-template-columns: var(--bullet-col) minmax(0, 1fr);
+}
+
+.agenda-path {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agenda-path:hover {
+  color: var(--accent);
+}
+
+.agenda-empty {
+  margin-top: 22px;
+  color: var(--muted);
+}
+
+.help-name {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.help-note {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.help-refused,
+.help-how {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.help-refused h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.help-refused ul {
+  margin: 0;
+  padding-left: 18px;
 }

@@ -1,4 +1,4 @@
-import { propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
+import { privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
 
 export type ItemId = string;
 
@@ -288,7 +288,7 @@ export function setNote(doc: Doc, id: ItemId, note: string): Doc {
 // ---- properties (doc/adr/0032) ---------------------------------------------------------
 
 /** Properties that set up the app rather than describe the item: shown muted, never offered as columns. */
-export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved"]);
+export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved", "shortcuts"]);
 
 /** Sets `key` to `value` on the item; an empty value removes it, and a key the sync server would refuse changes nothing. */
 export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string): Doc {
@@ -319,9 +319,9 @@ export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.ite
   return next;
 }
 
-/** The key a private item is sealed with: its `private` property where it is open, the sealed note's key elsewhere (doc/adr/0029). */
+/** The key a private item is sealed with: its `private` property where it is open, else the key its note names (doc/adr/0029). */
 export function privateKeyOf(item: Item): string | null {
-  return item.properties.private ?? sealedKeyOf(item.note);
+  return item.properties.private ?? privateKeyInNote(item.note);
 }
 
 /** An item shown as a board: its children are columns, theirs are cards (doc/adr/0031). */

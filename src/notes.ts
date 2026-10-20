@@ -85,3 +85,8 @@ export function sealedKeyOf(note: string): string | null {
 export function isSealed(note: string): boolean {
   return SEALED_NOTE.test(note);
 }
+
+/** The key a note names: sealed with it, or a `:private:` line not yet lifted into the property, typed just now or written by an older build. */
+export function privateKeyInNote(note: string): string | null {
+  return sealedKeyOf(note) ?? (propertiesOf(note).get("private") || null);
+}

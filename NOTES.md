@@ -51,6 +51,35 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 6 (2026-10-19, Nix step 2 and the sync outage)
+
+Fixed:
+
+- The sync server crashed at every start (502 on outliner-sync.dev.localhost
+  and the tailscale route): `server.mjs` imported a shared chunk that
+  `Dockerfile.sync` and the Nix package never copy. The node bundles are now
+  built one entry at a time into single files; `tests/node-bundle.test.ts`
+  starts each one copied alone. PR 18, bb5b211. `sync` rebuilt and recreated
+  23:15 at seq 8937; backup
+  `~/backups/outliner-lab/outline-2026-10-19-before-chunk-fix.db`.
+
+Nix step 2, not cut over:
+
+- `nix/module.nix` (`services.outline-sync`, DynamicUser, database in
+  `/var/lib/outline-sync`): draft PR 17, branch `nix-step2`.
+- `configuration.nix` fetches the outliner repo at a pinned commit over
+  https and imports the module: draft PR tino415/system#41. Martin chose
+  making the repo public over ssh keys or vendored files; only
+  `configuration.nix` is copied to `/etc/nixos`.
+- Needed before the move: `app` and `bin/outline` reach the host server
+  instead of `sync:8791`; `sync` leaves `compose.yaml` so `compose up -d`
+  cannot start the old database; PR 41 re-pinned to a commit with bb5b211;
+  PR 17 merged with a merge commit; an ADR; PR 41 squashed;
+  `/var/lib/private` created 0700 before copying the database.
+- The move itself: stop `sync`, back up, root copies the database and the
+  token, `nixos-rebuild switch`; rollback is stopping the unit and starting
+  the container, whose volume stays.
+
 ## Session 5 (2026-10-09 evening to 2026-10-10)
 
 From Martin's requests in the session; since 2026-10-10 the tasks are cards

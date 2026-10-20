@@ -14,6 +14,7 @@ import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from ".
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
+import { today } from "./dates";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -25,6 +26,7 @@ export const ui = {
   titleNote: $("title-note"),
   tree: $<HTMLUListElement>("tree"),
   board: $("board"),
+  agenda: $("agenda"),
   addItem: $<HTMLButtonElement>("add-item"),
   search: $<HTMLInputElement>("search"),
   searchSummary: $("search-summary"),
@@ -78,6 +80,8 @@ export function start(): void {
   }, isSyncing);
   window.addEventListener("pagehide", flushSave);
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && renderIfTheDayChanged());
+  window.addEventListener("focus", renderIfTheDayChanged);
   onSaveFailed(() => toast("Could not save: browser storage is full. Export a backup from the menu."));
   render(null);
   saveDocSoon(doc());
@@ -88,6 +92,15 @@ export function start(): void {
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();
   captureFromAddress();
+}
+
+let dayShown = today();
+
+/** Date chips say "today" and "tomorrow"; a page left open overnight says them of the new day once it is looked at again. */
+function renderIfTheDayChanged(): void {
+  if (today() === dayShown) return;
+  dayShown = today();
+  render(caretNow());
 }
 
 /** Properties written as `:key: value` note lines, before they had a field of their own or by an older build, become properties (doc/adr/0032). */
@@ -119,23 +132,36 @@ function focusAfterRenaming(focus: FocusRequest, renamed: Map<ItemId, ItemId>): 
  */
 export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null, typingKey: string | null = null): void {
   const renamed = commit(next, typingKey, caretBefore);
-  if (renamed.size > 0) render(caretNow());
   rowShowsTypedText(id);
+  if (renamed.size > 0) render(caretNow());
   if (state.query) state.keptInResults.add(id);
 }
 
-/** Commits `next` with the ids private items need (doc/adr/0029); returns the items that were renamed. */
 function commit(next: Doc, typingKey: string | null = null, caretBefore = caretNow()): Map<ItemId, ItemId> {
+  return commitAs("edit", next, (named) => state.history.commit(named, caretBefore, typingKey));
+}
+
+/** A plugin's answer to an event joins the undo step of the change that fired it, if nothing came in between; returns the history's version after it. */
+export function commitFromEventHandler(next: Doc, joining: number): number {
+  if (next === doc()) return state.history.version;
+  commitAs("event handler", next, (named) => state.history.commitJoining(named, joining));
+  render(caretNow());
+  return state.history.version;
+}
+
+/** Commits `next` with the ids private items need (doc/adr/0029); returns the items that were renamed. */
+function commitAs(origin: ChangeOrigin, next: Doc, record: (named: Doc) => void): Map<ItemId, ItemId> {
   const before = doc();
   const { doc: named, renamed } = withPrivateIds(next);
-  state.history.commit(named, caretBefore, typingKey);
+  record(named);
   saveDocSoon(named);
-  changedHere(before, named);
+  changedHere(before, named, origin);
   if (renamed.has(state.zoom)) state.zoom = renamed.get(state.zoom)!;
   return renamed;
 }
 
-type ChangeListener = (before: Doc, after: Doc) => void;
+export type ChangeOrigin = "edit" | "history" | "event handler";
+type ChangeListener = (before: Doc, after: Doc, origin: ChangeOrigin) => void;
 const listeners: ChangeListener[] = [];
 
 /** Every change made in this tab, typing, undo and redo included; not changes that came from elsewhere. */
@@ -143,8 +169,8 @@ export function onChangeHere(listener: ChangeListener): void {
   listeners.push(listener);
 }
 
-function changedHere(before: Doc, after: Doc): void {
-  for (const listener of listeners) listener(before, after);
+function changedHere(before: Doc, after: Doc, origin: ChangeOrigin): void {
+  for (const listener of listeners) listener(before, after, origin);
 }
 
 export function undo(): void {
@@ -160,7 +186,7 @@ export function redo(): void {
 function afterHistoryJump(before: Doc, caret: Caret | null | undefined): void {
   if (caret === undefined) return;
   saveDocSoon(doc());
-  changedHere(before, doc());
+  changedHere(before, doc(), "history");
   if (caret && !doc().items[caret.id]) caret = null;
   if (!doc().items[state.zoom]) zoomTo(ROOT, caret);
   else if (caret && !isUnder(caret.id, state.zoom)) zoomTo(doc().items[caret.id].parent ?? ROOT, caret);

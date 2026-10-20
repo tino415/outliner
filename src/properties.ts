@@ -1,4 +1,5 @@
 import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, shownChildren } from "./model";
+import { readWrittenDate } from "./dates";
 import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
 
 /*
@@ -19,7 +20,7 @@ const HOURS_AND_MINUTES = /^(\d+)\s*h\s*(\d{1,2})$/i;
 
 export function parseAmount(raw: string): Amount | null {
   const text = raw.trim();
-  if (!text) return null;
+  if (!text || readWrittenDate(text)) return null;
   const clock = CLOCK.exec(text);
   if (clock) return { kind: "duration", minutes: Number(clock[1]) * 60 + Number(clock[2]), clock: true };
   const hoursAndMinutes = HOURS_AND_MINUTES.exec(text);

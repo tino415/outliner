@@ -13,7 +13,7 @@ function bigOutline(sections: number, perSection: number, perItem: number): stri
   return lines.join("\n");
 }
 
-test("structural edits render in well under a frame budget with 5,000 visible items", async ({ page }) => {
+test("structural edits render in well under a frame budget with 5,000 visible items", { tag: "@performance" }, async ({ page }) => {
   await freshOutline(page, bigOutline(50, 20, 4));
   await expect(page.locator(".tree .text")).toHaveCount(50 * 20 * 5 + 50);
 
@@ -27,7 +27,7 @@ test("structural edits render in well under a frame budget with 5,000 visible it
   for (const ms of timings) expect(ms).toBeLessThan(50);
 });
 
-test("one formula among thousands of items with properties stays within the frame budget", async ({ page }) => {
+test("one formula among thousands of items with properties stays within the frame budget", { tag: "@performance" }, async ({ page }) => {
   const outline = bigOutline(50, 20, 4)
     .split("\n")
     .map((line) => (line.startsWith("  item") ? `${line} | :effort: 1h; :kcal: 300; :cost: 2` : line))

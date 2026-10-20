@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AddressInfo } from "node:net";
 import { Server } from "node:http";
 import { createSyncServer } from "../server/app";
@@ -232,5 +232,56 @@ describe("outline CLI", () => {
     await outline(`note ${id} "from one client"`);
     await outline(`edit ${id} "renamed by another"`);
     expect(await outline("show")).toBe("- renamed by another\n  from one client");
+  });
+
+  it("watches changes made by others from now on, one JSON line each in the shapes plugins get", async () => {
+    await outline('add "Board"');
+    const doing = await outline('add "Doing" --under Board');
+    const done = await outline('add "Done" --under Board');
+    const card = await outline('add "card" --under Board/Doing');
+    const lines: string[] = [];
+    const stop = new AbortController();
+    const watching = run(["watch", "--json", "--every", "0.05"], env, "", { print: (line) => lines.push(line), signal: stop.signal });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    await outline(`move ${card} --under ${done}`);
+    await outline(`done ${card}`);
+    await outline(`edit ${card} "card 2"`);
+    const added = await outline(`add "new" --under ${done}`);
+    await vi.waitFor(() => expect(lines).toHaveLength(4), { timeout: 3000 });
+    stop.abort();
+    expect(await watching).toEqual({ output: "", code: 0 });
+
+    expect(lines.map((line) => JSON.parse(line))).toEqual([
+      { event: "moved", id: card, from: doing, to: done },
+      { event: "completed", id: card, from: null, to: null },
+      { event: "changed", id: card, from: null, to: null },
+      { event: "added", id: added, from: null, to: done },
+    ]);
+  });
+
+  it("watches in words without --json", async () => {
+    await outline('add "Inbox"');
+    const lines: string[] = [];
+    const stop = new AbortController();
+    const watching = run(["watch", "--every", "0.05"], env, "", { print: (line) => lines.push(line), signal: stop.signal });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const id = await outline('add "Pay rent" --under Inbox');
+    await vi.waitFor(() => expect(lines).toEqual([`added ${id}  Pay rent  under Inbox`]), { timeout: 3000 });
+    stop.abort();
+    await watching;
+  });
+
+  it("says nothing of private items, which stay sealed to it", async () => {
+    await outline('add "Journal"');
+    const lines: string[] = [];
+    const stop = new AbortController();
+    const watching = run(["watch", "--json", "--every", "0.05"], env, "", { print: (line) => lines.push(line), signal: stop.signal });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);
+    const plain = await outline('add "Shopping"');
+    await vi.waitFor(() => expect(lines.map((line) => JSON.parse(line).id)).toEqual([plain]), { timeout: 3000 });
+    stop.abort();
+    await watching;
   });
 });

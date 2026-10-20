@@ -1,9 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const touchOnly = /@touch/;
+const onPhones = /@phone|@touch/;
+const inOtherEngines = /@keys/;
+const timed = /@performance/;
+
+const desktopChrome = { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 860 } };
+const everyOtherProject = ["desktop", "phone", ...(process.env.WEBKIT ? ["webkit"] : []), "iphone", "firefox"];
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
-  reporter: [["list"]],
+  forbidOnly: Boolean(process.env.CHECK),
+  reporter: [["list"], ["./e2e/skip-gate.ts"]],
   use: {
     baseURL: "http://127.0.0.1:5189/",
     trace: "retain-on-failure",
@@ -14,10 +23,11 @@ export default defineConfig({
     reuseExistingServer: true,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 860 } }, testIgnore: /mobile/ },
-    { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile|screenshots|columns|board/ },
-    ...(process.env.WEBKIT ? [{ name: "webkit", use: { ...devices["Desktop Safari"] }, testMatch: /editing/ }] : []),
-    { name: "iphone", use: { ...devices["iPhone 15"] }, testMatch: /mobile/ },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] }, testMatch: /editing/ },
+    { name: "desktop", use: desktopChrome, grepInvert: [touchOnly, timed] },
+    { name: "phone", use: { ...devices["Pixel 7"] }, grep: onPhones },
+    ...(process.env.WEBKIT ? [{ name: "webkit", use: { ...devices["Desktop Safari"] }, grep: inOtherEngines }] : []),
+    { name: "iphone", use: { ...devices["iPhone 15"] }, grep: touchOnly },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] }, grep: inOtherEngines },
+    { name: "performance", use: desktopChrome, grep: timed, fullyParallel: false, retries: 2, dependencies: everyOtherProject },
   ],
 });

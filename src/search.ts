@@ -1,4 +1,5 @@
-import { Doc, ItemId, ROOT, ViewFilter, ancestors, isShown } from "./model";
+import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown } from "./model";
+import { dateFilter } from "./dates";
 
 export interface Candidate {
   id: ItemId;
@@ -63,11 +64,12 @@ export function searchTerms(query: string): string[] {
 }
 
 /**
- * Items under `top` whose text or note contains every term, plus their
- * ancestors so each match is seen in context.
+ * Items under `top` whose text or note contains every term and that pass
+ * every date word (`due:today`, `is:overdue`), plus their ancestors so each
+ * match is seen in context.
  */
 export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter): SearchResult {
-  const terms = searchTerms(query);
+  const { terms, passes } = readQuery(query);
   const matches = new Set<ItemId>();
   const shown = new Set<ItemId>();
 
@@ -77,7 +79,7 @@ export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter)
       if (!isShown(doc, child, filter)) continue;
       const item = doc.items[child];
       const haystack = `${item.text}\n${item.note}`.toLowerCase();
-      const isMatch = terms.every((term) => haystack.includes(term));
+      const isMatch = terms.every((term) => haystack.includes(term)) && passes(item);
       if (isMatch) matches.add(child);
       if (walk(child) || isMatch) {
         shown.add(child);
@@ -88,4 +90,12 @@ export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter)
   };
   walk(top);
   return { matches, shown, terms };
+}
+
+function readQuery(query: string): { terms: string[]; passes: (item: Item) => boolean } {
+  const words = query.split(/\s+/).filter(Boolean);
+  const filters = words.map((word) => dateFilter(word));
+  const terms = words.filter((_, index) => !filters[index]).map((word) => word.toLowerCase());
+  const dateFilters = filters.filter((each) => each !== null);
+  return { terms, passes: (item) => dateFilters.every((passes) => passes(item)) };
 }

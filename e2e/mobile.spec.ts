@@ -8,7 +8,7 @@ async function virtualKey(page: import("@playwright/test").Page, inputType: stri
   }, inputType);
 }
 
-test("the toolbar appears while editing and its buttons act on the item", async ({ page }) => {
+test("the toolbar appears while editing and its buttons act on the item", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "a\nb\nc");
   await expect(page.locator("#toolbar")).toBeHidden();
   await editor(page, "b").tap();
@@ -29,7 +29,7 @@ test("the toolbar appears while editing and its buttons act on the item", async 
   await expect(page.locator("#toolbar")).toBeHidden();
 });
 
-test("the toolbar's Property button sets a property without typing a line", async ({ page }) => {
+test("the toolbar's Property button sets a property without typing a line", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await editor(page, "Soup").tap();
   await page.getByRole("button", { name: "Property", exact: true }).tap();
@@ -38,7 +38,37 @@ test("the toolbar's Property button sets a property without typing a line", asyn
   await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
 });
 
-test("the item being edited shows a button that adds a property", async ({ page }) => {
+test("typing !! on the phone picks a date, and a tap on its chip changes it", { tag: "@touch" }, async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
+  await freshOutline(page, "Soup");
+  await editor(page, "Soup").tap();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" !!");
+  await page.locator("#palette li", { hasText: "Tue 20 Oct" }).tap();
+  await expect.poll(async () => (await caret(page)).text).toBe("Soup 2026-10-20");
+  await page.getByRole("button", { name: "Done editing" }).tap();
+  await row(page, "Soup 2026-10-20").locator(".date").tap();
+  await page.locator("#palette input").fill("fri");
+  await page.locator("#palette li").first().tap();
+  await expect(row(page, "Soup 2026-10-23").locator(".date")).toHaveAttribute("data-label", "Fri 23 Oct");
+});
+
+test("the phone opens the agenda from the menu, and its toolbar does not move items there", { tag: "@touch" }, async ({ page }, info) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
+  await freshOutline(page, "Home\n  Pay rent 2026-10-15\n  Water plants 2026-10-21");
+  await page.locator("#menu-button").tap();
+  await page.locator('[data-action="agenda"]').tap();
+  await expect(page.locator("#agenda .agenda-section h2")).toHaveText(["Overdue", "Wed 21 Oct"]);
+  await page.screenshot({ path: `screenshots/${info.project.name}-agenda.png` });
+  await page.locator("#agenda .agenda-item .text", { hasText: "Water plants" }).tap({ position: { x: 4, y: 8 } });
+  await page.getByRole("button", { name: "Indent" }).tap();
+  await page.getByRole("button", { name: "Complete" }).tap();
+  await expect(page.locator("#agenda .agenda-item.completed .text")).toHaveText("Water plants 2026-10-21");
+  await page.goto("./#/i0");
+  await expectOutline(page, "Pay rent 2026-10-15\nWater plants 2026-10-21 [x]");
+});
+
+test("the item being edited shows a button that adds a property", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await expect(row(page, "Soup").getByRole("button", { name: "Add a property" })).toBeHidden();
   await editor(page, "Soup").tap();
@@ -48,7 +78,7 @@ test("the item being edited shows a button that adds a property", async ({ page 
   await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");
 });
 
-test("Enter and Backspace from a virtual keyboard split and join items", async ({ page }) => {
+test("Enter and Backspace from a virtual keyboard split and join items", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "hello world");
   await editor(page, "hello world").tap();
   await page.evaluate(() => {
@@ -64,7 +94,7 @@ test("Enter and Backspace from a virtual keyboard split and join items", async (
   await expectOutline(page, "hello world");
 });
 
-test("a long press on a bullet opens the item menu instead of zooming", async ({ page }) => {
+test("a long press on a bullet opens the item menu instead of zooming", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "projects\n  garden\nother");
   const bullet = row(page, "projects").locator(".bullet");
   const box = (await bullet.boundingBox())!;
@@ -78,7 +108,7 @@ test("a long press on a bullet opens the item menu instead of zooming", async ({
   await expect(row(page, "projects").locator("xpath=..")).toHaveClass(/completed/);
 });
 
-test("the item menu stays open after a real long press ends, and its actions leave the keyboard closed", async ({ page, browserName }) => {
+test("the item menu stays open after a real long press ends, and its actions leave the keyboard closed", { tag: "@touch" }, async ({ page, browserName }) => {
   test.skip(browserName !== "chromium", "real touch input is sent through the Chromium DevTools protocol");
   await freshOutline(page, "projects\nother");
   const box = (await row(page, "projects").locator(".bullet").boundingBox())!;
@@ -107,7 +137,7 @@ async function swipe(page: import("@playwright/test").Page, text: string, distan
   await page.waitForTimeout(250);
 }
 
-test.describe("swipes on rows", () => {
+test.describe("swipes on rows", { tag: "@touch" }, () => {
   test.skip(({ browserName }) => browserName !== "chromium", "real touch input is sent through the Chromium DevTools protocol");
 
   test("swiping right completes an item and swiping right again reopens it", async ({ page }) => {
@@ -186,7 +216,7 @@ test.describe("swipes on rows", () => {
   });
 });
 
-test.describe("menus on a short screen", () => {
+test.describe("menus on a short screen", { tag: "@touch" }, () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 412, height: 420 });
   });
@@ -219,7 +249,7 @@ test.describe("menus on a short screen", () => {
   });
 });
 
-test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) => {
+test("tapping a bullet zooms in and the home crumb zooms out", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "projects\n  garden");
   await row(page, "projects").locator(".bullet").tap();
   await expect(page.locator("#title")).toHaveText("projects");
@@ -227,7 +257,7 @@ test("tapping a bullet zooms in and the home crumb zooms out", async ({ page }) 
   await expect(page.locator("#title")).toHaveText("Test");
 });
 
-test("capture from the menu files into the Inbox", async ({ page }) => {
+test("capture from the menu files into the Inbox", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "a");
   await page.locator("#menu-button").tap();
   await page.getByRole("button", { name: "Capture…" }).tap();
@@ -236,7 +266,7 @@ test("capture from the menu files into the Inbox", async ({ page }) => {
   await expectOutline(page, "a\nInbox\n  call the plumber");
 });
 
-test("a virtual keyboard's Enter in a note starts a new line", async ({ page }) => {
+test("a virtual keyboard's Enter in a note starts a new line", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "item | first");
   await row(page, "item").locator(".note").tap();
   await page.keyboard.press("End");
@@ -245,7 +275,7 @@ test("a virtual keyboard's Enter in a note starts a new line", async ({ page }) 
   await expect(row(page, "item").locator(".note")).toHaveText("first\nsecond");
 });
 
-test("the Private keys dialog fits a narrow phone, keys and buttons included", async ({ page }, info) => {
+test("the Private keys dialog fits a narrow phone, keys and buttons included", { tag: "@touch" }, async ({ page }, info) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await freshOutline(page, "a");
   await page.locator("#menu-button").tap();
