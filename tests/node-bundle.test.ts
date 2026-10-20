@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { execFileSync, spawn } from "node:child_process";
+import { ChildProcess, execFileSync, spawn } from "node:child_process";
+import { connect } from "node:net";
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +18,28 @@ describe("the node bundles", () => {
     expect(output).toContain("outline sync server on 127.0.0.1");
   });
 
+  it.each([
+    ["only connected", ""],
+    ["halfway through a request", "POST /sync HTTP/1.1\r\nHost: sync\r\nContent-Length: 100\r\n\r\n{"],
+  ])("stop the sync server on SIGTERM while a client is %s", async (_, sent) => {
+    const port = 20000 + Math.floor(Math.random() * 20000);
+    const server = spawn("node", ["dist-node/server.mjs"], {
+      env: { PATH: process.env.PATH, OUTLINE_TOKEN: "bundle-test-token-0123456789", OUTLINE_DB: ":memory:", HOST: "127.0.0.1", PORT: String(port) },
+    });
+    await new Promise((resolve) => server.stdout.once("data", resolve));
+    const client = connect(port, "127.0.0.1");
+    await new Promise((resolve) => client.once("connect", resolve));
+    client.on("error", () => {});
+    client.write(sent);
+    try {
+      server.kill("SIGTERM");
+      expect(await exitsWithin(server, 1000)).toBe(true);
+    } finally {
+      server.kill("SIGKILL");
+      client.destroy();
+    }
+  });
+
   it("run the CLI from outline.mjs alone", async () => {
     expect(await runAlone("outline.mjs", ["help"], {})).toContain("outline");
   });
@@ -30,6 +53,16 @@ async function runAlone(bundle: string, args: string[], env: Record<string, stri
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+function exitsWithin(child: ChildProcess, milliseconds: number) {
+  return new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), milliseconds);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
 }
 
 function firstOutput(child: ReturnType<typeof spawn>) {

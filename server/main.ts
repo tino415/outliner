@@ -16,5 +16,8 @@ const server = createSyncServer({ store, token, origins });
 server.listen(port, host, () => console.log(`outline sync server on ${host}:${port}, seq ${store.latestSeq()}`));
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => server.close(() => store.close()));
+  process.on(signal, () => {
+    server.close(() => store.close());
+    server.closeAllConnections();
+  });
 }
