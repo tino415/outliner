@@ -51,3 +51,4 @@ session report; the records here hold the choices behind them.
 39. [`outline watch` polls the sync endpoint](0039-outline-watch-polls-the-sync-endpoint.md)
 40. [Shortcuts are set on an item in the outline](0040-shortcuts-are-set-on-an-item-in-the-outline.md)
 41. [One check command, Playwright projects pick tests by tag, and flaky tests leave the gate](0041-one-check-command-and-projects-picking-tests-by-tag.md)
+42. [The sync server is a NixOS service on dev](0042-the-sync-server-is-a-nixos-service-on-dev.md)

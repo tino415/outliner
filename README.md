@@ -274,30 +274,41 @@ kcal=300`.
 
 ## Sync server
 
-The `sync` service keeps the outline for every device and the CLI
-(doc/adr/0011 to 0015). It runs the bundled server from `dist-node/` with its
-database on the `outliner-lab_sync_data` volume.
+The sync server keeps the outline for every device and the CLI
+(doc/adr/0011 to 0015). On dev it is the NixOS service `outline-sync`
+(doc/adr/0042): `nix/module.nix`, imported by the machine's
+`configuration.nix` from this repository at a pinned commit. It listens on
+127.0.0.1:8791, keeps its database in `/var/lib/outline-sync/outline.db` and
+reads `OUTLINE_TOKEN=…` from the file given as `environmentFile`.
+
+```nix
+services.outline-sync = {
+  enable = true;
+  environmentFile = "/var/lib/outline-sync-token.env";
+};
+```
 
 ```sh
 sh scripts/new-sync-token.sh        # once: writes .env.sync with a random token
-dev-run npm run build               # builds dist-node/server.mjs and outline.mjs
-podman compose up -d --build sync   # listens on 127.0.0.1:8791
 tailscale serve --bg --https=10001 http://127.0.0.1:8791
 ```
 
 In the app: ⋯ → Sync…, server `https://dev.taile622dc.ts.net:10001`, and the
 token from `.env.sync`. The first device uploads its outline; every device
-after it switches to the server's outline.
+after it switches to the server's outline. The `app` container reaches the
+server by the same address, so `bin/outline` needs that route too.
 
-Back up the database by copying `/data/outline.db` out of the `sync`
-container.
+A new server version reaches dev when `rev` in `configuration.nix` names a
+commit that has it and the machine is rebuilt. Back up the database first:
+stop the service and copy `outline.db` out of `/var/lib/outline-sync/`.
 
-The flake also builds the server, as `outline-sync-server`, taking the same
-settings as the container (`OUTLINE_TOKEN`, `OUTLINE_DB`, `PORT`, `HOST`):
+Elsewhere the flake runs the server as `outline-sync-server`, with
+`OUTLINE_TOKEN`, `OUTLINE_DB`, `PORT` and `HOST`, and `Dockerfile.sync`
+builds it into an image:
 
 ```sh
 OUTLINE_TOKEN=… OUTLINE_DB=$HOME/outline.db PORT=8791 HOST=127.0.0.1 \
-  nix run git+ssh://git@github.com/tino415/outliner.git#outline-sync-server
+  nix run github:tino415/outliner#outline-sync-server
 ```
 
 ## CLI
