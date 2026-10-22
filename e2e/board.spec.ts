@@ -107,3 +107,16 @@ test("a short board reaches the bottom of the window, so its scrollbar is there,
   expect(box.y + box.height).toBeGreaterThanOrEqual(height - 1);
   expect(await page.evaluate(() => document.scrollingElement!.scrollHeight)).toBeLessThanOrEqual(height + 1);
 });
+
+test("the line between two columns adds an empty column there and puts the caret in its name", { tag: ["@phone", "@keys"] }, async ({ page, isMobile }) => {
+  await openProject(page);
+  const line = page.locator(".board-gap").first();
+  await expect(page.locator(".board-gap")).toHaveCount(2);
+  if (isMobile) await line.tap();
+  else await line.click();
+  await expectBoard(page, "To do: write, test\n: \nDoing: \nDone: ");
+  await page.keyboard.type("Blocked");
+  await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
+  await page.reload();
+  await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
+});

@@ -111,7 +111,9 @@ are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
 property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item;
 drag one by its handle (mouse or finger) or press Alt-Shift-← / → to move
-it to the next column. The buttons add cards and columns.
+it to the next column. The buttons add cards and columns, and so does the
+thin line between two columns: click or tap it for an empty column there,
+with the caret in its name.
 
 ## Kinds
 
