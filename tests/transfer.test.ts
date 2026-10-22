@@ -187,3 +187,14 @@ describe("renderInline", () => {
     expect(renderInline("2 * 3 * 4")).not.toContain("<em>");
   });
 });
+
+describe("parsing a large outline", () => {
+  it("reads 6,000 items with a property line each in linear time", () => {
+    const rows = Array.from({ length: 6000 }, (_, i) => `- task ${i}\n  :effort: 10m`);
+    const started = performance.now();
+    const doc = parseIndentedText(rows.join("\n"));
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(doc.items[ROOT].children).toHaveLength(6000);
+    expect(doc.items[doc.items[ROOT].children[5999]].properties).toEqual({ effort: "10m" });
+  }, 60_000);
+});

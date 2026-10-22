@@ -37,6 +37,19 @@ function blankItem(id: ItemId, parent: ItemId | null, text = ""): Item {
   return { id, text, note: "", properties: {}, parent, children: [], collapsed: false, completed: false, updated: Date.now() };
 }
 
+/** A new document grown by appending children; nothing in it is private yet, so every id is a plain one. */
+export function buildDoc(grow: (root: Item, append: (parent: Item, text: string) => Item) => void): Doc {
+  const root = blankItem(ROOT, null);
+  const items: Record<ItemId, Item> = { [ROOT]: root };
+  grow(root, (parent, text) => {
+    const child = blankItem(newId(), parent.id, text);
+    items[child.id] = child;
+    parent.children.push(child.id);
+    return child;
+  });
+  return { items };
+}
+
 /**
  * Copy-on-write view of a document: items are cloned the first time they are
  * written, so untouched items stay shared with the previous snapshot.
@@ -304,19 +317,20 @@ export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string
 
 /** Moves `:key: value` lines out of the notes of `ids` (every item by default) into their properties. */
 export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.items)): Doc {
-  let next = doc;
-  for (const id of ids) {
-    const item = next.items[id];
-    if (!item || !item.note.includes(":") || sealedKeyOf(item.note)) continue;
+  const lifted = ids.flatMap((id) => {
+    const item = doc.items[id];
+    if (!item || !item.note.includes(":") || sealedKeyOf(item.note)) return [];
     const { properties, rest } = splitPropertyLines(item.note);
-    if (properties.size === 0) continue;
-    next = edit(next, (d) => {
+    return properties.size === 0 ? [] : [{ id, properties, rest }];
+  });
+  if (lifted.length === 0) return doc;
+  return edit(doc, (d) => {
+    for (const { id, properties, rest } of lifted) {
       const written = d.write(id);
       written.note = rest;
       written.properties = { ...written.properties, ...Object.fromEntries([...properties].filter(([, value]) => value !== "")) };
-    });
-  }
-  return next;
+    }
+  });
 }
 
 /** The key a private item is sealed with: its `private` property where it is open, else the key its note names (doc/adr/0029). */
