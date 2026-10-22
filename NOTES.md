@@ -51,6 +51,35 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 11 (2026-10-22, the app from the Nix package)
+
+- Card fuaba6c9nnm9, PR 38, merged as 13f43bb with a merge commit
+  (ADR 42), published as build 13f43bb. ADR 45. The card is in Review.
+- The sync server serves the app on its own port when `OUTLINE_APP_DIR`
+  is set. The package `outline` builds the app into `share/outline/app`,
+  and the module turns serving on with `services.outline-sync.serveApp`
+  (off by default) and sets the menu's commit with `buildCommit`.
+- Choices made while Martin was away: one package, not a separate app
+  package; serving off by default, so moving `rev` alone changes nothing.
+- Tested: `nix build .#outline`, the built server against a temp data dir
+  on 127.0.0.1:18799 (app 200, traversal and untokened sync 401, sync with
+  the token 200), a NixOS eval with `serveApp = true`, and `npm run check`.
+- The first two gate runs failed on timeouts and the performance budget
+  at load 55 to 65 from other sessions. The same specs passed alone, and
+  the gate was green once load fell below 8.
+- **This changes `server/`. Not deployed; the deploy waits for Martin:**
+  1. Back up: `sudo systemctl stop outline-sync`, copy
+     `/var/lib/private/outline-sync/outline.db` (the service has
+     `DynamicUser`; `/var/lib/outline-sync` links to it) somewhere safe.
+  2. In tino415/system `configuration.nix`, set the `fetchGit` `rev` of
+     `outliner` to `13f43bb94507f9423fd8e2a07c534af16a713687` (the full sha of the merge).
+  3. To serve the app there, add `serveApp = true;` and
+     `buildCommit = outliner.shortRev;` to `services.outline-sync`; with
+     neither, the server answers as before. An nginx/tailscale route to
+     127.0.0.1:8791 then also serves the app at `/`.
+  4. `sudo nixos-rebuild switch`, then `curl 127.0.0.1:8791/health`.
+  The CLI pin in llm's home-manager can stay; the CLI did not change.
+
 ## Session 10 (2026-10-22, linear parse and the flaky drag test)
 
 - PR 33, rebased by GitHub onto mirrors as 567bde5 and 41265b2. Both are in
