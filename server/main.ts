@@ -12,7 +12,7 @@ const port = Number(process.env.PORT ?? 8791);
 const host = process.env.HOST ?? "0.0.0.0";
 const origins = (process.env.OUTLINE_ORIGINS ?? "*").split(",").map((origin) => origin.trim());
 
-const server = createSyncServer({ store, token, origins });
+const server = createSyncServer({ store, token, origins, appDir: process.env.OUTLINE_APP_DIR || undefined });
 server.listen(port, host, () => console.log(`outline sync server on ${host}:${port}, seq ${store.latestSeq()}`));
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

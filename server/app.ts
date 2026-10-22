@@ -2,12 +2,14 @@ import { IncomingMessage, Server, ServerResponse, createServer } from "node:http
 import { createHash, timingSafeEqual } from "node:crypto";
 import { parseSyncRequest } from "../src/sync/protocol";
 import { Store } from "./store";
+import { sendAppFile } from "./app-files";
 
 export interface ServerOptions {
   store: Store;
   token: string;
   /** Origins allowed to call from a browser; `*` allows any, which is safe because nothing is sent without the token. */
   origins: string[];
+  appDir?: string;
 }
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -16,13 +18,14 @@ const FILE_PATH = /^\/files\/([0-9a-f]{64})$/;
 
 class TooLarge extends Error {}
 
-export function createSyncServer({ store, token, origins }: ServerOptions): Server {
+export function createSyncServer({ store, token, origins, appDir }: ServerOptions): Server {
   return createServer(async (request, response) => {
     allowOrigin(request, response, origins);
     if (request.method === "OPTIONS") return send(response, 204);
     const path = new URL(request.url ?? "/", "http://localhost").pathname;
 
     if (request.method === "GET" && path === "/health") return send(response, 200, { ok: true });
+    if (appDir && request.method === "GET" && !FILE_PATH.test(path) && (await sendAppFile(response, appDir, path))) return;
     if (!authorized(request, token)) return send(response, 401, { error: "missing or wrong token" });
 
     if (request.method === "POST" && path === "/sync") {
