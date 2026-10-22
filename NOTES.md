@@ -51,6 +51,32 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 10 (2026-10-22, linear parse and the flaky drag test)
+
+- PR 33, rebased by GitHub onto mirrors as 567bde5 and 41265b2. Both are in
+  build 3b16b03, published by session 9, and main has only changed
+  NOTES since then, so I did not publish again. Both cards are in Review. No
+  server change.
+- Card yy44ycwoaakf: parsing a line copied the whole items map, and every
+  append scanned the parent's children for private ids. `parseIndentedText`
+  now grows a fresh document with `buildDoc`, and `liftNoteProperties`
+  works in one edit. 6,000 items, each with a property line: 23 s
+  before, about 150 ms after. The WIP test failed first.
+- Card qe0u2uu9gwq1: the cause was in the app, not the test. A bullet click
+  set `location.hash`, but the page only changed on the async
+  `hashchange`, so a key pressed in between (the test's Ctrl-J B) acted
+  on the old page: the board was set on Home. `zoomTo` now shows the page
+  at once and ignores the `hashchange` it caused. The new test in
+  `regressions.spec.ts` sends the click and the keys in one task, so the
+  old code fails it every time. plugins.spec.ts:125 passed 10 of 10 runs.
+- The merge went in while main moved (PR 32 landed between my fetch and
+  `gh pr merge`), so I ran the gate again on merged main: green. Under load
+  average 40-70 from other sessions, two runs failed only on time budgets:
+  the formula `before()` unit test (543-615 ms vs 400), and the
+  performance project. In alternating runs, 02acdab (main without this PR)
+  failed the performance project as often as main with it.
+- The suite rewrote screenshots with no UI change; I discarded them.
+
 ## Session 9 (2026-10-22, query views)
 
 - Card "Query views" (v5ensku11s0q): PR 35, 3b16b03, ADR 44; published
