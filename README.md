@@ -335,6 +335,21 @@ OUTLINE_TOKEN=… OUTLINE_DB=$HOME/outline.db PORT=8791 HOST=127.0.0.1 \
   nix run github:tino415/outliner#outline-sync-server
 ```
 
+The package also holds the app, in `share/outline/app` (doc/adr/0045).
+With `OUTLINE_APP_DIR` naming that directory the server serves it on the
+same port, without the token; sync and attachments still need it. The
+module sets it with `serveApp`, and `buildCommit` is the commit the ⋯ menu
+shows:
+
+```nix
+services.outline-sync = {
+  enable = true;
+  environmentFile = "/var/lib/outline-sync-token.env";
+  serveApp = true;
+  buildCommit = outliner.shortRev;    # the fetchGit of this repository
+};
+```
+
 ## CLI
 
 ```sh
