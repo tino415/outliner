@@ -1264,6 +1264,31 @@ code {
   user-select: none;
 }
 
+.board-card > .row {
+  position: relative;
+  padding-right: 30px;
+}
+
+.board-bullet {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  align-self: center;
+}
+
+.board-card .board-bullet {
+  position: absolute;
+  top: 8px;
+  right: 6px;
+}
+
+.board-bullet:hover .dot {
+  transform: scale(1.35);
+  box-shadow: 0 0 0 4px var(--halo);
+}
+
 .board-card.dragging {
   opacity: 0.4;
 }
