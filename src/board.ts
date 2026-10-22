@@ -24,7 +24,11 @@ export function toggleBoard(): void {
 
 export function renderBoard(): void {
   const columns = shownChildren(doc(), state.zoom, filter());
-  ui.board.innerHTML = columns.map(columnHtml).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
+  ui.board.innerHTML = columns.map((id, index) => (index ? columnGapHtml(id) : "") + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
+}
+
+function columnGapHtml(nextColumn: ItemId): string {
+  return `<button type="button" class="board-gap" data-board-gap="${escape(nextColumn)}" aria-label="Add a column here" title="Add a column here"></button>`;
 }
 
 function columnHtml(id: ItemId): string {
@@ -87,6 +91,8 @@ export function bindBoard(): void {
     const newCard = target.closest<HTMLElement>("[data-board-new-card]");
     if (newCard) addChild(newCard.dataset.boardNewCard!);
     if (target.closest("[data-board-new-column]")) addChild(state.zoom);
+    const gap = target.closest<HTMLElement>("[data-board-gap]");
+    if (gap) addChild(state.zoom, indexInParent(doc(), gap.dataset.boardGap!));
   });
   ui.board.addEventListener("pointerdown", (event) => {
     const handle = (event.target as HTMLElement).closest<HTMLElement>(".board-handle");
@@ -94,8 +100,8 @@ export function bindBoard(): void {
   });
 }
 
-function addChild(parent: ItemId): void {
-  const created = insertChild(doc(), parent, doc().items[parent].children.length);
+function addChild(parent: ItemId, index = doc().items[parent].children.length): void {
+  const created = insertChild(doc(), parent, index);
   commitAndRender(created.doc, { id: created.id, offset: 0 });
 }
 

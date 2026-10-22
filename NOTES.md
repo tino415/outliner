@@ -51,6 +51,31 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 13 (2026-10-22, board view layout)
+
+Card "Board view: wider columns, less clutter, add a column between columns,
+one horizontal scrollbar".
+
+- Columns are 340px (272px under 600px wide, so a phone still shows the next
+  column's edge); column and card padding are smaller and the cards lost
+  their shadow, leaving one surface inside another instead of a border
+  inside a border.
+- A thin vertical line (`.board-gap`) sits between two columns. Clicking or
+  tapping it inserts an empty column at that index and puts the caret in its
+  name. Simpler option taken: no line before the first column or after the
+  last one; "+ Column" still ends the row. Always faintly visible, accent on
+  hover (on touch devices a little stronger).
+- The dead scrollbar was the page's: `.board` is `100vw` wide, and beside a
+  classic vertical scrollbar that is wider than the page, so the page
+  scrolled sideways too. A page showing a board now has `overflow-x: hidden`
+  on `body`; the board's own scrollbar is the only one.
+- Tests: the line (desktop click, `@phone` tap, also `@keys` so WebKit runs
+  it), and `e2e/board-scrollbar.spec.ts`, which launches Chromium with
+  classic scrollbars (headless hides them, which is why nothing showed it)
+  and checks a wheel over the title does not scroll the page; it fails
+  without the CSS rule.
+- Board browser tests also run with `WEBKIT=1`.
+
 ## Session 12 (2026-10-22, opening a board's card or column)
 
 - Card "Can't open a card's detail from the board" (qctwikaws3eh): PR 40,
