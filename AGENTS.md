@@ -40,11 +40,12 @@ before writing and do not delete without being asked.
   (2026-10-10): once the tests pass, merge the PR yourself and publish,
   without waiting for him. Deploying the sync server still needs the backup
   first.
-- A session working in a worktree under `.claude/worktrees/` cannot run git
-  in the main checkout (`~/src/outliner-lab`); to pull main there, leave the
-  worktree keeping it, run git in the checkout, and enter the worktree
-  again. A worktree's own compose stack needs a separate project name and
-  no published ports.
+- Worktrees are made with `git -C ~/src/outliner-lab worktree add
+  .claude/worktrees/<x> -b <branch>`, then `cd` into them. Git for main runs
+  as `git -C ~/src/outliner-lab …`, e.g. `git -C ~/src/outliner-lab pull`.
+  A worktree's own compose stack runs with
+  `podman compose -p <worktree dir> -f compose.worktree.yaml up -d`, which
+  publishes no ports.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
@@ -82,10 +83,15 @@ before writing and do not delete without being asked.
 
 ## Tests
 
-- The merge gate is `dev-run npm run check`: build, unit suite, and every
+- The merge gate is
+  `flock ~/.cache/outliner-gate.lock dev-run npm run check`, so only one
+  runs at a time on the machine: build, unit suite, and every
   Playwright project (desktop, phone, iPhone, Firefox). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
+- A PR that touches only `doc/`, NOTES.md or TODO.md needs only
+  `dev-run npm run build` before merging. A feature's NOTES.md entry goes in
+  the feature's PR, not a PR of its own.
 - Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
   and iPhone, never desktop), `@keys` adds Firefox (and WebKit with
