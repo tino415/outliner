@@ -51,6 +51,22 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 8 (2026-10-22, mirrors)
+
+- Card "Mirror an item, read-only" (lk7097gfkeha): PR 32, 02acdab, ADR 43;
+  published with BUILD_COMMIT=02acdab, card in Review. No server change.
+- Ctrl-J R or "Mirror here" in Ctrl-K, then the `[[` picker, writes
+  `mirror: <id>`. Choices taken while Martin was away, in ADR 43 and on the
+  card: a blank item becomes the mirror, any other gets it as next sibling;
+  the target's note and properties are not shown.
+- The mirrored text and children are markup in the row's display state,
+  with no `data-id`, so nothing that finds rows by id sees them. Typing in a
+  mirrored item (or under one) renders, since typing otherwise skips render.
+- Left out: search does not find a mirror by its target's text; a board
+  card mirror shows the text only.
+- Gate: `npm run check` green; the 5,000-item performance test was flaky
+  once under load average 30-50, alone it stays at 25-35 ms.
+
 ## Session 7 (2026-10-20, Nix step 2 and the move)
 
 - PR 29 (464df0f): the sync server closes open connections on SIGTERM. A
