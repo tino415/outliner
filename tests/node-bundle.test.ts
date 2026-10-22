@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ChildProcess, execFileSync, spawn } from "node:child_process";
-import { connect } from "node:net";
+import { AddressInfo, connect } from "node:net";
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createSyncServer } from "../server/app";
+import { Store } from "../server/store";
+import { run } from "../cli/run";
 
 describe("the node bundles", () => {
   execFileSync("npm", ["run", "build:node"], { stdio: "ignore" });
@@ -43,7 +46,33 @@ describe("the node bundles", () => {
   it("run the CLI from outline.mjs alone", async () => {
     expect(await runAlone("outline.mjs", ["help"], {})).toContain("outline");
   });
+
+  it("pipe all of a long CLI output before exiting", async () => {
+    const token = "bundle-test-token-0123456789";
+    const store = new Store(":memory:");
+    const server = createSyncServer({ store, token, origins: ["*"] });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const env = { OUTLINE_SERVER: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, OUTLINE_TOKEN: token };
+    try {
+      const lines = Array.from({ length: 1000 }, (_, index) => `- Item ${index} ${"x".repeat(80)}`).join("\n");
+      expect((await run(["add", "-"], env, lines)).code).toBe(0);
+      const output = await allOutput(spawn("node", ["dist-node/outline.mjs", "show", "--json"], { env: { PATH: process.env.PATH, ...env } }));
+      expect(output.length).toBeGreaterThan(64 * 1024);
+      expect(JSON.parse(output).children).toHaveLength(1000);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      store.close();
+    }
+  });
 });
+
+function allOutput(child: ChildProcess) {
+  return new Promise<string>((resolve) => {
+    let output = "";
+    child.stdout?.on("data", (data) => (output += data));
+    child.on("close", () => resolve(output));
+  });
+}
 
 async function runAlone(bundle: string, args: string[], env: Record<string, string>) {
   const dir = mkdtempSync(join(tmpdir(), "bundle-"));

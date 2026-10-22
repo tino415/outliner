@@ -8,17 +8,16 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function environment(): Record<string, string | undefined> {
+async function outcome(argv: string[]): Promise<{ output: string; code: number }> {
+  let env: Record<string, string | undefined>;
   try {
-    return withConfigFile(process.env);
+    env = withConfigFile(process.env);
   } catch (error) {
-    process.stderr.write(`outline: ${(error as Error).message}\n`);
-    process.exit(1);
+    return { output: `outline: ${(error as Error).message}`, code: 1 };
   }
+  return run(argv, env, argv.includes("-") ? await readStdin() : "");
 }
 
-const argv = process.argv.slice(2);
-const wantsStdin = argv.includes("-");
-const { output, code } = await run(argv, environment(), wantsStdin ? await readStdin() : "");
+const { output, code } = await outcome(process.argv.slice(2));
 if (output) (code === 0 ? process.stdout : process.stderr).write(output.endsWith("\n") ? output : `${output}\n`);
-process.exit(code);
+process.exitCode = code;
