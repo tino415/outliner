@@ -14,6 +14,7 @@ import { searchResults } from "./navigation";
 import { renderMenuState } from "./chrome";
 import { today } from "./dates";
 import { agendaShown, renderAgenda } from "./agenda";
+import { queryViewShown, renderQueryView } from "./queryView";
 import { followShortcutSettings } from "./keys";
 import { isMirror, liveMirrorTarget, mirrorBulletTitle, mirrorTextHtml, mirroredChildrenHtml } from "./mirrors";
 
@@ -39,17 +40,21 @@ export function render(request: FocusRequest): void {
   renderHead();
   renderColumnsHead();
   const agenda = agendaShown();
-  const board = !agenda && boardShown();
-  ui.agenda.hidden = !agenda;
+  const queryView = !agenda && queryViewShown();
+  const listing = agenda || queryView;
+  const board = !listing && boardShown();
+  ui.agenda.hidden = !listing;
   ui.board.hidden = !board;
   ui.page.classList.toggle("with-agenda", agenda);
+  ui.page.classList.toggle("with-query", queryView);
   ui.page.classList.toggle("with-board", board);
-  ui.tree.hidden = board || agenda;
+  ui.tree.hidden = board || listing;
   if (agenda) renderAgenda();
+  else if (queryView) renderQueryView();
   else if (board) renderBoard();
   else renderTree();
-  if (!agenda) ui.agenda.replaceChildren();
-  if (board || agenda) ui.addItem.hidden = ui.columnsHead.hidden = true;
+  if (!listing) ui.agenda.replaceChildren();
+  if (board || listing) ui.addItem.hidden = ui.columnsHead.hidden = true;
   if (agenda) document.title = "Agenda · Outliner";
   renderSearchSummary();
   renderMenuState();
@@ -374,7 +379,7 @@ function highlightMatches(): void {
 /** Text editors of the visible rows, in reading order: the order arrow keys and selection follow. */
 /** The outline as it is shown: the agenda, the tree, or the board when the page is one. */
 export function shownOutline(): HTMLElement {
-  if (agendaShown()) return ui.agenda;
+  if (agendaShown() || queryViewShown()) return ui.agenda;
   return boardShown() ? ui.board : ui.tree;
 }
 

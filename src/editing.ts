@@ -1,3 +1,4 @@
+import { queryViewShown } from "./queryView";
 import {
   ItemId,
   ROOT,
@@ -382,7 +383,7 @@ export const actions = {
       return;
     }
     if (isMirrorText(c.editor)) return openMirrored(c.id);
-    if (c.inAgenda) return actions.blur(c);
+    if (c.inAgenda || (c.isTitle && queryViewShown())) return actions.blur(c);
     if (c.isTitle) {
       const created = insertChild(doc(), state.zoom, 0);
       commitAndRender(created.doc, startOf(created.id));

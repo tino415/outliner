@@ -55,7 +55,7 @@ function nothingThisWeek(): string {
 function sectionHtml({ section, ids }: AgendaGroup, now: Day): string {
   return (
     `<section class="agenda-section agenda-${section.kind}"${section.kind === "day" ? ` data-day="${section.day}"` : ""}>` +
-    `<h2>${escape(sectionTitle(section, now))}</h2><ul class="agenda-items">${ids.map(rowHtml).join("")}</ul></section>`
+    `<h2>${escape(sectionTitle(section, now))}</h2><ul class="agenda-items">${ids.map((id) => agendaRowHtml(id)).join("")}</ul></section>`
   );
 }
 
@@ -67,7 +67,7 @@ function sectionTitle(section: AgendaSection, now: Day): string {
   return near === full ? full : `${near[0].toUpperCase()}${near.slice(1)} · ${full}`;
 }
 
-function rowHtml(id: ItemId): string {
+export function agendaRowHtml(id: ItemId, showPath = true): string {
   const item = doc().items[id];
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const path = pathOf(doc(), id);
@@ -78,7 +78,7 @@ function rowHtml(id: ItemId): string {
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${escape(id)}">${renderItemText(item.text)}</div>` +
     propertyChipsHtml(item, undefined, ownFormulaResults(id)) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
-    (path.length ? `<a class="agenda-path" href="#/${encodeURIComponent(item.parent!)}">${escape(path.map(plainText).join(" / "))}</a>` : "") +
+    (showPath && path.length ? `<a class="agenda-path" href="#/${encodeURIComponent(item.parent!)}">${escape(path.map(plainText).join(" / "))}</a>` : "") +
     `</div></div></li>`
   );
 }
