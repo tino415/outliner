@@ -1,5 +1,6 @@
 import { Item, SETTINGS } from "./model";
 import { escape } from "./inline";
+import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
 import { dateLabel, readWrittenDate, today } from "./dates";
 
@@ -8,7 +9,7 @@ import { dateLabel, readWrittenDate, today } from "./dates";
 /** `computed` holds the results of the item's "=…" values; the chip shows the result, the formula on hover. */
 export function propertyChipsHtml(item: Item, shownElsewhere: ReadonlySet<string> = new Set(), computed: ReadonlyMap<string, Cell> = new Map()): string {
   const chips = Object.keys(item.properties)
-    .filter((key) => key !== "approved" && !shownElsewhere.has(key))
+    .filter((key) => key !== "approved" && key !== MIRROR && !shownElsewhere.has(key))
     .sort((a, b) => Number(SETTINGS.has(a)) - Number(SETTINGS.has(b)) || a.localeCompare(b))
     .map((key) => chipHtml(key, item.properties[key], computed.get(key)));
   return chips.length ? `<div class="props">${chips.join("")}</div>` : "";

@@ -2288,3 +2288,61 @@ body.dragging {
   margin: 0;
   padding-left: 18px;
 }
+
+/* ---- mirrors (doc/adr/0043) ------------------------------------------------ */
+
+.mirror > .row .dot,
+.mirror-bullet.hollow .dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--bullet);
+}
+
+.mirror > .row .bullet:hover .dot {
+  box-shadow: inset 0 0 0 1.5px var(--bullet), 0 0 0 4px var(--halo);
+}
+
+.mirror-text {
+  cursor: pointer;
+}
+
+.mirror-text:focus .md {
+  display: none;
+}
+
+.mirror-text.gone {
+  color: var(--faint);
+  font-style: italic;
+}
+
+.mirror-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+}
+
+.mirror-children .mirror-children {
+  margin-left: var(--bullet-col);
+}
+
+.mirror-row {
+  display: grid;
+  grid-template-columns: var(--bullet-col) minmax(0, 1fr);
+  align-items: start;
+}
+
+.mirror-bullet {
+  display: grid;
+  place-items: center;
+  height: calc(var(--line) * 1em + 2px);
+}
+
+.mirror-child-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mirror-child.completed > .mirror-row {
+  text-decoration: line-through;
+  opacity: 0.6;
+}

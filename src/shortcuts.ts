@@ -32,6 +32,7 @@ export const COMMAND_NAMES = [
   "property",
   "kind",
   "link",
+  "mirror",
   "date",
   "attach",
   "make-private",

@@ -38,6 +38,7 @@ import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { privateHolderOf, referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
+import { liveMirrorTarget, mirrorHere } from "./mirrors";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
@@ -87,7 +88,7 @@ export function bindEditorEvents(): void {
       liftTypedProperties(editor.dataset.id!);
     }
     const item = editor && doc().items[editor.dataset.id!];
-    if (!editor || !item) return;
+    if (!editor || !item || isMirrorText(editor)) return;
     editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
     if (isNoteEditor(editor)) refreshAfterNoteEdit();
     if (isNoteEditor(editor) && item.note === "") {
@@ -137,6 +138,7 @@ export function bindEditorEvents(): void {
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
+    if (editor && isMirrorText(editor)) return openMirrored(editor.dataset.id!);
     if (!editor || document.activeElement === editor) return;
     const link = target.closest<HTMLAnchorElement>("a.link");
     const tag = target.closest<HTMLElement>(".tag");
@@ -272,6 +274,15 @@ function isNoteEditor(editor: HTMLElement): boolean {
   return editor.classList.contains("note");
 }
 
+function isMirrorText(editor: HTMLElement): boolean {
+  return editor.classList.contains("mirror-text");
+}
+
+function openMirrored(mirror: ItemId): void {
+  const target = liveMirrorTarget(doc(), mirror);
+  if (target) zoomTo(target);
+}
+
 /**
  * Focusing a note reveals property lines the column view hides, which moves
  * the text under the pointer. The caret goes where the click was, measured
@@ -370,6 +381,7 @@ export const actions = {
       insertText("\n" + indentation);
       return;
     }
+    if (isMirrorText(c.editor)) return openMirrored(c.id);
     if (c.inAgenda) return actions.blur(c);
     if (c.isTitle) {
       const created = insertChild(doc(), state.zoom, 0);
@@ -590,6 +602,20 @@ export const actions = {
   insertReference(c: EditorContext): void {
     pickReference(c, 0);
   },
+
+  mirrorHere: inPlace((c) => {
+    if (c.inNote) return;
+    const at = c.id;
+    openPalette({
+      placeholder: "Mirror…",
+      hint: "Shows the item here, live and read-only; edit it where it lives",
+      candidates: (query) => findItems(doc(), query, 40, (id) => id === at),
+      choose: (target) => {
+        const mirrored = mirrorHere(doc(), at, target.id);
+        commitAndRender(mirrored.doc, startOf(mirrored.id));
+      },
+    });
+  }),
 
   insertDate(c: EditorContext): void {
     pickDateAt(c, 0);
