@@ -51,6 +51,25 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 9 (2026-10-22, query views)
+
+- Card "Query views" (v5ensku11s0q): PR 35, 3b16b03, ADR 44; published
+  with BUILD_COMMIT=3b16b03, card in Review. No server change.
+- An item with `:query:` lists the matching items under the path to where
+  they live, in the agenda's rows; `:group: date` lists them by date.
+  `outline find QUERY --query` speaks the same language.
+- Choices taken while Martin was away, in ADR 44 and on the card:
+  `under:` compares item text as written, as CLI paths do (the first
+  version stripped markdown through the DOM and crashed the CLI);
+  comparisons on property values (`effort>1h`) are left out.
+- The rebase onto mirrors (PR 32) conflicted in `style.css`, and resolving
+  it dropped a closing brace, which the gate did not notice; the query
+  view screenshot showed it. A CSS syntax check would catch this.
+- Gate: `npm run check` green. Under load average 40-65, earlier runs
+  timed out in sync, mobile and editing specs, and the performance tests
+  went over budget; `origin/main` went over the same budget under the
+  same load.
+
 ## Session 8 (2026-10-22, mirrors)
 
 - Card "Mirror an item, read-only" (lk7097gfkeha): PR 32, 02acdab, ADR 43;
