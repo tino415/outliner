@@ -21,7 +21,7 @@ describe("the Playwright projects", () => {
     expect(projectsOfFile(listed, "columns.spec.ts")).toEqual(["desktop", "phone"]);
     expect(projectsOfFile(listed, "mobile.spec.ts")).toEqual(["iphone", "phone"]);
     expect(projectsOfFile(listed, "editing.spec.ts")).toEqual(["desktop", "firefox"]);
-    expect(projectsOfFile(listed, "regressions.spec.ts")).toEqual(["desktop"]);
+    expect(projectsOfFile(listed, "regressions.spec.ts")).toEqual(["desktop", "phone"]);
     expect(projectsOfFile(listed, "keyboard.spec.ts")).toEqual(["desktop", "phone"]);
   });
 

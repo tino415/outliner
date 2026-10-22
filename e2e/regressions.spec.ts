@@ -604,3 +604,20 @@ test("a key pressed right after a bullet click acts on the page the click zoomed
   await expect(page.locator(".board-column")).toHaveCount(2);
   await expect(page.locator(".board-card .text")).toHaveText(["write"]);
 });
+
+for (const [what, selector, title] of [
+  ["card", ".board-card .board-bullet", "write"],
+  ["column", ".board-column-head .board-bullet", "To do"],
+]) {
+  test(`a board's ${what} opens as a page from its bullet`, { tag: "@phone" }, async ({ page }, info) => {
+    await freshOutline(page, "Project\n  To do\n    write\n  Doing");
+    await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+    await page.keyboard.press("ControlOrMeta+j");
+    await page.keyboard.press("b");
+    await expect(page.locator("#board .board-card")).toHaveCount(1);
+
+    const bullet = page.locator(selector).first();
+    await (info.project.use.hasTouch ? bullet.tap() : bullet.click());
+    await expect(page.locator("#title")).toHaveText(title);
+  });
+}
