@@ -1174,7 +1174,7 @@ code {
 .board {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 0;
   width: 100vw;
   margin-left: calc(50% - 50vw);
   --board-inset: max(28px, calc(50vw - 360px));
@@ -1197,10 +1197,10 @@ code {
 }
 
 .board-column {
-  flex: 0 0 272px;
+  flex: 0 0 340px;
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 6px;
+  padding: 6px;
   border-radius: 12px;
   background: var(--surface-2);
   scroll-snap-align: start;
@@ -1239,10 +1239,9 @@ code {
   grid-template-columns: auto 1fr;
   align-items: start;
   column-gap: 6px;
-  padding: 9px 10px 9px 4px;
-  border-radius: 9px;
+  padding: 7px 8px 7px 2px;
+  border-radius: 8px;
   background: var(--surface);
-  box-shadow: 0 1px 2px light-dark(rgb(40 32 16 / 0.08), rgb(0 0 0 / 0.35));
 }
 
 .board-card .note,
@@ -1317,6 +1316,44 @@ code {
 .board-new-column {
   flex: 0 0 auto;
   margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .board-column {
+    flex-basis: 272px;
+  }
+}
+
+.board-gap {
+  flex: 0 0 22px;
+  align-self: stretch;
+  position: relative;
+  cursor: pointer;
+}
+
+.board-gap::after {
+  content: "";
+  position: absolute;
+  inset: 0 10px;
+  border-radius: 1px;
+  background: var(--faint);
+  opacity: 0.25;
+}
+
+.board-gap:hover::after,
+.board-gap:focus-visible::after {
+  background: var(--accent);
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .board-gap::after {
+    opacity: 0.4;
+  }
+}
+
+body:has(.page.with-board) {
+  overflow-x: hidden;
 }
 
 /* ---- properties and the column view ------------------------------------------ */
