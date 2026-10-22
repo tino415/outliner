@@ -27,8 +27,7 @@ dev-run npx tsc --noEmit
 dev-run npx vitest run              # tree operations, import/export, inline rendering
 dev-run npm run build               # the browser tests run against the build
 dev-run npm run check               # all of it: build, unit suite, every Playwright project, unlisted skips
-dev-run npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox
-dev-run env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which crashes in the container
+dev-run npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox, desktop Safari (WebKit)
 ```
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.

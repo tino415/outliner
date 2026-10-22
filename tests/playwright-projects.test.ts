@@ -20,7 +20,7 @@ describe("the Playwright projects", () => {
   it("give the phone the tests tagged @phone and @touch, and the iPhone only @touch", () => {
     expect(projectsOfFile(listed, "columns.spec.ts")).toEqual(["desktop", "phone"]);
     expect(projectsOfFile(listed, "mobile.spec.ts")).toEqual(["iphone", "phone"]);
-    expect(projectsOfFile(listed, "editing.spec.ts")).toEqual(["desktop", "firefox"]);
+    expect(projectsOfFile(listed, "editing.spec.ts")).toEqual(["desktop", "firefox", "webkit"]);
     expect(projectsOfFile(listed, "regressions.spec.ts")).toEqual(["desktop", "phone"]);
     expect(projectsOfFile(listed, "keyboard.spec.ts")).toEqual(["desktop", "phone"]);
   });
@@ -31,7 +31,7 @@ describe("the Playwright projects", () => {
 });
 
 function listTests(): ListedSuite[] {
-  const json = execFileSync("npx", ["playwright", "test", "--list", "--reporter=json"], { encoding: "utf8", env: { ...process.env, WEBKIT: "" } });
+  const json = execFileSync("npx", ["playwright", "test", "--list", "--reporter=json"], { encoding: "utf8" });
   return JSON.parse(json).suites;
 }
 

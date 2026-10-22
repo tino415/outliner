@@ -7,6 +7,7 @@ services:
       - .:/workspace:z
       - node_modules:/workspace/node_modules
     init: true
+    pids_limit: -1
 
 volumes:
   node_modules:
