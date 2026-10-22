@@ -1,4 +1,4 @@
-import { Doc, Item, ItemId, ROOT, appendChild, emptyDoc, insertChild, liftNoteProperties, setFlags, setNote } from "./model";
+import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, setFlags, setNote } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
 import { mapLinesOutsideCode, propertyLines } from "./notes";
@@ -105,26 +105,26 @@ const BULLET = /^([-*+]|\d+[.)])\s+/;
  * completed item.
  */
 export function parseIndentedText(text: string): Doc {
-  let doc = emptyDoc();
-  const stack: { indent: number; id: ItemId; bulleted: boolean }[] = [{ indent: -1, id: ROOT, bulleted: false }];
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const indent = line.length - line.trimStart().length;
-    const bulleted = BULLET.test(line.trim());
-    const last = stack[stack.length - 1];
-    if (!bulleted && last.bulleted && indent > last.indent) {
-      const note = doc.items[last.id].note;
-      doc = setNote(doc, last.id, note ? `${note}\n${line.trim()}` : line.trim());
-      continue;
+  const parsed = buildDoc((root, append) => {
+    const stack: { indent: number; item: Item; bulleted: boolean }[] = [{ indent: -1, item: root, bulleted: false }];
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      const indent = line.length - line.trimStart().length;
+      const bulleted = BULLET.test(line.trim());
+      const last = stack[stack.length - 1];
+      if (!bulleted && last.bulleted && indent > last.indent) {
+        last.item.note = last.item.note ? `${last.item.note}\n${line.trim()}` : line.trim();
+        continue;
+      }
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+      const content = line.trim().replace(BULLET, "");
+      const struck = /^~~(.+)~~$/.exec(content);
+      const created = append(stack[stack.length - 1].item, struck ? struck[1] : content);
+      created.completed = Boolean(struck);
+      stack.push({ indent, item: created, bulleted });
     }
-    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
-    const content = line.trim().replace(BULLET, "");
-    const struck = /^~~(.+)~~$/.exec(content);
-    const created = appendChild(doc, stack[stack.length - 1].id, struck ? struck[1] : content);
-    doc = struck ? setFlags(created.doc, created.id, { completed: true }) : created.doc;
-    stack.push({ indent, id: created.id, bulleted });
-  }
-  return liftNoteProperties(doc);
+  });
+  return liftNoteProperties(parsed);
 }
 
 /** Copies every top-level item of `incoming`, with fresh ids, into `parent` starting at `index`. */
