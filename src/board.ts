@@ -32,7 +32,7 @@ function columnHtml(id: ItemId): string {
   const cards = shownChildren(doc(), id, filter());
   return (
     `<section class="item board-column${item.completed ? " completed" : ""}" data-id="${escape(id)}">` +
-    `<div class="row board-column-head">${textEditor(id)}<span class="board-count">${cards.length}</span></div>` +
+    `<div class="row board-column-head">${openLink(id)}${textEditor(id)}<span class="board-count">${cards.length}</span></div>` +
     `<ol class="board-cards">${cards.map(cardHtml).join("")}</ol>` +
     `<button type="button" class="board-new-card" data-board-new-card="${escape(id)}">+ Add a card</button></section>`
   );
@@ -44,11 +44,15 @@ function cardHtml(id: ItemId): string {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   return (
     `<li class="item board-card${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
-    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}` +
+    `<span class="board-handle" aria-label="Drag to move" title="Drag to move">⠿</span>${textEditor(id)}${openLink(id)}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}` +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     (inside ? `<a class="board-inside" href="#/${encodeURIComponent(id)}">${inside} inside</a>` : "") +
     `</div></li>`
   );
+}
+
+function openLink(id: ItemId): string {
+  return `<a class="board-bullet" href="#/${encodeURIComponent(id)}" aria-label="Open" title="Open"><span class="dot"></span></a>`;
 }
 
 function textEditor(id: ItemId): string {
