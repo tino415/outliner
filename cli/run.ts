@@ -21,7 +21,8 @@ import { attachmentLink, typeFromName } from "../src/attachmentLinks";
 import { downloadFile, sha256Hex, uploadFile } from "../src/sync/files";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
-import { findItems } from "../src/search";
+import { Candidate, findItems, pathOf } from "../src/search";
+import { parseQuery, queryMatches } from "../src/query";
 import { Template, capture, captureTemplates } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { isSealed, propertyKey, propertyLines, sealedKeyOf } from "../src/notes";
@@ -37,6 +38,8 @@ usage: outline <command> [arguments] [options]
 commands:
   show [ITEM]              the outline, or one item and everything under it
   find QUERY               items whose text contains every word of QUERY
+                           (--query: QUERY in the language of query views, as
+                           #tag is:open under:"A/B" has:KEY -word OR due:<+7d)
   add TEXT                 a new item; TEXT "-" reads indented lines from stdin
   edit ITEM TEXT           replace an item's text
   note ITEM TEXT           replace an item's note ("" removes it)
@@ -92,6 +95,7 @@ interface Options {
   columns: boolean;
   ids: boolean;
   first: boolean;
+  query: boolean;
   depth?: number;
   under?: string;
   before?: string;
@@ -141,7 +145,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       return options.columns ? showTable(doc, top, options) : showText(doc, top, options);
     }
     case "find": {
-      const found = findItems(doc, args.join(" "), options.limit);
+      const found = options.query ? queryResults(doc, args.join(" "), options.limit) : findItems(doc, args.join(" "), options.limit);
       if (options.json) return json(found);
       return found.map((item) => `${item.id}  ${[...item.path, item.text].join(" / ")}`).join("\n");
     }
@@ -450,7 +454,7 @@ function fail(message: string): Outcome {
 // ---- arguments ---------------------------------------------------------------------------
 
 function parseArguments(argv: string[]): { words: string[]; options: Options } {
-  const options: Options = { json: false, columns: false, ids: false, first: false, limit: 20, every: 5, format: "md", set: [] };
+  const options: Options = { json: false, columns: false, ids: false, first: false, query: false, limit: 20, every: 5, format: "md", set: [] };
   const words: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -463,6 +467,7 @@ function parseArguments(argv: string[]): { words: string[]; options: Options } {
     else if (arg === "--ids") options.ids = true;
     else if (arg === "--columns") options.columns = true;
     else if (arg === "--first") options.first = true;
+    else if (arg === "--query") options.query = true;
     else if (arg === "--md" || arg === "--opml") options.format = arg.slice(2) as Options["format"];
     else if (arg === "--depth") options.depth = Number(value());
     else if (arg === "--under") options.under = value();
@@ -487,4 +492,10 @@ function positive(option: string, value: string): number {
   const number = Number(value);
   if (!(number > 0)) throw new Error(`${option} needs a number of seconds above 0`);
   return number;
+}
+
+function queryResults(doc: Doc, query: string, limit: number): Candidate[] {
+  return queryMatches(doc, ROOT, parseQuery(query), { showCompleted: true })
+    .slice(0, limit)
+    .map((id) => ({ id, text: doc.items[id].text, path: pathOf(doc, id) }));
 }

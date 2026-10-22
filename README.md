@@ -154,6 +154,23 @@ text. The rows are the items themselves: edit, complete or date them in
 place; the line under each says where it lives and goes there. Keys that
 would move an item in the outline do nothing in the agenda.
 
+## Query views
+
+An item with a `:query:` property is a view: its page lists the items that
+match from all over the outline, under the path to where they live, in
+place of its children (doc/adr/0044). `:group: date` lists them by date
+instead, as the agenda does. The rows work as in the agenda.
+
+```
+:query: #feature is:open under:"Projects/Outliner" -draft
+:query: #bug OR #todo due:<+7d
+```
+
+Plain words, `#tag`, `is:open`, `is:done`, `is:overdue`, `has:key`,
+`under:A/B`, the date words of search, `-` before any of them, and `OR`
+between alternatives. `outline find QUERY --query` answers the same
+language.
+
 ## Order of new and completed items
 
 `:completed: last` on a page shows completed items after the open ones,
@@ -324,6 +341,7 @@ OUTLINE_TOKEN=… OUTLINE_DB=$HOME/outline.db PORT=8791 HOST=127.0.0.1 \
 outline show                          # the whole outline
 outline show "Projects/Garden" --ids
 outline find "#ideas" --json
+outline find "#feature is:open under:Projects/Outliner" --query
 outline add "Buy seeds" --under Projects --note "before March"
 printf '%s\n' "- Week" "  - Monday" | outline add - --under Plans
 outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal

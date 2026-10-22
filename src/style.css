@@ -2346,3 +2346,18 @@ body.dragging {
   text-decoration: line-through;
   opacity: 0.6;
 }
+
+/* A query view (doc/adr/0044) keeps its page head: the title and the :query: are the view's own item. */
+.page.with-query .add-item,
+.page.with-query .columns-head {
+  display: none;
+}
+
+.page.with-query .agenda-section h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page.with-query .agenda-section h2 a:hover {
+  color: var(--accent);
+}

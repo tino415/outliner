@@ -57,6 +57,20 @@ describe("outline CLI", () => {
     expect(await outline("show")).toBe("- Projects\n- Shopping\n  - ~~Buy tomato seeds~~");
   });
 
+  it("finds items with the language of query views", async () => {
+    await outline('add "Projects"');
+    await outline('add "Outliner" --under Projects');
+    const open = await outline('add "Query views #feature" --under Projects/Outliner');
+    const done = await outline('add "Agenda #feature" --under Projects/Outliner');
+    await outline('add "Draft #feature"');
+    await outline(`done ${done}`);
+    expect(JSON.parse(await outline('find "#feature under:Projects/Outliner" --query --json'))).toEqual([
+      { id: open, text: "Query views #feature", path: ["Projects", "Outliner"] },
+      { id: done, text: "Agenda #feature", path: ["Projects", "Outliner"] },
+    ]);
+    expect(await outline('find "#feature is:open -draft" --query')).toBe(`${open}  Projects / Outliner / Query views #feature`);
+  });
+
   it("follows the page's :new: top and :completed: last", async () => {
     await outline('add "TODO"');
     await outline("set TODO new top");
