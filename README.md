@@ -27,8 +27,7 @@ podman compose exec app npx tsc --noEmit
 podman compose exec app npx vitest run              # tree operations, import/export, inline rendering
 podman compose exec app npm run build               # the browser tests run against the build
 podman compose exec app npm run check               # all of it: build, unit suite, every Playwright project, unlisted skips
-podman compose exec app npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox
-podman compose exec app env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which crashes in the container
+podman compose exec app npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox, desktop Safari (WebKit)
 ```
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.

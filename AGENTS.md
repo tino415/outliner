@@ -86,7 +86,7 @@ before writing and do not delete without being asked.
 - The merge gate is
   `flock ~/.cache/outliner-gate.lock podman compose exec app npm run check`, so only one
   runs at a time on the machine: build, unit suite, and every
-  Playwright project (desktop, phone, iPhone, Firefox). It fails on a
+  Playwright project (desktop, phone, iPhone, Firefox, desktop WebKit). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
 - A PR that touches only `doc/`, NOTES.md or TODO.md needs only
@@ -94,8 +94,8 @@ before writing and do not delete without being asked.
   the feature's PR, not a PR of its own.
 - Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
-  and iPhone, never desktop), `@keys` adds Firefox (and WebKit with
-  `WEBKIT=1`). Tag a test `{ tag: "@phone" }`, or a whole `test.describe`;
+  and iPhone, never desktop), `@keys` adds Firefox and desktop WebKit.
+  Tag a test `{ tag: "@phone" }`, or a whole `test.describe`;
   a phone bug's test in `regressions.spec.ts` needs `@phone`.
   `tests/playwright-projects.test.ts` checks that every spec file runs
   somewhere, not that a test has the tag it needs.
