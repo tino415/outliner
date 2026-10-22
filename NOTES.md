@@ -51,6 +51,20 @@ the browser (localStorage). Time box: 2026-10-07 21:50 to 2026-10-08 03:50.
 Part 2, sync and a CLI: 2026-10-07 23:52 to 2026-10-08 05:52. Its plan is
 below; part 1's report follows it.
 
+## Session 12 (2026-10-22, opening a board's card or column)
+
+- Card "Can't open a card's detail from the board" (qctwikaws3eh): PR 40,
+  bd3ffa5; published with BUILD_COMMIT=bd3ffa5, card in Review. No server
+  change.
+- A column head has a bullet before its title, a card one at its right
+  edge; both are `#/<id>` links, so a click or tap opens the item as a page.
+- Test: `e2e/regressions.spec.ts`, desktop click and phone tap, failed
+  before the fix (no bullet to click). `tests/playwright-projects.test.ts`
+  now expects `regressions.spec.ts` on desktop and phone, since AGENTS.md
+  wants phone bugs' tests there.
+- Gate: `npm run check` green once the load average fell below 6. At
+  20-60 the 8 cores timed out unrelated tests and the performance budget.
+
 ## Session 11 (2026-10-22, the app from the Nix package)
 
 - Card fuaba6c9nnm9, PR 38, merged as 13f43bb with a merge commit
