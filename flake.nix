@@ -4,7 +4,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs =
-    { nixpkgs, ... }:
+    { self, nixpkgs, ... }:
     let
       systems = [
         "x86_64-linux"
@@ -18,7 +18,7 @@
       nixosModules.default = ./nix/module.nix;
 
       packages = forEachSystem (pkgs: rec {
-        outline = pkgs.callPackage ./nix/outline.nix { };
+        outline = pkgs.callPackage ./nix/outline.nix { buildCommit = self.shortRev or self.dirtyShortRev or "dev"; };
         outline-sync-server = pkgs.lib.addMetaAttrs { mainProgram = "outline-sync-server"; } outline;
         default = outline;
       });

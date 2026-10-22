@@ -14,8 +14,16 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ./outline.nix { };
+      default = pkgs.callPackage ./outline.nix { inherit (cfg) buildCommit; };
     };
+
+    buildCommit = lib.mkOption {
+      type = lib.types.str;
+      default = "nix";
+      description = "Shown at the bottom of the app's ⋯ menu.";
+    };
+
+    serveApp = lib.mkEnableOption "serving the app (the PWA) from the same address as sync";
 
     host = lib.mkOption {
       type = lib.types.str;
@@ -47,6 +55,7 @@ in
         HOST = cfg.host;
         PORT = toString cfg.port;
         OUTLINE_ORIGINS = lib.concatStringsSep "," cfg.origins;
+        OUTLINE_APP_DIR = lib.optionalString cfg.serveApp "${cfg.package}/share/outline/app";
       };
       serviceConfig = {
         ExecStart = "${cfg.package}/bin/outline-sync-server";
