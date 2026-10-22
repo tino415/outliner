@@ -38,7 +38,7 @@ dev-run env WEBKIT=1 npx playwright test   # also desktop Safari (WebKit), which
 Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
-P property, K kind, L link, ; date, A attach, X private, M move to,
+P property, K kind, L link, R mirror, ; date, A attach, X private, M move to,
 D duplicate, B board, G agenda, C columns, N capture, and J again to jump
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Alt-Shift with a letter is left to typing, as many layouts need it.
@@ -169,6 +169,14 @@ Type `[[` or press Ctrl-J L to link to another item: it writes
 `[[id:…][label]]`, as org mode does (doc/adr/0024). `[[Some text]]` links to
 the first item with that text. A click follows a link; a zoomed item lists
 what links to it under its title.
+
+Ctrl-J R (or "Mirror here" in Ctrl-K) puts a mirror of another item here
+(doc/adr/0043): a row with a hollow bullet that shows the item's text and
+children, live and read-only, with its path on hover. Its bullet zooms to
+the item, Enter or a tap on its text opens it; deleting it leaves the item,
+and a mirror of a deleted item shows "gone". On a blank item the item
+becomes the mirror, otherwise the mirror goes below. Sync, export and the
+CLI see an ordinary item with a `mirror: <id>` property.
 
 ## Attachments
 

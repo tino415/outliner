@@ -5,6 +5,7 @@ import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
 import { propertyChipsHtml } from "./propertyChips";
 import { ownFormulaResults } from "./render";
+import { isMirror, mirrorTextHtml } from "./mirrors";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -51,6 +52,7 @@ function cardHtml(id: ItemId): string {
 }
 
 function textEditor(id: ItemId): string {
+  if (isMirror(doc(), id)) return mirrorTextHtml(doc(), id);
   const text = doc().items[id].text;
   return `<div class="text${text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${escape(id)}">${renderItemText(text)}</div>`;
 }

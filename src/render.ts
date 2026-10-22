@@ -1,4 +1,4 @@
-import { Item, ItemId, ROOT, ancestors, shownChildren } from "./model";
+import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./model";
 import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
@@ -15,6 +15,7 @@ import { renderMenuState } from "./chrome";
 import { today } from "./dates";
 import { agendaShown, renderAgenda } from "./agenda";
 import { followShortcutSettings } from "./keys";
+import { isMirror, liveMirrorTarget, mirrorBulletTitle, mirrorTextHtml, mirroredChildrenHtml } from "./mirrors";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -216,6 +217,14 @@ export function rowShowsOpenedNote(id: ItemId): void {
   if (rendered) rendered.noteOpen = true;
 }
 
+/** Typing skips the render, so a mirror on screen of the typed item, or of an item above it, would show the old text. */
+export function isMirroredOnScreen(id: ItemId): boolean {
+  return [...shownOutline().querySelectorAll<HTMLElement>(".item.mirror")].some((mirror) => {
+    const target = liveMirrorTarget(doc(), mirror.dataset.id!);
+    return target !== null && (target === id || isDescendant(doc(), id, target));
+  });
+}
+
 function renderTree(): void {
   const top = shownChildrenOf(state.zoom);
   rowsSeen = new Set();
@@ -246,19 +255,21 @@ function renderItem(id: ItemId): HTMLLIElement {
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
-  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")}`;
+  const mirror = isMirror(doc(), id) ? mirrorTextHtml(doc(), id) + mirroredChildrenHtml(doc(), id, filter()) : null;
+  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(createRow(item, expanded, noteOpen, cells, results));
+    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
     rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
 
   const li = rendered.li;
   li.classList.toggle("completed", item.completed);
+  li.classList.toggle("mirror", mirror !== null);
   li.classList.toggle("has-children", hasChildren);
   li.classList.toggle("folded", hasChildren && !expanded);
   li.classList.toggle("match", Boolean(state.results?.matches.has(id)));
@@ -298,6 +309,20 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
     `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>` +
     propertyChipsHtml(item, keysShownAsColumns(), results) +
+    `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
+    `</div>` +
+    cells;
+  return row;
+}
+
+function createMirrorRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, mirror: string): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML =
+    `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
+    `<button class="bullet" type="button" tabindex="-1" aria-label="Go to the mirrored item" title="${escape(mirrorBulletTitle(doc(), item.id))}"><span class="dot"></span></button>` +
+    `<div class="body">` +
+    mirror +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;
