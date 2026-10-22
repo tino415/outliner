@@ -53,3 +53,5 @@ session report; the records here hold the choices behind them.
 41. [One check command, Playwright projects pick tests by tag, and flaky tests leave the gate](0041-one-check-command-and-projects-picking-tests-by-tag.md)
 42. [The sync server is a NixOS service on dev](0042-the-sync-server-is-a-nixos-service-on-dev.md)
 43. [A mirror is an item with a `mirror` property, shown read-only](0043-a-mirror-is-an-item-with-a-mirror-property.md)
+44. [An item with a query lists the items that match](0044-an-item-with-a-query-lists-the-items-that-match.md)
+45. [The sync server also serves the app](0045-the-sync-server-also-serves-the-app.md)
