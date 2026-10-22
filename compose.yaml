@@ -11,6 +11,7 @@ services:
     ports:
       - "127.0.0.1:5188:5188"
     init: true
+    pids_limit: -1
 
 volumes:
   node_modules:

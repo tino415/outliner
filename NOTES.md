@@ -76,6 +76,18 @@ one horizontal scrollbar".
   without the CSS rule.
 - Board browser tests also run with `WEBKIT=1`.
 
+## Session 14 (2026-10-22, desktop WebKit back in the check)
+
+Desktop WebKit crashed in the app container only with several browsers
+running at once. Not the scheduling message (it also shows in passing runs),
+not `cap_add: SYS_NICE`, not memory: the container's process limit of 2048.
+`pids_limit: -1` in `compose.yaml` and `compose.worktree.yaml` fixed it;
+three full runs passed, each started with the load average under 6. With
+`SYS_NICE` and a 1 GB `shm_size` instead, the same three `editing.spec.ts`
+tests failed in all three. The `webkit` project is now in `npm run check`,
+`WEBKIT=1` is gone (ADR 46 supersedes the part of 41). Recreate an old stack
+with `podman compose up -d` to get the limit off.
+
 ## Session 12 (2026-10-22, opening a board's card or column)
 
 - Card "Can't open a card's detail from the board" (qctwikaws3eh): PR 40,

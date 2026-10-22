@@ -6,7 +6,7 @@ const inOtherEngines = /@keys/;
 const timed = /@performance/;
 
 const desktopChrome = { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 860 } };
-const everyOtherProject = ["desktop", "phone", ...(process.env.WEBKIT ? ["webkit"] : []), "iphone", "firefox"];
+const everyOtherProject = ["desktop", "phone", "webkit", "iphone", "firefox"];
 
 export default defineConfig({
   testDir: "e2e",
@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: desktopChrome, grepInvert: [touchOnly, timed] },
     { name: "phone", use: { ...devices["Pixel 7"] }, grep: onPhones },
-    ...(process.env.WEBKIT ? [{ name: "webkit", use: { ...devices["Desktop Safari"] }, grep: inOtherEngines }] : []),
+    { name: "webkit", use: { ...devices["Desktop Safari"] }, grep: inOtherEngines },
     { name: "iphone", use: { ...devices["iPhone 15"] }, grep: touchOnly },
     { name: "firefox", use: { ...devices["Desktop Firefox"] }, grep: inOtherEngines },
     { name: "performance", use: desktopChrome, grep: timed, fullyParallel: false, retries: 2, dependencies: everyOtherProject },
