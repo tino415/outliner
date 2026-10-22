@@ -16,21 +16,24 @@ export function zoomFromHash(): ItemId {
   return id && doc().items[id] ? id : ROOT;
 }
 
-let pendingZoomFocus: Focus | null = null;
+let hashShownAhead: string | null = null;
 
 export function zoomTo(id: ItemId, focus: Focus | null = null): void {
-  pendingZoomFocus = focus;
   const hash = id === ROOT ? "#/" : `#/${encodeURIComponent(id)}`;
-  if (location.hash === hash || (id === ROOT && location.hash === "")) {
-    showZoom();
-  } else {
+  if (location.hash !== hash && !(id === ROOT && location.hash === "")) {
+    hashShownAhead = hash;
     location.hash = hash;
   }
+  showZoom(focus);
 }
 
-export function showZoom(): void {
-  const focus = pendingZoomFocus;
-  pendingZoomFocus = null;
+export function showZoomOfNewHash(): void {
+  const shownAhead = location.hash === hashShownAhead;
+  hashShownAhead = null;
+  if (!shownAhead) showZoom(null);
+}
+
+function showZoom(focus: Focus | null): void {
   const changed = state.zoom !== zoomFromHash();
   state.zoom = zoomFromHash();
   if (changed && state.query) changeQuery("");
