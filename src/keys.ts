@@ -116,6 +116,7 @@ const defaultBindings: Binding[] = [
   editor("property", ["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
   editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
+  editor("mirror", ["Mod+j r"], "Mirror here", (c) => actions.mirrorHere(c)),
   editor("date", ["Mod+j ;"], "Insert a date…", (c) => actions.insertDate(c)),
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),

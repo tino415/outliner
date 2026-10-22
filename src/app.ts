@@ -8,13 +8,14 @@ import { welcomeDoc } from "./welcome";
 import { enableBulletHandles } from "./bullets";
 import { bindEditorEvents, caretNow } from "./editing";
 import { zoomFromHash, zoomTo } from "./navigation";
-import { FocusRequest, flashRow, render, rowShowsTypedText } from "./render";
+import { FocusRequest, flashRow, isMirroredOnScreen, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
 import { today } from "./dates";
+import { liveMirrorTarget } from "./mirrors";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -64,7 +65,7 @@ export function start(): void {
   bindChrome();
   enableBulletHandles(ui.tree, {
     doc,
-    zoomInto: (id) => zoomTo(id),
+    zoomInto: (id) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
     move: (next, id) => {
       commitAndRender(next, null);
       flashRow(id);
@@ -133,7 +134,7 @@ function focusAfterRenaming(focus: FocusRequest, renamed: Map<ItemId, ItemId>): 
 export function commitShownEdit(next: Doc, id: ItemId, caretBefore: Caret | null, typingKey: string | null = null): void {
   const renamed = commit(next, typingKey, caretBefore);
   rowShowsTypedText(id);
-  if (renamed.size > 0) render(caretNow());
+  if (renamed.size > 0 || isMirroredOnScreen(id)) render(caretNow());
   if (state.query) state.keptInResults.add(id);
 }
 

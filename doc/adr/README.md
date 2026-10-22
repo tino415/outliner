@@ -52,3 +52,4 @@ session report; the records here hold the choices behind them.
 40. [Shortcuts are set on an item in the outline](0040-shortcuts-are-set-on-an-item-in-the-outline.md)
 41. [One check command, Playwright projects pick tests by tag, and flaky tests leave the gate](0041-one-check-command-and-projects-picking-tests-by-tag.md)
 42. [The sync server is a NixOS service on the server](0042-the-sync-server-is-a-nixos-service-on-dev.md)
+43. [A mirror is an item with a `mirror` property, shown read-only](0043-a-mirror-is-an-item-with-a-mirror-property.md)
