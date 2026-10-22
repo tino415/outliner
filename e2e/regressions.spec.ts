@@ -589,3 +589,18 @@ test("an item whose :private: line is still being typed is private at once, and 
   await expect(row(page, "secret").locator("xpath=..")).toHaveAttribute("data-id", /^i0~/);
   expect(await caret(page)).toEqual({ text: ":private: personal\nmy diary", offset: 27 });
 });
+
+test("a key pressed right after a bullet click acts on the page the click zoomed into", async ({ page }) => {
+  await freshOutline(page, "Project\n  Doing\n    write\n  Done");
+  await page.evaluate(() => {
+    const bullet = document.querySelector<HTMLElement>(".item .bullet")!;
+    const pointer = { bubbles: true, button: 0, pointerId: 1, pointerType: "mouse" };
+    bullet.dispatchEvent(new PointerEvent("pointerdown", pointer));
+    bullet.dispatchEvent(new PointerEvent("pointerup", pointer));
+    for (const key of ["j", "b"]) {
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key, code: `Key${key.toUpperCase()}`, ctrlKey: key === "j", metaKey: key === "j", bubbles: true, cancelable: true }));
+    }
+  });
+  await expect(page.locator(".board-column")).toHaveCount(2);
+  await expect(page.locator(".board-card .text")).toHaveText(["write"]);
+});

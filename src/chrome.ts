@@ -8,7 +8,7 @@ import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
-import { searchEverything, setQuery, showZoom, zoomTo } from "./navigation";
+import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
@@ -30,7 +30,7 @@ export function bindChrome(): void {
   bindAgenda();
   bindPropertyChips();
 
-  window.addEventListener("hashchange", showZoom);
+  window.addEventListener("hashchange", showZoomOfNewHash);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyAppearance);
 
