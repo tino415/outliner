@@ -1341,12 +1341,9 @@ code {
 }
 
 .board > .board-gap:first-child {
-  flex-basis: 12px;
+  margin-left: -22px;
 }
 
-.board > .board-gap:first-child::after {
-  inset: 0 4px;
-}
 
 .board-gap:hover::after,
 .board-gap:focus-visible::after {

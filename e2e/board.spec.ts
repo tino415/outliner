@@ -127,4 +127,8 @@ test("the line before the first column adds an empty column in front", { tag: ["
   if (isMobile) await line.tap();
   else await line.click();
   await expectBoard(page, ": \nTo do: write, test\nDoing: \nDone: ");
+  await page.keyboard.type("Backlog");
+  await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
+  await page.reload();
+  await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
 });
