@@ -24,7 +24,7 @@ export function toggleBoard(): void {
 
 export function renderBoard(): void {
   const columns = shownChildren(doc(), state.zoom, filter());
-  ui.board.innerHTML = columns.map((id, index) => (index ? columnGapHtml(id) : "") + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
+  ui.board.innerHTML = columns.map((id) => columnGapHtml(id) + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
 }
 
 function columnGapHtml(nextColumn: ItemId): string {
