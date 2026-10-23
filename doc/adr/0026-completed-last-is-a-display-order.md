@@ -5,10 +5,10 @@
 
 ## Context
 
-The Outliner/TODO page collects tasks at the bottom while finished ones
-pile up at the top, so the open work is the last thing on the page. Martin
-asked for completed items at the end and new ones at the top, and chose
-all three proposals: completed items sink, a command adds a first child,
+A task list collects new tasks at the bottom while finished ones pile up
+at the top, so the open work is the last thing on the page. Completed
+items should go to the end and new ones to the top. All three proposals
+were taken: completed items sink, a command adds a first child,
 and a page can file new items at the top.
 
 ## Decision
@@ -32,7 +32,7 @@ every client that completes items (CLI, old phone builds) would have to do
 the moving too. A display order needs nothing from old clients.
 
 **A per-device setting.** Rejected: the CLI and agents read the same page
-and should see what Martin sees, which is why this is an outline property
+and should see what every device shows, which is why this is an outline property
 like `:columns:`.
 
 ## Consequences

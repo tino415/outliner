@@ -5,12 +5,12 @@
 
 ## Context
 
-Each session ran the build, the unit suite and Playwright by hand before a
-merge and counted the skipped tests itself. The projects picked spec files
-by name, so the phone ran only `mobile`, `screenshots`, `columns` and
-`board`, and `keyboard` because the pattern `board` matched it; a phone
-bug's test written into `regressions.spec.ts` never ran on the phone. Martin
-approved the proposal on the Testing card on 2026-10-19.
+Before each merge the build, the unit suite and Playwright ran by hand,
+and the skipped tests were counted by eye. The projects picked spec
+files by name, so the phone ran only `mobile`, `screenshots`, `columns`
+and `board`, and `keyboard` because the pattern `board` matched it;
+a phone bug's test written into `regressions.spec.ts` never ran on the
+phone. The proposal was approved on 2026-10-19.
 
 ## Decision
 

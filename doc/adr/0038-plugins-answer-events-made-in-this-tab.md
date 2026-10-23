@@ -3,13 +3,13 @@
 - **Status:** accepted, 2026-10-20
 - **Supersedes:** the "no hooks" part of [ADR 30](0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md)
 - **Applies to:** `src/events.ts`, `src/pluginHost.ts`, `src/store.ts`, `src/app.ts`
-- **Decides:** the plugin layer of the card "Plugin: add option to query and be triggered by adding node to node" (Projects/Outliner), with Martin's answers of 2026-10-19
+- **Decides:** the plugin layer of reacting to items added or moved, 2026-10-19
 
 ## Context
 
-Martin wants a board column that completes the cards dropped into it,
-written as a plugin rather than built into the app. ADR 30 left hooks out
-because a hook running in every open app would act once per device.
+A board column should complete the cards dropped into it, written as a
+plugin rather than built into the app. ADR 30 left hooks out because a
+hook running in every open app would act once per device.
 
 ## Decision
 

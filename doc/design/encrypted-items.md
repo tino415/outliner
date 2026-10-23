@@ -1,21 +1,21 @@
 # Encrypted items
 
-Status: decided 2026-10-09 in [ADR 29](../adr/0029-private-items-are-sealed-whole-at-the-sync-boundary.md), which differs from the recommendation below: Martin chose to hide the structure too. From Martin's outline.
+Status: decided 2026-10-09 in [ADR 29](../adr/0029-private-items-are-sealed-whole-at-the-sync-boundary.md), which differs from the recommendation below: it hides the structure too.
 
 ## Context
 
-Martin's ask: "Similar to org mode feature org crypt, node can be marked to
-be encrypted and only client possessing key can actually view that node.
-Should be configurable also for cli. So I can keep some personal notes that
-phone and laptop could view, but would be unviewable from cli/mcp by agent."
+The ask, in the spirit of org-crypt: an item can be marked as encrypted, and
+only a client that has the key can read it. It should be configurable for
+the CLI too, so personal notes are readable on a phone and a laptop but not
+by an agent going through the CLI.
 
 Constraints from what exists:
 
 - Every client keeps a full replica; fields merge by last-writer-wins on a
   hybrid clock (ADR 0011, 0012). The server checks only that `text` and
   `note` are strings under 100,000 characters (`src/sync/protocol.ts`).
-- The server stores the outline in plain text on `dev`; Tailscale and one
-  token are the only boundary (ADR 0011). The CLI uses the same token.
+- The server stores the outline in plain text on its machine; Tailscale
+  and one token are the only boundary (ADR 0011). The CLI uses the same token.
 - Properties are lines in the note (ADR 0017), so an encrypted note hides
   its properties too.
 - The app stores the whole `Doc` as JSON in `localStorage`.
@@ -84,7 +84,7 @@ leave their properties out, so the CLI's totals can differ from the app's.
 ## Keys across phone and Mac
 
 1. On first use the app makes a random 256-bit data key.
-2. Martin chooses a passphrase. A key-encryption key is derived from it
+2. The app asks for a passphrase. A key-encryption key is derived from it
    (PBKDF2-SHA-256 in WebCrypto with 600,000 iterations today; Argon2id
    once WebCrypto ships it, or now from a wasm build) and wraps the data
    key.
@@ -98,7 +98,7 @@ leave their properties out, so the CLI's totals can differ from the app's.
 
 **Keeping the CLI out** needs nothing: it never gets the passphrase.
 "Configurable for the CLI" could mean a `--passphrase-from` option for
-Martin's own terminal; agents would not be given it.
+a personal terminal; agents would not be given it.
 
 **A write-only variant.** With a key pair (ECDH P-256 in WebCrypto) instead
 of a symmetric key, the public key sits in the outline in plain, so the CLI
@@ -113,18 +113,18 @@ Protects against:
 
 - An agent, script or person using the CLI or the sync token reading
   encrypted items.
-- The server's database, its backups and anything else on `dev` reading
+- The server's database, its backups and anything else on that machine reading
   them at rest.
 
 Does not protect against:
 
-- **Whoever can change the app's code.** The app is served from `dev`
-  (`~/srv/pub/outliner-lab/`). An agent with a shell there can publish a
-  build that sends the key away on the next load. This is the largest gap
-  and the reason this is protection from agents reading by accident or by
-  instruction, not from a hostile agent on `dev`. Serving the app from
-  somewhere agents cannot write, and checking the build commit in the ⋯
-  menu, narrows it.
+- **Whoever can change the app's code.** The app is served from a
+  directory on the server's machine. An agent with a shell there can
+  publish a build that sends the key away on the next load. This is the
+  largest gap and the reason this is protection from agents reading by
+  accident or by instruction, not from a hostile agent on that machine.
+  Serving the app from somewhere agents cannot write, and checking the
+  build commit in the ⋯ menu, narrows it.
 - **Offline guessing.** The CLI token is enough to download the wrapped
   key; a weak passphrase falls to brute force. Hence a slow KDF and a long
   passphrase.
@@ -157,7 +157,7 @@ shape plain, and add a server guard against plain writes over ciphertext.
 Leave the public-key variant until agents need to capture into private
 notes.
 
-## Open questions for Martin
+## Open questions
 
 1. Should the marked item's own headline stay readable (org-crypt style),
    or be hidden like its children?
@@ -169,10 +169,10 @@ notes.
    on phone and Mac?
 5. One passphrase for all private subtrees, or different keys for different
    subtrees?
-6. Is the remaining gap acceptable, that an agent with a shell on `dev` can
-   change the served app? If not, where else could the app be served from?
+6. Is the remaining gap acceptable, that an agent with a shell on the
+   server's machine can change the served app? If not, where else could the app be served from?
 7. What should happen if the passphrase is lost: is the content simply gone,
-   or do you want a recovery key printed once?
+   or should a recovery key be printed once?
 
 ## Sources
 

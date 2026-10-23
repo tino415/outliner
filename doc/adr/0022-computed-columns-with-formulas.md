@@ -6,7 +6,7 @@
 
 ## Context
 
-Martin wants a small spreadsheet on properties. His example is time
+Properties should work as a small spreadsheet. The example is time
 planning: on a day, each item's `start` is the day's start plus the
 durations of the items before it, so a plan reads as a timetable and
 moving an item reschedules everything after it.

@@ -6,7 +6,7 @@
 
 ## Context
 
-Martin uses org mode's properties and column view for two things: effort
+Org mode's properties and column view serve two uses here: effort
 estimates on subheadings summed on every parent, and calories on food under
 meal under day under week, summed per meal, day and week. Plain outliners
 (WorkFlowy, Dynalist) have neither.

@@ -6,8 +6,8 @@
 
 ## Context
 
-Martin asked for references from an item's text, note or properties to
-another item, "like Logseq's `[[reference][label]]`, in org mode `C-c C-l`",
+The request was for references from an item's text, note or properties
+to another item, "like Logseq's `[[reference][label]]`, in org mode `C-c C-l`",
 and for a reference as a child, like WorkFlowy's mirrors, open to
 interpretation.
 

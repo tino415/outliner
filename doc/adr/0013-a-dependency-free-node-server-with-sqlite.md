@@ -5,8 +5,8 @@
 
 ## Context
 
-The server only stores fields and hands out what changed. It runs on `dev`
-in the Compose stack, next to the toolchain that builds the app.
+The server only stores fields and hands out what changed. It runs in
+the Compose stack, next to the toolchain that builds the app.
 
 ## Decision
 

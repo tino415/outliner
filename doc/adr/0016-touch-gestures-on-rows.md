@@ -5,7 +5,7 @@
 
 ## Context
 
-Martin finds the fold toggle too small on a phone. The toggle is an 18 px
+The fold toggle is too small on a phone. The toggle is an 18 px
 chevron in the gutter; a finger needs about 44 px. Phones also have no
 keyboard shortcuts, so completing or folding goes through the editing
 toolbar or the item menu, both slower than a gesture.

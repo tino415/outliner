@@ -1,18 +1,14 @@
 # Working on this repository
 
-## Using the outline
-
-Martin's outline is reachable from a shell with `outline`, installed for
-`llm` at the commit the server runs (see README, "CLI"). Prefer `--json`
-and item ids when acting on it; `outline help`
-lists the commands. It changes the real outline on every device, so read
-before writing and do not delete without being asked.
+Setup that belongs to one machine (how commands reach the container, the
+live server and how work is tracked there) goes in `AGENTS.local.md`, which
+is gitignored.
 
 ## Changing the code
 
-- Run every toolchain command through `dev-run` (see README). Bring the stack
-  up with `podman compose up -d` first; without it `dev-run` falls back to the
-  sandbox, which has no browsers.
+- Run every toolchain command in the `app` container of the Compose stack
+  (see README). Bring the stack up with `podman compose up -d` first; the
+  browsers exist only in the container.
 - `npx playwright test` serves `dist/`, so run `npm run build` first or the
   tests exercise the previous build.
 - Rendering keeps rows between renders (doc/adr/0009). Any new display state
@@ -33,65 +29,37 @@ before writing and do not delete without being asked.
 
 ## Where the work is
 
-- The remote is `git@github.com:tino415/outliner.git` (public, so the
-  machine's `configuration.nix` can fetch it); `main` there
-  holds all work so far. Work on a branch and open a PR; do not push to
-  `main` directly. Martin left merging to the agent
-  (2026-10-10): once the tests pass, merge the PR yourself,
-  without waiting for him. Deploying the sync server still needs the backup
-  first.
-- Worktrees are made with `git -C ~/src/outliner-lab worktree add
-  .claude/worktrees/<x> -b <branch>`, then `cd` into them. Git for main runs
-  as `git -C ~/src/outliner-lab …`, e.g. `git -C ~/src/outliner-lab pull`.
-  A worktree's own compose stack runs with
+- `main` on `git@github.com:tino415/outliner.git` holds all work. Work on a
+  branch and open a PR; do not push to `main` directly.
+- Worktrees go in `.claude/worktrees/<x>` of the main checkout:
+  `git -C <main checkout> worktree add .claude/worktrees/<x> -b <branch>`,
+  then `cd` into them. A worktree's own compose stack runs with
   `podman compose -p <worktree dir> -f compose.worktree.yaml up -d`, which
   publishes no ports.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
   that created it. Do not print it, commit it or regenerate it: a new token
   disconnects every device.
-- The project's tasks are cards on the board at "Projects/Outliner"
-  (since 2026-10-10), tagged #feature, #bug, #keyboard, #test. Read it with
-  `outline show Projects/Outliner --ids` at the start of a session.
-  The columns:
-  - Deciding: not agreed yet. Write a proposal (what, why, trade-off)
-    into the card's note, questions as "Question: …" children; Martin
-    moving the card to TODO approves it.
-  - TODO: agreed, or an obvious bug fix; take from here.
-  - Implementing: move a card here when starting it.
-  - Review: merged; add a one-line note on how to try it.
-  - Done: Martin moves cards here, or back with a comment.
-  Move cards with `outline move <id> --under <column id>`. The item
-  "Outliner" at the top keeps Martin's remarks in "Comments" and an item
-  per session with what needs him; its old "TODO" is empty. NOTES.md keeps
-  the session reports; its "Backlog" section is history.
 
-## Live services
+## The sync server
 
-- The NixOS service `outline-sync` holds Martin's real outline and is
-  reached by his phone and Mac (README, "Sync server"). Browser and unit
-  tests start their own server (`e2e/sync-server.ts`); never point a test
-  at the live one.
-- Deploy the server whenever `server/`, the app or the wire format in
-  `src/sync/protocol.ts` changes, and say so in the report: back up, move
-  `rev` in `configuration.nix` (repository tino415/system) to the merged
-  commit, and ask Martin before `nixos-rebuild switch`. The sync server
-  serves the app (`serveApp`), so an app change reaches the phone and the
-  Mac only after that install. Changing what the server accepts needs the app
-  and the server to agree; old clients keep running on phones.
-- The commit shows at the bottom of the ⋯ menu (`buildCommit`), which is how
-  Martin checks what his phone runs.
+- Browser and unit tests start their own server (`e2e/sync-server.ts`);
+  never point a test at a live one.
+- The sync server serves the app (`serveApp`), so an app change reaches
+  devices only when the server is redeployed. Changing what the server
+  accepts needs the app and the server to agree; old clients keep running
+  on phones.
+- The commit shows at the bottom of the ⋯ menu (`buildCommit`), which is
+  how to check what a device runs.
 
 ## Tests
 
-- The merge gate is
-  `flock ~/.cache/outliner-gate.lock dev-run npm run check`, so only one
-  runs at a time on the machine: build, unit suite, and every
+- The merge gate is `npm run check` in the `app` container, one run at a
+  time on the machine: build, unit suite, and every
   Playwright project (desktop, phone, iPhone, Firefox, desktop WebKit). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
-- A PR that touches only `doc/`, NOTES.md or TODO.md needs only
-  `dev-run npm run build` before merging. A feature's NOTES.md entry goes in
-  the feature's PR, not a PR of its own.
+- A PR that touches only `doc/` or TODO.md needs only `npm run build`
+  before merging.
 - Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
   and iPhone, never desktop), `@keys` adds Firefox and desktop WebKit.

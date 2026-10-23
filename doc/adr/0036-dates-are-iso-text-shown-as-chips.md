@@ -6,10 +6,9 @@
 ## Context
 
 Org mode, WorkFlowy and others let a date be inserted without typing it,
-show it as something more readable than digits, and search by it. Martin
-agreed on the card "Add som date handling" (2026-10-10) to ISO dates shown
-as chips, with a picker on ⌘J ; or on typing `!!`. The agenda (the next
-card) needs to know an item's dates.
+show it as something more readable than digits, and search by it. The
+choice (2026-10-10) is ISO dates shown as chips, with a picker on ⌘J ;
+or on typing `!!`. The agenda (ADR 37) needs to know an item's dates.
 
 ## Decision
 
@@ -51,7 +50,7 @@ is searched as text, and date words are not highlighted.
 
 - A date is no amount: a `due` column shows the dates instead of summing
   their years. Columns and formulas do not compute with dates yet.
-- The card proposed a bare `overdue`; it is `is:overdue`, so the word
+- The proposal had a bare `overdue`; it is `is:overdue`, so the word
   "overdue" can still be searched for.
 - Labels are in English and weeks start on Monday, whatever the browser's
   language.

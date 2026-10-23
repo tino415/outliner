@@ -8,7 +8,7 @@
 ## Context
 
 With 0016, a left swipe folds an item that has children and opens the menu
-only on items without children. Martin uses the menu often and wants it on
+only on items without children. The menu is used often and should be on
 every item. Mail apps on phones solve the same problem with two steps on
 one swipe: a short pull for one action, a longer pull for another.
 

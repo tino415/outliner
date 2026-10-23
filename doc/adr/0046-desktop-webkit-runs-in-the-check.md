@@ -8,8 +8,8 @@
 
 Desktop WebKit ran only with `WEBKIT=1` because it died in the app container
 ("Failed to apply scheduling attributes … Operation not permitted", then
-"browser has been closed"). Martin's Mac runs the app in Safari, so WebKit is
-his real engine.
+"browser has been closed"). On a Mac the app runs in Safari, so WebKit is the
+engine that matters there.
 
 ## Decision
 

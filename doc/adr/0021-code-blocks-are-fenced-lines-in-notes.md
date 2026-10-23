@@ -6,7 +6,7 @@
 
 ## Context
 
-Martin wants code samples in the outline. How others do it, looked up on
+The outline should hold code samples. How others do it, looked up on
 2026-10-09:
 
 - WorkFlowy turns a whole item into a code block: three backticks on an

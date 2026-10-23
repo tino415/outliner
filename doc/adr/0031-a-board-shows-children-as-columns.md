@@ -5,7 +5,7 @@
 
 ## Context
 
-Martin asked for a Kanban view, suggesting that an item's children become
+The app needs a Kanban view. One way is for an item's children to become
 columns and their children cards. Outliners that have boards (WorkFlowy,
 Dynalist, Checkvist) do exactly that. Tools built on records (Notion,
 Trello-like apps, org-mode agendas) instead group cards by a property such
@@ -13,7 +13,7 @@ as `Status`, and moving a card changes the property.
 
 ## Decision
 
-**Structure, as Martin proposed: `:view: board` on an item shows its
+**Structure: `:view: board` on an item shows its
 children as columns and their children as cards.** The board is the
 outline itself, so sync, undo, the CLI and agents need nothing new, and
 moving a card is a move. Alt-Shift-B (or ⋯ → Board) toggles the property

@@ -6,8 +6,8 @@
 
 ## Context
 
-ADR 33 kept the Alt-Shift letters for one release. Martin confirmed the
-next day that ⌘J works on his Mac and asked to leave Alt to typing. A
+ADR 33 kept the Alt-Shift letters for one release. By the next day ⌘J
+was confirmed to work on a Mac, and Alt goes back to typing. A
 review of the prefix then found that its wait never ended on its own, so a
 stray ⌘J turned a later letter into a command, and that ranking a named
 command first let Enter run "Clear this page" for "clear".
