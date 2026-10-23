@@ -6,10 +6,9 @@
 
 ## Context
 
-Martin wants org-capture: a key, a template, and the new entry filed in a
-set place with a few properties asked for. He also wants to reach it
-straight from the phone's home screen and from the Mac without opening the
-outline first.
+The app should have org-capture: a key, a template, and the new entry filed
+in a set place with a few properties asked for, reachable straight from a
+phone's home screen and from a Mac without opening the outline first.
 
 ## Decision
 
@@ -41,7 +40,7 @@ phone, the Mac or the CLI.
 
 **A companion app (Android or Mac) with a native share sheet or global
 hotkey.** Not now: the PWA share target covers Android; a Mac app cannot be
-built on this Linux machine (NOTES.md, backlog item 5), and the CLI behind
+built on Linux, and the CLI behind
 a macOS Shortcut gives a global hotkey without one.
 
 **A share target with POST**, so shared files arrive too. Rejected for now:

@@ -6,7 +6,7 @@
 
 ## Context
 
-Martin plans a day as sleep, activities and sleep again, and wants the last
+A day planned as sleep, activities and sleep again needs the last
 sleep's effort to be whatever is left of the day. A column formula applies
 to every row without a value, so it cannot single out one item, and an
 item's own value was taken literally.

@@ -5,7 +5,7 @@
 
 ## Context
 
-Martin wants scripts and AI agents to read and change the outline. Agents
+Scripts and AI agents should read and change the outline. Agents
 that have a shell, Claude Code among them, can run any command; an MCP
 server would add a protocol only some clients speak.
 
@@ -26,7 +26,7 @@ composes with pipes and is easy for an agent to parse.
 first would leave scripts without a tool.
 
 **Reading and writing the SQLite file directly.** Rejected: it would bypass
-the merge, and the CLI could not run anywhere but on the server.
+the merge, and the CLI could not run anywhere but on the server's machine.
 
 ## Consequences
 

@@ -5,11 +5,10 @@
 
 ## Context
 
-Martin wanted to report a visual glitch from his phone and had nowhere to
-put the screenshot. An item needs files: images to look at, other files to
+A visual glitch seen on a phone could not be reported: there was nowhere
+to put the screenshot. An item needs files: images to look at, other files to
 open. The outline syncs as text fields of at most 100,000 characters
-(doc/adr/0012), and a screenshot is several hundred kilobytes. Martin left
-where files live to me.
+(doc/adr/0012), and a screenshot is several hundred kilobytes.
 
 ## Decision
 

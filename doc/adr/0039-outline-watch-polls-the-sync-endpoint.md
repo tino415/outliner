@@ -2,7 +2,7 @@
 
 - **Status:** accepted, 2026-10-20
 - **Applies to:** `cli/watch.ts`, `cli/run.ts`
-- **Decides:** the script layer of the card "Plugin: add option to query and be triggered by adding node to node" (Projects/Outliner), with Martin's answers of 2026-10-19
+- **Decides:** the script layer of reacting to items added or moved, 2026-10-19
 
 ## Context
 
@@ -31,7 +31,7 @@ state before acting.
 ## Options considered
 
 **Running plugin code under `outline watch`.** It would need a sandbox
-under Node, which ADR 30 left out; Martin chose shell scripts with `jq`.
+under Node, which ADR 30 left out; shell scripts with `jq` won.
 
 **A push stream from the server.** It needs a server change and a sync
 rebuild; polling every few seconds is enough for scripts.

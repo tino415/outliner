@@ -39,7 +39,7 @@ describe("computed columns", () => {
     "  Email | :effort: 20m",
   ].join("\n");
 
-  it("starts each item after the durations before it, up to the page (Martin's time plan)", () => {
+  it("starts each item after the durations before it, up to the page (a day's time plan)", () => {
     expect(column(outline(MONDAY), "Monday", "start")).toEqual({
       Monday: "9:00",
       Standup: "9:00",

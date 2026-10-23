@@ -5,11 +5,10 @@
 
 ## Context
 
-Martin asked for keyboard shortcuts he can change. The card "Configurable
-keyboard shortcuts" was approved on 2026-10-19 with its defaults: the
-settings live in the outline, as column specs do, so they sync and the CLI
-sees them; the Ctrl-J prefix itself stays; plugin commands and a key
-recorder come later.
+Keyboard shortcuts should be changeable. The proposal was approved
+on 2026-10-19 with its defaults: the settings live in the outline, as
+column specs do, so they sync and the CLI sees them; the Ctrl-J prefix
+itself stays; plugin commands and a key recorder come later.
 
 ## Decision
 

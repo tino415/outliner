@@ -11,9 +11,9 @@ the protocol and the CLI did not change. On the phone that meant typing
 colons and keys exactly, notes cluttered with lines that a column view had
 to hide (and the gaps when it could not), and one synced field for the
 whole note: setting `effort` on the phone while the Mac edited the note
-lost one of the two edits. Martin asked for a command and buttons instead
-of parsing, and pointed out that with a dozen items using properties, now
-is the time to change the storage too.
+lost one of the two edits. A command and buttons replace the parsing,
+and with only a dozen items using properties, now is the time to change
+the storage too.
 
 ## Decision
 

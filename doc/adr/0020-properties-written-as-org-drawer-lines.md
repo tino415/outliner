@@ -8,9 +8,9 @@
 
 ## Context
 
-0017 wrote properties as Logseq does, `key:: value`. Martin's habit is org
-mode, where a property line inside a drawer reads `:key: value`. A line that
-starts with `:` is also an obvious place to offer the keys already in use,
+0017 wrote properties as Logseq does, `key:: value`. Org mode, the model
+for properties here, writes a property line inside a drawer as
+`:key: value`. A line that starts with `:` is also an obvious place to offer the keys already in use,
 which `key::` is not: the key comes first and nothing marks the start of it.
 
 ## Decision
@@ -19,8 +19,8 @@ which `key::` is not: the key comes first and nothing marks the start of it.
 digits, `-`, `_`, case-insensitive). The leading and middle colons are
 markers like markdown's, hidden outside editing, so chips look the same.
 
-**`key::` is no longer read.** Martin chose to throw away the few `key::`
-lines in his outline rather than keep two forms (2026-10-09). Old clients
+**`key::` is no longer read.** The few `key::` lines in use are thrown away
+rather than keeping two forms (2026-10-09). Old clients
 still running on a phone show `:key: value` lines as plain note text.
 
 **Typing `:` at the start of a note line opens a completion list** of every
@@ -30,7 +30,7 @@ notes.
 
 ## Options considered
 
-**Read both forms, write the new one.** Rejected after Martin's answer: two
+**Read both forms, write the new one.** Rejected: two
 syntaxes for one thing, and a second regular expression in every reader,
 for three lines of data.
 

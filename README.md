@@ -4,8 +4,7 @@ A WorkFlowy-style outliner that lives in the browser: nested bullets, zoom,
 search, keyboard editing, light and dark themes, installable and offline. The
 outline is stored in `localStorage` and never leaves the browser.
 
-Scope, cut list and the session report are in [NOTES.md](NOTES.md); the
-decisions behind the code are in [doc/adr](doc/adr/README.md).
+The decisions behind the code are in [doc/adr](doc/adr/README.md).
 
 ## Running it
 
@@ -13,21 +12,21 @@ Everything runs in the `app` service of the Compose stack; nothing is
 installed on the host.
 
 ```sh
-podman compose up -d --build        # once
-podman compose exec app npm install                 # once, into the node_modules volume
-podman compose exec app npm run dev                 # http://127.0.0.1:5188/
+podman compose up -d --build                # once
+podman compose exec app npm install         # once, into the node_modules volume
+podman compose exec app npm run dev         # http://127.0.0.1:5188/
 ```
-
-`podman compose exec app` sends a command into this checkout's `app` container.
 
 ## Checking it
 
+These run in the `app` container too (`podman compose exec app …`):
+
 ```sh
-podman compose exec app npx tsc --noEmit
-podman compose exec app npx vitest run              # tree operations, import/export, inline rendering
-podman compose exec app npm run build               # the browser tests run against the build
-podman compose exec app npm run check               # all of it: build, unit suite, every Playwright project, unlisted skips
-podman compose exec app npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox, desktop Safari (WebKit)
+npx tsc --noEmit
+npx vitest run              # tree operations, import/export, inline rendering
+npm run build               # the browser tests run against the build
+npm run check               # all of it: build, unit suite, every Playwright project, unlisted skips
+npx playwright test         # desktop Chromium, phone, iPhone (WebKit), Firefox, desktop Safari (WebKit)
 ```
 
 `e2e/screenshots.spec.ts` writes the screenshots in `screenshots/`.
@@ -301,11 +300,11 @@ kcal=300`.
 ## Sync server
 
 The sync server keeps the outline for every device and the CLI
-(doc/adr/0011 to 0015). On the server it is the NixOS service `outline-sync`
-(doc/adr/0042): `nix/module.nix`, imported by the machine's
-`configuration.nix` from this repository at a pinned commit. It listens on
-127.0.0.1:8791, keeps its database in `/var/lib/outline-sync/outline.db` and
-reads `OUTLINE_TOKEN=…` from the file given as `environmentFile`.
+(doc/adr/0011 to 0015). On NixOS it is the service `outline-sync`
+(doc/adr/0042): `nix/module.nix`, imported by the machine's configuration
+from this repository at a pinned commit. It listens on 127.0.0.1:8791,
+keeps its database in `/var/lib/outline-sync/outline.db` and reads
+`OUTLINE_TOKEN=…` from the file given as `environmentFile`.
 
 ```nix
 services.outline-sync = {
@@ -316,16 +315,16 @@ services.outline-sync = {
 
 ```sh
 sh scripts/new-sync-token.sh        # once: writes .env.sync with a random token
-tailscale serve --bg --https=10001 http://127.0.0.1:8791
 ```
 
-In the app: ⋯ → Sync…, server `https://server.example.ts.net:10001`, and the
+Put the server behind HTTPS where the devices reach it, for example with
+`tailscale serve`. In the app: ⋯ → Sync…, that server's address, and the
 token from `.env.sync`. The first device uploads its outline; every device
 after it switches to the server's outline.
 
-A new server version reaches the server when `rev` in `configuration.nix` names a
-commit that has it and the machine is rebuilt. Back up the database first:
-stop the service and copy `outline.db` out of `/var/lib/outline-sync/`.
+A new server version is installed when the pinned commit moves to one that
+has it and the machine is rebuilt. Back up the database first: stop the
+service and copy `outline.db` out of `/var/lib/outline-sync/`.
 
 Elsewhere the flake runs the server as `outline-sync-server`, with
 `OUTLINE_TOKEN`, `OUTLINE_DB`, `PORT` and `HOST`, and `Dockerfile.sync`
@@ -395,11 +394,8 @@ outline watch --json | jq --unbuffered -c 'select(.event == "moved" or .event ==
 Its own `outline done` comes back as a `completed` event, which it does
 not listen to. Where it runs it has the token, with no sandbox or approval.
 
-On the server, the account's home-manager installs `outline` from this repository at the
-commit the server runs, and `~/.config/outline/config` names
-`http://127.0.0.1:8791` and the token. Elsewhere, install the `outline`
-package from the flake (Linux and macOS), or run `node dist-node/outline.mjs`
-(Node 22 or later).
+Install the `outline` package from the flake (Linux and macOS), or run
+`node dist-node/outline.mjs` (Node 22 or later).
 
 ```sh
 nix profile install github:tino415/outliner#outline
@@ -428,6 +424,8 @@ OUTLINE_TOKEN=<the token from .env.sync>
 EOF
 chmod 600 ~/.config/outline/config
 ```
+
+On the server's own machine the file can name `http://127.0.0.1:8791`.
 
 After a change to `package-lock.json`, `nix build .#outline` fails with the
 new `npmDepsHash`; put it in `nix/outline.nix`.

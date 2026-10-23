@@ -5,8 +5,8 @@
 
 ## Context
 
-Nothing is installed on the host. Commands go through `podman compose exec app`, which sends
-them into the `app` service of this project's Compose stack when one is up.
+Nothing is installed on the host. Commands run in the `app` service of this
+project's Compose stack.
 The browser tests need Chromium. The host has nixpkgs browsers, but a
 `@playwright/test` installed inside the container would not find them, and
 mixing a container's Node with the host's browsers splits the toolchain

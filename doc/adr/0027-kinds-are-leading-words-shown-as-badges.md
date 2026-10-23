@@ -5,9 +5,9 @@
 
 ## Context
 
-Agents and Martin write items such as "Question: …", "Needs you: …" and
+Agents and people write items such as "Question: …", "Needs you: …" and
 "Answer: …" into the outline. The first proposal was org-mode TODO
-keywords. Martin objected: TODO keywords describe a state that changes
+keywords. The objection: TODO keywords describe a state that changes
 (TODO, DONE), while these words say what the item is, and they should
 behave more like tags. Without a leading character such as `#` there is
 also nothing that obviously starts a completion.
@@ -21,9 +21,9 @@ edited it shows as written. The text is not changed: `textContent` is still
 the raw text (doc/adr/0003), the CLI shows it as is, and a click on the
 badge searches for `Kind:`.
 
-**Any such prefix is a kind; there is no list to declare.** Martin chose
-this over a `:kinds:` list on a page, knowing that an ordinary "Monday:
-write the draft" becomes a badge too.
+**Any such prefix is a kind; there is no list to declare.** This won over
+a `:kinds:` list on a page, at the cost that an ordinary "Monday: write
+the draft" becomes a badge too.
 
 **Completion offers the kinds in use** while the text typed so far at the
 start of an item could be one, most used first. **Alt-Shift-K** sets,
@@ -33,7 +33,7 @@ and puts the caret back where it was.
 ## Options considered
 
 **Org TODO keywords declared per page (`:keywords:`), cycled by a key.**
-Rejected after Martin's objection above.
+Rejected for the objection above.
 
 **A declared list of kinds.** Fewer accidental badges, but one more thing
 to set up; offered and not chosen.

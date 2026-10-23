@@ -2,16 +2,16 @@
 
 - **Status:** accepted, 2026-10-09
 - **Applies to:** `src/plugins.ts`, `src/pluginHost.ts`, ⋯ → Plugins
-- **Decides:** the plugin half of [doc/design/plugins-and-scripting.md](../design/plugins-and-scripting.md) (formulas were ADR 22), with Martin's answers in the outline (Outliner/TODO/Plugins and scripting)
+- **Decides:** the plugin half of [doc/design/plugins-and-scripting.md](../design/plugins-and-scripting.md) (formulas were ADR 22)
 
 ## Context
 
-Martin wants plugins kept in the outline, like Amplenote's. The outline
+Plugins should live in the outline, like Amplenote's. The outline
 syncs to every device and the CLI, which agents use, so anyone with the
-token can change a plugin's code. His answers: a changed plugin must be
-approved again, approvals from his phone or his browser should count
-everywhere, the CLI is not trusted; no network for now; plugins are only
-his.
+token can change a plugin's code. The answers to the design note: a
+changed plugin must be approved again, an approval from a trusted phone or
+browser counts everywhere, the CLI is not trusted; no network for now; no
+third-party plugins.
 
 ## Decision
 
@@ -38,15 +38,15 @@ it.
 ## Options considered
 
 **Approval per device, kept in Prefs** (the design note's proposal).
-Martin wanted one approval on a trusted device to count everywhere.
+Rejected: one approval on a trusted device should count everywhere.
 
 **Approval as a plain property.** Anyone with the token, an agent
 included, could write it.
 
 **Running plugins in the CLI, and hooks such as "an item was added".**
 Left out: a hook running in every app would act once per device, and the
-CLI would need a sandbox of its own under Node. Commands run where Martin
-starts them.
+CLI would need a sandbox of its own under Node. Commands run where they are
+started.
 
 ## Consequences
 

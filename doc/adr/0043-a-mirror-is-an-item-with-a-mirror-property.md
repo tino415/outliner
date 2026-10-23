@@ -5,8 +5,8 @@
 
 ## Context
 
-The card "Mirror an item, read-only" (split from "Note references", agreed
-with Martin on 2026-10-22) asks for an item shown in a second place, live.
+The proposal "Mirror an item, read-only" (split from "Note references",
+agreed on 2026-10-22) asks for an item shown in a second place, live.
 Sync, export and the CLI must not learn anything new, and the sync server
 must not change.
 
@@ -21,7 +21,7 @@ leaves the target.
 **It is made with Ctrl-J R or "Mirror here" in Ctrl-K, then the `[[` item
 picker.** On a blank item, the item becomes the mirror; on any other, the
 mirror is inserted as its next sibling. That is the simpler of the two
-readings of "here", chosen while Martin was away.
+readings of "here".
 
 **It renders as the target, read-only.** The row's text element is the
 target's rendered text with `contenteditable="false"` and `tabindex="-1"`,

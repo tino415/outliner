@@ -2,14 +2,13 @@
 
 - **Status:** accepted, 2026-10-22
 - **Applies to:** `server/app.ts`, `server/app-files.ts`, `server/main.ts`, `nix/outline.nix`, `nix/module.nix`, `flake.nix`
-- **Decides:** the card "Nix package that also serves the PWA" (Projects/Outliner)
+- **Decides:** installing the app with the Nix package, 2026-10-22
 
 ## Context
 
-Martin wants to install the app on a NixOS system from this repository,
-and suggested folding it into the sync package. The app is static files
-(`dist/`); today they are copied by hand to `a static host directory` and
-served by the machine's web server. The Nix package already builds the
+The app should install on a NixOS system from this repository, folded into
+the sync package. The app is static files (`dist/`); until now they were
+copied by hand to a directory a web server serves. The Nix package already builds the
 sync server and the CLI from the same sources.
 
 ## Decision
@@ -44,5 +43,5 @@ server that exists only for sync would answer `/` with a page.
 - A system that sets `serveApp` reaches the app and its sync server at
   one address, so the app's origin and the sync origin are the same.
 - Building the package now runs the app's Vite build too.
-- `a static host directory` stays how the server publishes the app; serving it
-  from the service on the server is a later choice.
+- A copy of `dist/` on a static host still works; moving a deployment to
+  `serveApp` is a separate step.

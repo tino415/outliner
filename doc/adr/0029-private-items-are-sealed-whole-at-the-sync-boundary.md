@@ -2,12 +2,12 @@
 
 - **Status:** accepted, 2026-10-09
 - **Applies to:** `src/sync/privacy.ts`, `withPrivateIds` in `src/model.ts`, `src/keyring.ts`, `src/privateItems.ts`, `roundTrip` in `src/syncing.ts`, the CLI's `writable`
-- **Decides:** [doc/design/encrypted-items.md](../design/encrypted-items.md), with Martin's answers in the outline (Outliner/TODO/Encrypted nodes)
+- **Decides:** [doc/design/encrypted-items.md](../design/encrypted-items.md)
 
 ## Context
 
-Martin wants personal notes that his phone and Mac can read and that the
-CLI, agents and the server cannot. His answers to the design note: the
+Personal notes should be readable on a phone and a Mac but not by the
+CLI, agents or the server. The answers to the design note: the
 private item's headline stays readable; devices without the key see
 neither the text nor the shape of what is under it; they cannot add to it
 either; keys stay unlocked on a device; each heading can have its own key,
@@ -62,19 +62,19 @@ deleted on the server with their text and note blanked.
 
 **Keys are 32 random bytes per name, kept in this browser's
 localStorage**, copied as one line `outline-key:1:<name>:<base64>`. There
-is no passphrase: Martin keeps copies of the keys himself.
+is no passphrase: copies of the keys are kept outside the app.
 
 ## Options considered
 
 **Encrypting text and note per item, structure plain** (the design note's
-recommendation). Rejected by Martin: devices without the key would see how
+recommendation). Rejected: devices without the key would see how
 many items there are and how they nest.
 
 **Listing the ids inside in plain on the private item**, to recognise
-links. Simpler, but shows how many items it holds; Martin chose the ids.
+links. Simpler, but shows how many items it holds; the ids won.
 
-**A passphrase deriving a key, wrapped keys in the outline.** Martin does
-not need recovery or a password; one copyable key per name is less to get
+**A passphrase deriving a key, wrapped keys in the outline.** Recovery and
+a password are not needed; one copyable key per name is less to get
 wrong.
 
 ## Consequences

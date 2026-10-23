@@ -2,7 +2,7 @@
 
 - **Status:** accepted, 2026-10-09
 - **Applies to:** `src/updates.ts`, `toast` in `src/chrome.ts`
-- **Supersedes:** the "no update prompt" item of the first session's cut list
+- **Supersedes:** the "no update prompt" item of part 1's cut list
 
 ## Context
 
@@ -10,8 +10,8 @@ The service worker serves the app from its cache and takes over as soon as
 a new version installs ([0005](0005-hand-written-service-worker.md),
 [0010](0010-version-the-service-worker-by-content.md)). The page already on
 screen keeps running the old code, and a phone keeps an installed app alive
-for days. Martin could not tell how to update the app on his phone and
-reinstalled it, which also cleared his sync settings.
+for days. There was no visible way to update the app on a phone, and
+reinstalling it, the only way found, also cleared its sync settings.
 
 ## Decision
 

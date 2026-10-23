@@ -2,7 +2,7 @@
 
 - **Status:** accepted, 2026-10-22
 - **Applies to:** `src/query.ts`, `src/queryView.ts`, the query branch of `render`, `outline find --query`
-- **Decides:** the card "Query views" (Projects/Outliner), the rest of the proposal in "Think about adding sort of org agend/views/queries" after ADR 37
+- **Decides:** query views, the rest of the proposal for org-style views after ADR 37
 
 ## Context
 

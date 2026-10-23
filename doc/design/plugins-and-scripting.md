@@ -1,12 +1,12 @@
 # Plugins and scripting
 
-Status: decided 2026-10-09: formulas in [ADR 22](../adr/0022-computed-columns-with-formulas.md), plugins in [ADR 30](../adr/0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md). Backlog item 3 in NOTES.md.
+Status: decided 2026-10-09: formulas in [ADR 22](../adr/0022-computed-columns-with-formulas.md), plugins in [ADR 30](../adr/0030-plugins-run-sandboxed-once-a-trusted-device-approves-them.md).
 
 ## Context
 
-Martin wants the app to be extensible the way Amplenote is: a note that
-holds JavaScript becomes a plugin. He also floated a small Lisp whose
-scripts can be checked statically: expand every macro until only
+The app should be extensible the way Amplenote is: a note that holds
+JavaScript becomes a plugin. Another idea on the table is a small Lisp
+whose scripts can be checked statically: expand every macro until only
 resource-access nodes remain, then decide from those what the script may
 touch.
 
@@ -20,8 +20,8 @@ Constraints from what exists:
   when their display state changes (ADR 0009).
 - No command palette exists yet. `src/palette.ts` drives Jump to and Move
   to; a third use, "run a command", fits it.
-- Backlog item 2 (formulas in columns) and item 4 (capture templates) are
-  two of the first things a plugin system would be asked to do.
+- Formulas in columns and capture templates are two of the first things a
+  plugin system would be asked to do.
 
 ## How others do it
 
@@ -46,23 +46,22 @@ Constraints from what exists:
 
 ## What scripts would do
 
-In order of value to Martin, as far as the backlog shows:
+In order of value, as far as the planned work shows:
 
 1. **Commands** in a command palette (Mod-K or similar): act on the focused
    item or the selection, e.g. "file under Archive/2026", "sum the effort
    of the subtree into a note line".
 2. **Computed properties and columns**, e.g. `start` as the sum of the
-   durations of earlier siblings (backlog item 2). These run on every
-   render, so they must be pure and fast.
+   durations of earlier siblings. These run on every render, so they
+   must be pure and fast.
 3. **Capture templates**: ask for a few values, file a new item at a set
-   place (backlog item 4).
+   place.
 4. **Render hooks**: change how an item looks. These are the riskiest,
    since they touch row markup and ADR 0009's display state. Keep them to
    returning raw text or chips, never HTML.
 
 A plugin would be an item tagged `#plugin` (or with `plugin:: name`), whose
-code sits in a code block in its note or a child, once code blocks exist
-(backlog item 1). Its `key:: value` lines (ADR 0017) declare its name, the
+code sits in a code block in its note or a child, once code blocks exist. Its `key:: value` lines (ADR 0017) declare its name, the
 hooks it uses and the permissions it asks for.
 
 ## Sandboxing in a browser
@@ -112,10 +111,10 @@ it at run time anyway. The kinds of access are exactly what a capability
 list in the message API already enforces, with no static analysis. So the
 check buys a nicer error message before a run, and costs a language:
 parser, macro expander, interpreter, error reporting, docs, editor support,
-debugging, and a syntax neither Martin's phone keyboard nor most agents
+debugging, and a syntax neither a phone keyboard nor most agents
 write as fluently as JavaScript.
 
-Where a small language does pay is **pure formulas** (backlog item 2). A
+Where a small language does pay is **pure formulas**. A
 formula reads properties of nearby items and returns a value; it has no side
 effects, must give the same answer in the app and the CLI, and runs on every
 render. An s-expression syntax is the cheapest to parse and makes the "only
@@ -147,27 +146,25 @@ Do 4 first and 1 after it:
 
 - An s-expression formula language for computed properties and columns,
   interpreted by our own code in `src/` so the app and the CLI share it.
-  This is the useful core of the Lisp idea and covers backlog item 2.
+  This is the useful core of the Lisp idea and covers formulas in columns.
 - Then JavaScript plugins in a sandboxed iframe with an async message API,
   starting with palette commands and capture templates, with permissions
   declared in the plugin item and each version enabled per device.
 - Leave render hooks and network access for later; leave QuickJS as the
   fallback if the iframe sandbox turns out to leak.
 
-## Open questions for Martin
+## Open questions
 
-1. Which do you want first: formulas, palette commands, or capture
-   templates?
+1. Which comes first: formulas, palette commands, or capture templates?
 2. Is s-expression syntax acceptable for formulas, or should they look like
    spreadsheet formulas (`=sum(prev.duration)`)?
-3. Should a plugin edited from the CLI (by you or an agent) need re-enabling
+3. Should a plugin edited from the CLI (by a person or an agent) need re-enabling
    on each device, or is enabling once per plugin enough?
 4. Do plugins need the network (calling an API, fetching a page), and if so
-   only for hosts you list?
+   only for listed hosts?
 5. Should the CLI run plugins at all, or should scripts on the CLI side stay
    plain shell scripts around `outline`?
-6. Do you want to share plugins between people some day, or are they only
-   yours? Sharing would need a review story like Obsidian's.
+6. Will plugins be shared between people some day, or stay private? Sharing would need a review story like Obsidian's.
 
 ## Sources
 

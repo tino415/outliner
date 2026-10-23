@@ -7,9 +7,6 @@ rejected. What the code does, the code says.
 A record is not edited once accepted. A later decision supersedes it in a new
 file that says so.
 
-`NOTES.md` at the repository root holds the scope, the cut list and the
-session report; the records here hold the choices behind them.
-
 1. [Plain TypeScript, no UI framework](0001-plain-typescript-no-ui-framework.md)
 2. [One immutable document, re-rendered on structure, never on typing](0002-immutable-document-rerender-on-structure.md)
 3. [Items are raw text; formatting is rendered around it, not into it](0003-items-are-raw-text.md)
@@ -51,7 +48,7 @@ session report; the records here hold the choices behind them.
 39. [`outline watch` polls the sync endpoint](0039-outline-watch-polls-the-sync-endpoint.md)
 40. [Shortcuts are set on an item in the outline](0040-shortcuts-are-set-on-an-item-in-the-outline.md)
 41. [One check command, Playwright projects pick tests by tag, and flaky tests leave the gate](0041-one-check-command-and-projects-picking-tests-by-tag.md)
-42. [The sync server is a NixOS service on the server](0042-the-sync-server-is-a-nixos-service-on-dev.md)
+42. [The sync server is a NixOS service](0042-the-sync-server-is-a-nixos-service.md)
 43. [A mirror is an item with a `mirror` property, shown read-only](0043-a-mirror-is-an-item-with-a-mirror-property.md)
 44. [An item with a query lists the items that match](0044-an-item-with-a-query-lists-the-items-that-match.md)
 45. [The sync server also serves the app](0045-the-sync-server-also-serves-the-app.md)

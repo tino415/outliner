@@ -6,10 +6,10 @@
 ## Context
 
 Commands without a natural key had piled up on Alt-Shift plus a letter.
-Martin pointed out that in many layouts Alt with a letter types a
-character of the language, and the same goes for ⌥ on a Mac, so those keys
-take characters away from typing. Ctrl-K showed items first and commands
-only after `>`, which he found annoying; GitHub and Claude mix both in one
+In many layouts Alt with a letter types a character of the language, and
+the same goes for ⌥ on a Mac, so those keys take characters away from
+typing. Ctrl-K showed items first and commands
+only after `>`, which got in the way; GitHub and Claude mix both in one
 search.
 
 ## Decision

@@ -5,11 +5,10 @@
 
 ## Context
 
-The card "Think about adding sort of org agend/views/queries" proposed
-views: items with a query whose page shows the items that match. Martin
-agreed to start with a built-in agenda (⋯ → Agenda: overdue, today, the
-next 7 days), and to do query items after it. It builds on the dates of
-ADR 36.
+A proposal for org-style views had items with a query whose page shows the
+items that match. The first step is a built-in agenda (⋯ → Agenda:
+overdue, today, the next 7 days), with query items after it. It builds
+on the dates of ADR 36.
 
 ## Decision
 
@@ -34,7 +33,7 @@ Tab, Shift-Tab, moving up or down, a new first child, joining with
 Backspace or Delete, folding and selecting items are off, since the agenda
 does not show where the item would go.
 
-**Flat by date, not grouped by parent**, as the card proposed for the
+**Flat by date, not grouped by parent**, as the proposal had it for the
 agenda; grouping by parent is left to query views.
 
 ## Consequences
