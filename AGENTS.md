@@ -36,8 +36,8 @@ before writing and do not delete without being asked.
 - The remote is `git@github.com:tino415/outliner.git` (public, so the
   machine's `configuration.nix` can fetch it); `main` there
   holds all work so far. Work on a branch and open a PR; do not push to
-  `main` directly. Martin left merging and publishing to the agent
-  (2026-10-10): once the tests pass, merge the PR yourself and publish,
+  `main` directly. Martin left merging to the agent
+  (2026-10-10): once the tests pass, merge the PR yourself,
   without waiting for him. Deploying the sync server still needs the backup
   first.
 - Worktrees are made with `git -C <main checkout> worktree add
@@ -58,7 +58,7 @@ before writing and do not delete without being asked.
     moving the card to TODO approves it.
   - TODO: agreed, or an obvious bug fix; take from here.
   - Implementing: move a card here when starting it.
-  - Review: merged and published; add a one-line note on how to try it.
+  - Review: merged; add a one-line note on how to try it.
   - Done: Martin moves cards here, or back with a comment.
   Move cards with `outline move <id> --under <column id>`. The item
   "Outliner" at the top keeps Martin's remarks in "Comments" and an item
@@ -71,15 +71,15 @@ before writing and do not delete without being asked.
   reached by his phone and Mac (README, "Sync server"). Browser and unit
   tests start their own server (`e2e/sync-server.ts`); never point a test
   at the live one.
-- Deploy the server only when `server/` or the wire format in
+- Deploy the server whenever `server/`, the app or the wire format in
   `src/sync/protocol.ts` changes, and say so in the report: back up, move
   `rev` in `configuration.nix` (repository the machine's configuration repository) to the merged
-  commit, and ask Martin before `nixos-rebuild switch`. Changing what the
-  server accepts needs the app and the server to agree; old clients keep
-  running on phones.
-- Publishing: build with `BUILD_COMMIT=<short sha>`, remove the old files in
-  `a static host directory`, then copy `dist/.` there. The commit shows at the
-  bottom of the ⋯ menu, which is how Martin checks what his phone runs.
+  commit, and ask Martin before `nixos-rebuild switch`. The sync server
+  serves the app (`serveApp`), so an app change reaches the phone and the
+  Mac only after that install. Changing what the server accepts needs the app
+  and the server to agree; old clients keep running on phones.
+- The commit shows at the bottom of the ⋯ menu (`buildCommit`), which is how
+  Martin checks what his phone runs.
 
 ## Tests
 

@@ -434,9 +434,10 @@ new `npmDepsHash`; put it in `nix/outline.nix`.
 
 ## Publishing
 
+The sync server serves the app (see "Sync server"), so deploying the server
+publishes it. The build uses relative paths, so `dist/` also works under any
+sub-path of a static host:
+
 ```sh
 podman compose exec app env BUILD_COMMIT=<short sha> npm run build
-cp -r dist/. a static host directory
 ```
-
-The build uses relative paths, so it works under any sub-path.
