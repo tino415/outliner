@@ -1339,6 +1339,7 @@ code {
 
 .board > .board-gap:first-child {
   margin-left: -22px;
+  margin-right: 12px;
 }
 
 
