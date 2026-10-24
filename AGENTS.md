@@ -54,7 +54,7 @@ is gitignored.
 ## Tests
 
 - The merge gate is `npm run check` in the `app` container, one run at a
-  time on the machine: build, unit suite, and every
+  time on the machine: build, stylelint on the CSS, unit suite, and every
   Playwright project (desktop, phone, iPhone, Firefox, desktop WebKit). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.

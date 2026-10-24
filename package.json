@@ -10,11 +10,14 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "build:node": "rm -rf dist-node && vite build -c vite.node.config.ts --mode server && vite build -c vite.node.config.ts --mode outline",
-    "check": "npm run build && vitest run && CHECK=1 playwright test"
+    "check": "npm run build && npm run lint:css && vitest run && CHECK=1 playwright test",
+    "lint:css": "stylelint \"src/**/*.css\""
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "@types/node": "^24.19.1",
+    "stylelint": "^17.16.0",
+    "stylelint-config-recommended": "^18.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"
