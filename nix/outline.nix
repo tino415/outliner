@@ -28,7 +28,7 @@ buildNpmPackage {
   };
 
   nodejs = nodejs_24;
-  npmDepsHash = "sha256-zSeQCj8iJU7zS00Xk2Jpc7UT5N38sy+xUFClmpmJEJ4=";
+  npmDepsHash = "sha256-PJFdkFDy/Z1y2BPHXereUdI1YLqtDQDKtwsChVh3s9g=";
   nativeBuildInputs = [ makeWrapper ];
 
   buildPhase = ''
