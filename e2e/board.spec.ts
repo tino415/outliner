@@ -110,8 +110,8 @@ test("a short board reaches the bottom of the window, so its scrollbar is there,
 
 test("the line between two columns adds an empty column there and puts the caret in its name", { tag: ["@phone", "@keys"] }, async ({ page, isMobile }) => {
   await openProject(page);
-  const line = page.locator(".board-gap").first();
-  await expect(page.locator(".board-gap")).toHaveCount(2);
+  const line = page.locator(".board-gap").nth(1);
+  await expect(page.locator(".board-gap")).toHaveCount(3);
   if (isMobile) await line.tap();
   else await line.click();
   await expectBoard(page, "To do: write, test\n: \nDoing: \nDone: ");
@@ -119,4 +119,16 @@ test("the line between two columns adds an empty column there and puts the caret
   await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
   await page.reload();
   await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
+});
+
+test("the line before the first column adds an empty column in front", { tag: ["@phone", "@keys"] }, async ({ page, isMobile }) => {
+  await openProject(page);
+  const line = page.locator(".board-gap").first();
+  if (isMobile) await line.tap();
+  else await line.click();
+  await expectBoard(page, ": \nTo do: write, test\nDoing: \nDone: ");
+  await page.keyboard.type("Backlog");
+  await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
+  await page.reload();
+  await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
 });

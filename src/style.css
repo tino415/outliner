@@ -1340,6 +1340,11 @@ code {
   opacity: 0.25;
 }
 
+.board > .board-gap:first-child {
+  margin-left: -22px;
+}
+
+
 .board-gap:hover::after,
 .board-gap:focus-visible::after {
   background: var(--accent);
