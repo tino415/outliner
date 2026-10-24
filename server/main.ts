@@ -1,3 +1,4 @@
+import { AddressInfo } from "node:net";
 import { createSyncServer } from "./app";
 import { Store } from "./store";
 
@@ -13,7 +14,10 @@ const host = process.env.HOST ?? "0.0.0.0";
 const origins = (process.env.OUTLINE_ORIGINS ?? "*").split(",").map((origin) => origin.trim());
 
 const server = createSyncServer({ store, token, origins, appDir: process.env.OUTLINE_APP_DIR || undefined });
-server.listen(port, host, () => console.log(`outline sync server on ${host}:${port}, seq ${store.latestSeq()}`));
+server.listen(port, host, () => {
+  const boundPort = (server.address() as AddressInfo).port;
+  console.log(`outline sync server on ${host}:${boundPort}, seq ${store.latestSeq()}`);
+});
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {

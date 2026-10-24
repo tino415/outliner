@@ -18,7 +18,7 @@ describe("the node bundles", () => {
       HOST: "127.0.0.1",
       PORT: "0",
     });
-    expect(output).toContain("outline sync server on 127.0.0.1");
+    expect(output).toMatch(/outline sync server on 127\.0\.0\.1:[1-9]\d*,/);
   });
 
   it.each([

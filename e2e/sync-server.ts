@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,31 +10,23 @@ export interface RunningServer {
   stop: () => Promise<void>;
 }
 
-const attemptsAtAFreePort = 5;
 const graceBeforeKilling = 3000;
 
-/** A sync server of its own for one test: the bundled build, a fresh database, a free port. */
+/** A sync server of its own for one test: the bundled build, a fresh database, a port the system picked. */
 export async function startSyncServer(): Promise<RunningServer> {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await startAtRandomPort();
-    } catch (error) {
-      if (attempt === attemptsAtAFreePort) throw error;
-    }
-  }
-}
-
-async function startAtRandomPort(): Promise<RunningServer> {
   const directory = mkdtempSync(join(tmpdir(), "outline-sync-"));
-  const port = 20000 + Math.floor(Math.random() * 20000);
-  const token = `e2e-token-${port}-0123456789`;
+  const token = `e2e-token-${randomUUID()}`;
   const child: ChildProcess = spawn("node", ["dist-node/server.mjs"], {
-    env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", OUTLINE_TOKEN: token, OUTLINE_DB: join(directory, "outline.db") },
+    env: { ...process.env, PORT: "0", HOST: "127.0.0.1", OUTLINE_TOKEN: token, OUTLINE_DB: join(directory, "outline.db") },
     stdio: ["ignore", "pipe", "inherit"],
   });
+  let port: string;
   try {
-    await new Promise<void>((resolve, reject) => {
-      child.stdout!.on("data", (chunk) => String(chunk).includes("sync server on") && resolve());
+    port = await new Promise<string>((resolve, reject) => {
+      child.stdout!.on("data", (chunk) => {
+        const bound = /sync server on \S+:(\d+)/.exec(String(chunk));
+        if (bound) resolve(bound[1]);
+      });
       child.on("exit", (code) => reject(new Error(`sync server exited with ${code}`)));
     });
   } catch (error) {
