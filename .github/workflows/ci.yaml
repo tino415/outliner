@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci
-      - run: npm run check
+      - run: npm run check:ci
       - name: Upload the Playwright traces
         if: failure()
         uses: actions/upload-artifact@v4

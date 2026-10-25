@@ -12,7 +12,8 @@
     "build:node": "rm -rf dist-node && vite build -c vite.node.config.ts --mode server && vite build -c vite.node.config.ts --mode outline",
     "check": "npm run build && npm run lint:css && vitest run && CHECK=1 playwright test",
     "lint:css": "stylelint \"src/**/*.css\"",
-    "check:docs": "npx --yes prettier@3.9.10 --check \"**/*.md\" --ignore-path .gitignore"
+    "check:docs": "npx --yes prettier@3.9.10 --check \"**/*.md\" --ignore-path .gitignore",
+    "check:ci": "npm run build && npm run lint:css && vitest run && CHECK=1 playwright test --project=desktop --project=phone --project=webkit --project=iphone --project=firefox"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
