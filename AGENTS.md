@@ -31,6 +31,9 @@ is gitignored.
 
 - `main` on `git@github.com:tino415/outliner.git` holds all work. Work on a
   branch and open a PR; do not push to `main` directly.
+- Branches are named `feature/<name>`, or `docs/<name>` when the change touches
+  only `.md` files. CI treats a `docs/` branch as documentation only: it runs
+  just the Markdown format check and fails if the branch changes anything else.
 - A worktree's own compose stack runs with
   `podman compose -p <worktree dir> -f compose.worktree.yaml up -d`, which
   publishes no ports.
@@ -56,8 +59,11 @@ is gitignored.
   Playwright project (desktop, phone, iPhone, Firefox, desktop WebKit). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
-- A PR that touches only `doc/` or TODO.md needs only `npm run build`
-  before merging.
+- CI (`.github/workflows/ci.yaml`) runs `npm run check:docs` (prettier on
+  `**/*.md`) and `npm run check:ci`, the check without the timed `performance`
+  project, which the shared runner is too slow for, in the Playwright image. A
+  PR from a `docs/*` branch may change only Markdown and runs only
+  `npm run check:docs`.
 - Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
   and iPhone, never desktop), `@keys` adds Firefox and desktop WebKit.

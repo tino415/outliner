@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scope:
+    name: scope
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find out whether this is a documentation branch
+        id: scope
+        env:
+          BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          if [[ "$BRANCH" != docs/* ]]; then
+            echo docs_only=false >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git -c core.quotePath=false diff --no-renames --name-only HEAD^1 HEAD)
+          code=$(grep -v '\.md$' <<< "$changed" || true)
+          if [ -n "$code" ]; then
+            echo "A docs/ branch may change only Markdown. Rename the branch or drop:"
+            echo "$code"
+            exit 1
+          fi
+          echo docs_only=true >> "$GITHUB_OUTPUT"
+
+  docs:
+    name: check the Markdown
+    needs: scope
+    if: needs.scope.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run check:docs
+
+  check:
+    name: check
+    needs: scope
+    if: needs.scope.outputs.docs_only == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run check:docs
+      - run: npm run check:ci
+      - name: Upload the Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+          if-no-files-found: ignore

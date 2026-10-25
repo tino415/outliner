@@ -35,6 +35,7 @@ Two settings with the same keys: the first one in outline order wins.
 
 **Some keys are refused**, with the reason listed in the help dialog, and
 the command keeps its defaults if none of its keys is left:
+
 - keys without Mod or Ctrl, which type;
 - Alt with a single character, which types on a Mac (⌥) and with AltGr
   on Windows (Ctrl+Alt), extending ADR 35;
