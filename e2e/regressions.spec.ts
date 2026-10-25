@@ -621,3 +621,18 @@ for (const [what, selector, title] of [
     await expect(page.locator("#title")).toHaveText(title);
   });
 }
+
+test("a board card's property chip sits under its heading and leaves the heading the card's width", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Project\n  To do\n    Show the current block activity #feature | :todoist: 6hpvFW6wW64v9XwX\n  Doing");
+  await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
+
+  const row = page.locator(".board-card > .row").first();
+  const text = await row.locator(":scope > .text").boundingBox();
+  const chips = await row.locator(":scope > .props").boundingBox();
+  const handle = await row.locator(".board-handle").boundingBox();
+  expect(chips!.x).toBeCloseTo(text!.x, 0);
+  expect(chips!.y).toBeGreaterThanOrEqual(text!.y + text!.height - 1);
+  expect(text!.x).toBeLessThan(handle!.x + handle!.width + 12);
+});

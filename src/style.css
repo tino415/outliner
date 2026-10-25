@@ -1233,7 +1233,7 @@ code {
 
 .board-card > .row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   column-gap: 6px;
   padding: 7px 8px 7px 2px;
@@ -1241,6 +1241,7 @@ code {
   background: var(--surface);
 }
 
+.board-card .props,
 .board-card .note,
 .board-card .board-inside {
   grid-column: 2;
