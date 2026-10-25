@@ -34,8 +34,7 @@ yet.
 
 ## Options considered
 
-**A reference field on items.** Rejected: a model and sync change (ADR
-0012) for what text can carry.
+**A reference field on items.** Rejected: a model and sync change (ADR 0012) for what text can carry.
 
 **Labels looked up at render time instead of stored.** Rejected for now:
 rendering would need the document, which `renderInline` does not have, and

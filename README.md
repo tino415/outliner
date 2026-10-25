@@ -222,14 +222,20 @@ a copy of each key.
 ## Plugins
 
 A plugin is an item with a `plugin` property naming it and JavaScript in a
+
 ```js block of its note (doc/adr/0030); typed as lines, it reads:
 
-````
+```
+
 Tools
-  :plugin: tools
-  ```js
-  outline.command("Shout", async (item) => outline.setText(item.id, item.text.toUpperCase()))
-  ```
+:plugin: tools
+
+```js
+outline.command("Shout", async (item) =>
+  outline.setText(item.id, item.text.toUpperCase()),
+);
+```
+
 ````
 
 Its commands appear in Ctrl-K as `tools: Shout` and act on the item being
@@ -439,3 +445,4 @@ sub-path of a static host:
 ```sh
 podman compose exec app env BUILD_COMMIT=<short sha> npm run build
 ```
+````

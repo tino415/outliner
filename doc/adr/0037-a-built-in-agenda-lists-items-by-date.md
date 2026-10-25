@@ -16,10 +16,10 @@ on the dates of ADR 36.
 or Ctrl-J G (⌘J G). It is not an item, so nothing about it syncs or shows
 in the CLI. Search over it searches the whole outline, as on Home.
 
-**What it lists, in sections:** *Overdue*, the open items whose dates have
+**What it lists, in sections:** _Overdue_, the open items whose dates have
 all passed, oldest first; then each day from today to a week from today
 that has items, each item on its next date, timed ones first by time, the
-rest in outline order; then *To do, without a date*, the items tagged
+rest in outline order; then _To do, without a date_, the items tagged
 `#todo` that have no date. An item's dates are those of ADR 36: `scheduled`,
 `due` and the dates in its text. Completed items, and everything under one,
 follow the Show completed switch, and are never overdue. Items dated further

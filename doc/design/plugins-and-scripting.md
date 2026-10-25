@@ -66,14 +66,14 @@ hooks it uses and the permissions it asks for.
 
 ## Sandboxing in a browser
 
-| Option | Isolation | Cost |
-| --- | --- | --- |
-| Run in the page (`new Function`) | none; sees the DOM, storage, the sync token and any encryption key | trivial |
-| Web Worker + message API | no DOM, but has `fetch`, IndexedDB and the app's origin | small; terminable with `worker.terminate()` |
-| Sandboxed iframe (`sandbox="allow-scripts"`, opaque origin, CSP `connect-src 'none'`) + `postMessage` | no app storage, no token, no network unless granted | small to medium; what Amplenote and Logseq do |
-| ShadowRealm | separate globals, same thread | not usable: still stage 2.7, no browser ships it, Node removed its flag in 2026 |
-| QuickJS in WebAssembly | its own interpreter; only the functions we hand in | about 0.5 MB wasm, a dependency; memory limits and interrupts have known gaps; same engine runs in Node |
-| A small interpreted DSL | exactly what the interpreter offers | we write parser, interpreter, errors, docs |
+| Option                                                                                                | Isolation                                                          | Cost                                                                                                    |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Run in the page (`new Function`)                                                                      | none; sees the DOM, storage, the sync token and any encryption key | trivial                                                                                                 |
+| Web Worker + message API                                                                              | no DOM, but has `fetch`, IndexedDB and the app's origin            | small; terminable with `worker.terminate()`                                                             |
+| Sandboxed iframe (`sandbox="allow-scripts"`, opaque origin, CSP `connect-src 'none'`) + `postMessage` | no app storage, no token, no network unless granted                | small to medium; what Amplenote and Logseq do                                                           |
+| ShadowRealm                                                                                           | separate globals, same thread                                      | not usable: still stage 2.7, no browser ships it, Node removed its flag in 2026                         |
+| QuickJS in WebAssembly                                                                                | its own interpreter; only the functions we hand in                 | about 0.5 MB wasm, a dependency; memory limits and interrupts have known gaps; same engine runs in Node |
+| A small interpreted DSL                                                                               | exactly what the interpreter offers                                | we write parser, interpreter, errors, docs                                                              |
 
 Running in the page is out: a script synced from anywhere, including an
 agent through the CLI, would run with the sync token and, later, the key to

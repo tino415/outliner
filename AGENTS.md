@@ -56,8 +56,9 @@ is gitignored.
   Playwright project (desktop, phone, iPhone, Firefox, desktop WebKit). It fails on a
   skipped test that is not in `expectedSkips` in `e2e/skip-gate.ts`, and on
   `test.only`. Do not merge on anything less.
-- A PR that touches only `doc/` or TODO.md needs only `npm run build`
-  before merging.
+- CI (`.github/workflows/ci.yaml`) runs `npm run check` in the Playwright
+  image. A PR from a `docs/*` branch may change only Markdown and runs only
+  `npm run check:docs` (prettier on `**/*.md`) instead.
 - Projects pick tests by tag (doc/adr/0041). Untagged tests run on desktop
   only. `@phone` adds the Pixel phone, `@touch` means phones only (Pixel
   and iPhone, never desktop), `@keys` adds Firefox and desktop WebKit.
