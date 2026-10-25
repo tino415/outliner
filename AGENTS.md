@@ -31,9 +31,7 @@ is gitignored.
 
 - `main` on `git@github.com:tino415/outliner.git` holds all work. Work on a
   branch and open a PR; do not push to `main` directly.
-- Worktrees go in `.claude/worktrees/<x>` of the main checkout:
-  `git -C <main checkout> worktree add .claude/worktrees/<x> -b <branch>`,
-  then `cd` into them. A worktree's own compose stack runs with
+- A worktree's own compose stack runs with
   `podman compose -p <worktree dir> -f compose.worktree.yaml up -d`, which
   publishes no ports.
 - `.env.sync` (the sync token) is gitignored and exists only in the checkout
