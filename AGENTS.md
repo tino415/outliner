@@ -31,6 +31,9 @@ is gitignored.
 
 - `main` on `git@github.com:tino415/outliner.git` holds all work. Work on a
   branch and open a PR; do not push to `main` directly.
+- Branches are named `feature/<name>`, or `docs/<name>` when the change touches
+  only `.md` files. CI treats a `docs/` branch as documentation only: it runs
+  just the Markdown format check and fails if the branch changes anything else.
 - A worktree's own compose stack runs with
   `podman compose -p <worktree dir> -f compose.worktree.yaml up -d`, which
   publishes no ports.
