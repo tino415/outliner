@@ -113,11 +113,11 @@ const defaultBindings: Binding[] = [
   editor("code", ["Mod+e"], "Code", (c) => actions.code(c)),
   editor("code-block", ["Mod+Shift+e"], "Code block in the note", (c) => actions.codeBlock(c)),
   editor("tag", ["Mod+j t"], "Add a tag", (c) => actions.addTag(c)),
-  editor("property", ["Mod+j p", "Mod+;"], "Set a property…", (c) => actions.setProperty(c)),
+  editor("property", ["Mod+j p"], "Set a property…", (c) => actions.setProperty(c)),
   editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
   editor("mirror", ["Mod+j r"], "Mirror here", (c) => actions.mirrorHere(c)),
-  editor("date", ["Mod+j ;"], "Insert a date…", (c) => actions.insertDate(c)),
+  editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)),
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
   editor("undo", ["Mod+z"], "Undo", () => globalActions.undo()),
@@ -257,22 +257,26 @@ export function isModifierAlone(event: KeyboardEvent): boolean {
   return ["Shift", "Control", "Meta", "Alt", "AltGraph", "CapsLock"].includes(event.key);
 }
 
-/** The prefix and the key pressed after it; holding ⌘ or Ctrl for that key too means the same, as C-x C-s does. */
-export function sequenceAfterPrefix(event: KeyboardEvent): string {
-  return `${PREFIX} ${keyString(event).replace(/^Mod\+/, "")}`;
+/** The keys pressed so far, with the key just pressed added; holding ⌘ or Ctrl for it means the same, as C-x C-s does. */
+export function extendSequence(sofar: string, event: KeyboardEvent): string {
+  return `${sofar} ${keyString(event).replace(/^Mod\+/, "")}`;
 }
 
-/** What can follow the prefix, for the panel shown while it waits. */
-export function keysAfterPrefix(): { key: string; label: string; needsItem: boolean }[] {
+export function sequenceContinues(sofar: string): boolean {
+  return bindings.some((binding) => binding.keys.some((keys) => keys.startsWith(`${sofar} `)));
+}
+
+/** What can follow the keys pressed so far, for the panel shown while it waits. */
+export function keysAfter(sofar: string): { key: string; label: string; needsItem: boolean }[] {
   return bindings.flatMap((binding) =>
     binding.keys
-      .filter((keys) => keys.startsWith(`${PREFIX} `))
-      .map((keys) => ({ key: pretty(keys.slice(PREFIX.length + 1)), label: binding.label, needsItem: binding.context === "editor" })),
+      .filter((keys) => keys.startsWith(`${sofar} `))
+      .map((keys) => ({ key: pretty(keys.slice(sofar.length + 1)), label: binding.label, needsItem: binding.context === "editor" })),
   );
 }
 
-export function prefixLabel(): string {
-  return pretty(PREFIX);
+export function prettySequence(keys: string): string {
+  return pretty(keys);
 }
 
 function pretty(keys: string): string {

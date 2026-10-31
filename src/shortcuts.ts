@@ -202,13 +202,12 @@ const MODIFIER_ORDER = ["Mod", "Ctrl", "Alt", "Shift"];
 
 export function readKeys(written: string): { keys: string } | { reason: string } {
   const chords = written.trim().split(/\s+/);
-  if (chords.length > 2) return { reason: "at most two keys in a row" };
+  if (chords.length > 3) return { reason: "at most three keys in a row" };
   const read = chords.map(readChord);
   const unreadable = read.find((chord) => "reason" in chord);
   if (unreadable) return unreadable;
-  const [first, second] = read.map((chord) => (chord as { keys: string }).keys);
-  if (second === undefined) return { keys: first };
-  return { keys: `${first} ${second.replace(/^(Mod|Ctrl)\+/, "")}` };
+  const [first, ...rest] = read.map((chord) => (chord as { keys: string }).keys);
+  return { keys: [first, ...rest.map((keys) => keys.replace(/^(Mod|Ctrl)\+/, ""))].join(" ") };
 }
 
 function readChord(chord: string): { keys: string } | { reason: string } {

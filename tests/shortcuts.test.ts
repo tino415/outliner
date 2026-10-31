@@ -31,6 +31,8 @@ describe("reading keys", () => {
     ["Mod+j g", "Mod+j g"],
     ["mod+J G", "Mod+j g"],
     ["Mod+j Mod+g", "Mod+j g"],
+    ["Mod+j i d", "Mod+j i d"],
+    ["mod+j Mod+i Mod+d", "Mod+j i d"],
     ["Cmd+Shift+K", "Mod+Shift+k"],
     ["⌘+⇧+K", "Mod+Shift+k"],
     ["shift+ctrl+x", "Ctrl+Shift+x"],
@@ -43,7 +45,7 @@ describe("reading keys", () => {
     expect(readKeys(written)).toEqual({ keys });
   });
 
-  it.each(["Hyper+k", "Mod+Wheel", "Mod+j g h", "Mod+Ctrl+k", "Mod+Shift+/"])("cannot read %s", (written) => {
+  it.each(["Hyper+k", "Mod+Wheel", "Mod+j a b c", "Mod+Ctrl+k", "Mod+Shift+/"])("cannot read %s", (written) => {
     expect(readKeys(written)).toHaveProperty("reason");
   });
 });

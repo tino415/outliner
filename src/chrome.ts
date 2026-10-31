@@ -3,7 +3,8 @@ import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
 import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml } from "./formulaHelp";
-import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlone, isPrefix, keyCommands, keysAfterPrefix, prefixLabel, sequenceAfterPrefix } from "./keys";
+import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlone, isPrefix, keyCommands, keysAfter, prettySequence, sequenceContinues, extendSequence } from "./keys";
+import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
@@ -140,6 +141,7 @@ function bindGlobalKeys(): void {
 // ---- the prefix key: ⌘J / Ctrl-J, then a letter ------------------------------------------
 
 let waitingAfterPrefix = false;
+let keysSoFar = PREFIX;
 let panelTimer: number | undefined;
 
 /** The key that finished a sequence, while it is held: its repeats neither type nor run it again. */
@@ -157,14 +159,20 @@ function runPrefixedKeys(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
   if (repeatOfHeld) return;
-  if (!waitingAfterPrefix) return waitAfterPrefix();
+  if (!waitingAfterPrefix) return waitAfterKeys(PREFIX);
+  if (event.key === "Escape") return stopWaitingAfterPrefix();
+  const keys = extendSequence(keysSoFar, event);
+  if (!bindingForKeys(keys, "editor") && !bindingForKeys(keys, "global") && sequenceContinues(keys)) return waitAfterKeys(keys);
   stopWaitingAfterPrefix();
   heldAfterSequence = event.code;
-  if (event.key !== "Escape") runSequence(sequenceAfterPrefix(event), event.target);
+  runSequence(keys, event.target);
 }
 
-function waitAfterPrefix(): void {
+function waitAfterKeys(keys: string): void {
   waitingAfterPrefix = true;
+  keysSoFar = keys;
+  window.clearTimeout(panelTimer);
+  prefixPanel().hidden = true;
   panelTimer = window.setTimeout(showKeysAfterPrefix, 400);
 }
 
@@ -191,8 +199,8 @@ function showKeysAfterPrefix(): void {
   const editing = Boolean(editorOf(document.activeElement));
   const panel = prefixPanel();
   panel.innerHTML =
-    `<div class="prefix-title">${prefixLabel()} then</div>` +
-    keysAfterPrefix()
+    `<div class="prefix-title">${prettySequence(keysSoFar)} then</div>` +
+    keysAfter(keysSoFar)
       .map(({ key, label, needsItem }) => `<div class="prefix-key${needsItem && !editing ? " unavailable" : ""}">${key}<span>${escape(label)}</span></div>`)
       .join("");
   panel.hidden = false;

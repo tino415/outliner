@@ -6,7 +6,7 @@ vi.mock("../src/chrome", () => ({ globalActions: {} }));
 vi.mock("../src/board", () => ({ moveSideways: () => {}, toggleBoard: () => {} }));
 vi.mock("../src/agenda", () => ({ openAgenda: () => {} }));
 
-const { bindingFor, bindingForKeys, isPrefix, keyString, sequenceAfterPrefix } = await import("../src/keys");
+const { bindingFor, bindingForKeys, extendSequence, isPrefix, keyString, sequenceContinues } = await import("../src/keys");
 
 interface Press {
   key: string;
@@ -68,9 +68,18 @@ describe("the Ctrl-J prefix", () => {
     expect(isPrefix(press({ key: "j" }))).toBe(false);
   });
 
+  it("keeps waiting while a longer sequence can follow, and runs the date on Mod+j i d", () => {
+    expect(sequenceContinues("Mod+j i")).toBe(true);
+    expect(sequenceContinues("Mod+j i d")).toBe(false);
+    expect(bindingForKeys("Mod+j i", "editor")).toBeNull();
+    expect(bindingForKeys("Mod+j i d", "editor")?.label).toBe("Insert a date…");
+    expect(extendSequence("Mod+j i", press({ key: "d" }))).toBe("Mod+j i d");
+    expect(bindingForKeys("Mod+;", "editor")).toBeNull();
+  });
+
   it("takes the next key with or without Ctrl held", () => {
-    expect(sequenceAfterPrefix(press({ key: "d" }))).toBe("Mod+j d");
-    expect(sequenceAfterPrefix(ctrl("d"))).toBe("Mod+j d");
+    expect(extendSequence("Mod+j", press({ key: "d" }))).toBe("Mod+j d");
+    expect(extendSequence("Mod+j", ctrl("d"))).toBe("Mod+j d");
     expect(bindingForKeys("Mod+j d", "editor")?.label).toBe("Duplicate item");
   });
 });

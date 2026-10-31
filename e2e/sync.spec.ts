@@ -113,7 +113,8 @@ test("a property set from the CLI shows as a chip, and one set in the app reache
   await syncNow(one);
   await expect(row(one, "Soup").locator(".prop-chip")).toHaveText("kcal 250 kcal");
   await clickEnd(one, "Soup");
-  await one.keyboard.press("ControlOrMeta+;");
+  await one.keyboard.press("ControlOrMeta+j");
+  await one.keyboard.press("p");
   await one.keyboard.type("effort");
   await one.keyboard.press("Enter");
   await one.keyboard.type("15m");
@@ -169,7 +170,8 @@ test("a property cannot be set on an item sealed with a key this device lacks", 
   await connect(two);
   await expect(row(two, "Journal").locator(".sealed")).toBeAttached();
   await clickEnd(two, "Journal");
-  await two.keyboard.press("ControlOrMeta+;");
+  await two.keyboard.press("ControlOrMeta+j");
+  await two.keyboard.press("p");
   await expect(two.locator("#toast")).toContainText("key personal");
   await expect(two.locator("#palette")).toBeHidden();
 });
