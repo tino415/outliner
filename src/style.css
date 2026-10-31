@@ -10,6 +10,7 @@
   --guide: light-dark(#e3dfd6, #2b2c32);
   --bullet: light-dark(#4b4f58, #c7c5bf);
   --halo: light-dark(#dedad1, #393a41);
+  --cell: 6.2em;
   --accent: light-dark(#3d5fd9, #92a9ff);
   --accent-soft: light-dark(#e6ebfc, #262c45);
   --tag: light-dark(#8146b8, #c9a6f1);
@@ -131,6 +132,8 @@ kbd {
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  box-shadow: 0 1px 0 transparent;
+  transition: box-shadow 0.2s;
 }
 
 .crumbs {
@@ -308,10 +311,6 @@ kbd {
   color: var(--faint);
 }
 
-.title-note {
-  margin-top: 6px;
-}
-
 .search-summary {
   display: flex;
   align-items: center;
@@ -450,6 +449,9 @@ kbd {
   height: calc(var(--line) * 1em + 6px);
   touch-action: none;
   cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .dot {
@@ -507,15 +509,16 @@ kbd {
   padding: 1px 0 3px;
 }
 
+.title-note {
+  margin-top: 6px;
+  font-size: 0.94em;
+}
+
 .note:not(:focus) {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
-}
-
-.title-note {
-  font-size: 0.94em;
 }
 
 .md {
@@ -601,6 +604,7 @@ code {
   border-radius: 5px;
   padding: 0 2px;
   font-size: inherit;
+  cursor: text;
 }
 
 :focus .tag-hash {
@@ -752,10 +756,6 @@ code {
 
 .completion li.active {
   background: var(--accent-soft);
-}
-
-:focus .tag {
-  cursor: text;
 }
 
 .completed > .row .text {
@@ -1236,7 +1236,8 @@ code {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   column-gap: 6px;
-  padding: 7px 8px 7px 2px;
+  position: relative;
+  padding: 7px 30px 7px 2px;
   border-radius: 8px;
   background: var(--surface);
 }
@@ -1259,11 +1260,6 @@ code {
   cursor: grab;
   touch-action: none;
   user-select: none;
-}
-
-.board-card > .row {
-  position: relative;
-  padding-right: 30px;
 }
 
 .board-bullet {
@@ -1417,10 +1413,6 @@ body:has(.page.with-board) {
 
 .note:focus .code-block .md {
   font-family: var(--mono);
-}
-
-:root {
-  --cell: 6.2em;
 }
 
 .tree.with-columns .row {
@@ -1904,12 +1896,6 @@ body:has(.page.with-board) {
   color: light-dark(#c4362b, #ff8a80);
 }
 
-.bullet {
-  -webkit-touch-callout: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 .menu-footer {
   padding: 8px 10px 4px;
   border-top: 1px solid var(--border);
@@ -2040,11 +2026,6 @@ body.dragging {
   border: 2px solid var(--accent);
   background: var(--bg);
   box-sizing: border-box;
-}
-
-.topbar {
-  box-shadow: 0 1px 0 transparent;
-  transition: box-shadow 0.2s;
 }
 
 .scrolled .topbar {
