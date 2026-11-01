@@ -20,11 +20,12 @@ test("an ISO date shows as a chip that says when, red once past, and as written 
   await expect(trip).toHaveText("Trip 2026-10-23 #travel");
 });
 
-test("Ctrl-J ; picks a date and writes it at the caret, apart from the word before", async ({ page }) => {
+test("Ctrl-J I D picks a date and writes it at the caret, apart from the word before", async ({ page }) => {
   await onMonday(page, "Call the bank");
   await clickEnd(page, "Call the bank");
   await page.keyboard.press("ControlOrMeta+j");
-  await page.keyboard.press(";");
+  await page.keyboard.press("i");
+  await page.keyboard.press("d");
   await expect(page.locator("#palette")).toBeVisible();
   await expect(page.locator("#palette li").first()).toHaveText("2026-10-19Mon 19 Oct");
   await page.keyboard.type("fri");
@@ -67,7 +68,8 @@ test("a click on a date chip changes the date, or removes it", async ({ page }) 
 test("due and scheduled take their value from the date picker and show it as a date", async ({ page }) => {
   await onMonday(page, "File taxes");
   await clickEnd(page, "File taxes");
-  await page.keyboard.press("ControlOrMeta+;");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("p");
   await page.keyboard.type("due");
   await page.keyboard.press("Enter");
   await expect(page.locator("#palette .palette-hint")).toContainText("tomorrow, fri, +3d");

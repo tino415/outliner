@@ -56,7 +56,7 @@ Keys that type, that the browser keeps (Mod-N, T, W), copy and paste, or
 An item's properties are `key: value` pairs such as `calories: 350 kcal`,
 `effort: 1h30m`, `start: 9:00` (a time of day) or `protein: 12 g`, shown
 as chips under its text (doc/adr/0032). The + at the right end of the
-item being edited or under the mouse, Ctrl-; (⌘; on a Mac), Set a
+item being edited or under the mouse, Ctrl-J P (⌘J P on a Mac), Set a
 property… in the item menu or the Property button in the phone's toolbar
 asks for a key, then a value, offering the ones in use; a click on a chip
 changes or removes it. Each property syncs on its own. Typing a line
@@ -135,7 +135,7 @@ so does anything in backticks.
 
 A date is written as ISO text, `2026-10-14` or `2026-10-14 9:00`, in an
 item, a note or a property, and shows as a chip: "today", "tomorrow",
-"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J ; (⌘J ;) or typing `!!`
+"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J I D (⌘J I D) or typing `!!`
 asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
 `14.10.`, `14 oct`, `25` (the next 25th), each with an optional `9:00`. A
 click on a chip changes or removes it. The properties `scheduled` and

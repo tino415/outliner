@@ -131,7 +131,7 @@ function renderColumnsHead(): void {
   ui.tree.classList.toggle("with-columns", Boolean(columns?.columns.length));
   if (!columns) return;
   if (columns.columns.length === 0) {
-    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one with Set a property… (Ctrl-; or the item menu).</p>`;
+    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one with Set a property… (Ctrl-J P or the item menu).</p>`;
     return;
   }
   const totals = columns.cells.get(state.zoom)!;

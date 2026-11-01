@@ -4,7 +4,8 @@ import { caret, clickEnd, editor, freshOutline, row } from "./helpers";
 test("Ctrl-; sets a property by key and value, and the caret stays where it was", async ({ page }, info) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
   await clickEnd(page, "Soup");
-  await page.keyboard.press("ControlOrMeta+;");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("p");
   await expect(page.locator("#palette li").first()).toHaveText("kcal");
   await page.keyboard.press("Enter");
   await expect(page.locator("#palette li").first()).toHaveText("300 kcal");
@@ -20,7 +21,8 @@ test("Ctrl-; sets a property by key and value, and the caret stays where it was"
 test("a new key is offered as typed", async ({ page }) => {
   await freshOutline(page, "Task");
   await clickEnd(page, "Task");
-  await page.keyboard.press("ControlOrMeta+;");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("p");
   await page.keyboard.type("effort");
   await page.keyboard.press("Enter");
   await page.keyboard.type("45m");
