@@ -12,20 +12,34 @@ export type Day = string;
 export const DATE_PROPERTIES = ["scheduled", "due"] as const;
 
 /** A date as written: a day, then an optional time. Not part of a longer word or number. */
-export const DATE_WRITTEN = String.raw`(?<![\p{L}\p{N}_-])\d{4}-\d{2}-\d{2}(?: \d{1,2}:\d{2})?(?![\p{L}\p{N}_-])`;
+export const DATE_WRITTEN = String.raw`(?<![\p{L}\p{N}_-])\d{4}-\d{2}-\d{2}(?: \d{1,2}:\d{2}Z?)?(?![\p{L}\p{N}_-])`;
 
-const WRITTEN = /^(\d{4}-\d{2}-\d{2})(?: (\d{1,2}):(\d{2}))?$/;
+const WRITTEN = /^(\d{4}-\d{2}-\d{2})(?: (\d{1,2}):(\d{2})(Z)?)?$/;
 
 export interface WrittenDate {
   day: Day;
   time: string | null;
+  /** The time is UTC, written with a trailing Z. */
+  utc?: true;
 }
 
 export function readWrittenDate(text: string): WrittenDate | null {
   const match = WRITTEN.exec(text.trim());
   if (!match || !isRealDay(match[1])) return null;
   if (match[2] === undefined) return { day: match[1], time: null };
-  return isTime(Number(match[2]), Number(match[3])) ? { day: match[1], time: `${Number(match[2])}:${match[3]}` } : null;
+  if (!isTime(Number(match[2]), Number(match[3]))) return null;
+  const date = { day: match[1], time: `${Number(match[2])}:${match[3]}` };
+  return match[4] ? { ...date, utc: true } : date;
+}
+
+/** A UTC date as the reader's clock shows it; any other date as written. */
+export function inReaderZone(written: WrittenDate): WrittenDate {
+  if (!written.utc || written.time === null) return written;
+  const [hours, minutes] = written.time.split(":").map(Number);
+  const [year, month, date] = written.day.split("-").map(Number);
+  const instant = new Date(Date.UTC(year, month - 1, date, hours, minutes));
+  const local = dayOf(instant.getFullYear(), instant.getMonth() + 1, instant.getDate());
+  return { day: local, time: `${instant.getHours()}:${String(instant.getMinutes()).padStart(2, "0")}` };
 }
 
 export function today(): Day {
@@ -193,9 +207,9 @@ export interface ItemDate {
 export function datesOf(item: Item): ItemDate[] {
   const fromProperties = DATE_PROPERTIES.flatMap((role) => {
     const written = item.properties[role] === undefined ? null : readWrittenDate(item.properties[role]);
-    return written ? [{ ...written, role }] : [];
+    return written ? [{ ...inReaderZone(written), role }] : [];
   });
-  return [...fromProperties, ...datesInText(item.text).map((written) => ({ ...written, role: "text" as const }))];
+  return [...fromProperties, ...datesInText(item.text).map((written) => ({ ...inReaderZone(written), role: "text" as const }))];
 }
 
 export function datesInText(text: string): WrittenDate[] {
