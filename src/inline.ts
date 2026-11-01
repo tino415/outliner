@@ -8,7 +8,7 @@
 import { kindOf } from "./kinds";
 import { ATTACHMENT } from "./attachmentLinks";
 import { SEALED_NOTE } from "./notes";
-import { DATE_WRITTEN, dateLabel, readWrittenDate, today } from "./dates";
+import { DATE_WRITTEN, dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
 
 /** A tag starts a line, or follows a space or an opening bracket, and has a letter: not `.#flake`, `a#b` or `#123`. */
 const TAG = String.raw`(?<=^|[\s(\[])#(?=[\p{N}_-]*\p{L})[\p{L}\p{N}_-]*[\p{L}\p{N}_]`;
@@ -90,8 +90,9 @@ function wrapped(tag: string, raw: string, markerLength: number): string {
 
 /** The ISO text stays in the DOM and shows while editing; otherwise the chip shows its label (doc/adr/0036). */
 function dateChip(raw: string): string {
-  const written = readWrittenDate(raw);
-  if (!written) return escape(raw);
+  const read = readWrittenDate(raw);
+  if (!read) return escape(raw);
+  const written = inReaderZone(read);
   const now = today();
   const when = written.day < now ? " past" : written.day === now ? " today" : "";
   return `<span class="date${when}" data-date="${escape(raw)}" data-label="${escape(dateLabel(written, now))}"><span class="date-raw">${escape(raw)}</span></span>`;

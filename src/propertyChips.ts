@@ -2,7 +2,7 @@ import { Item, SETTINGS } from "./model";
 import { escape } from "./inline";
 import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
-import { dateLabel, readWrittenDate, today } from "./dates";
+import { dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
 
 /* An item's properties as chips under its text (doc/adr/0032); a click on one edits it. */
 
@@ -25,8 +25,9 @@ function chipHtml(key: string, value: string, result: Cell | undefined): string 
 
 /** A date shows as a date chip does, "tomorrow" or "Tue 14 Oct", red once past (doc/adr/0036). */
 function valueHtml(shown: string): string {
-  const date = readWrittenDate(shown);
-  if (!date) return `<span class="prop-value">${escape(shown)}</span>`;
+  const read = readWrittenDate(shown);
+  if (!read) return `<span class="prop-value">${escape(shown)}</span>`;
+  const date = inReaderZone(read);
   const now = today();
   return `<span class="prop-value${date.day < now ? " past" : ""}" data-date="${escape(shown)}">${escape(dateLabel(date, now))}</span>`;
 }

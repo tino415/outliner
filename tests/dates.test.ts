@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addDays, dateFilter, dateLabel, datesOf, isOverdue, readTypedDate, readWrittenDate, weekdayOf } from "../src/dates";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { addDays, dateFilter, dateLabel, datesOf, inReaderZone, isOverdue, readTypedDate, readWrittenDate, weekdayOf } from "../src/dates";
 import { Item, ROOT } from "../src/model";
 import { renderInline } from "../src/inline";
 import { parseAmount } from "../src/properties";
@@ -174,5 +174,52 @@ describe("dates elsewhere", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("UTC dates", () => {
+  const zone = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "Europe/Bratislava";
+  });
+  afterAll(() => {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  });
+
+  it("are read with their Z", () => {
+    expect(readWrittenDate("2026-10-14 9:00Z")).toEqual({ day: "2026-10-14", time: "9:00", utc: true });
+  });
+
+  it("show in the reader's zone, winter and summer", () => {
+    expect(inReaderZone(readWrittenDate("2026-11-02 9:00Z")!)).toEqual({ day: "2026-11-02", time: "10:00" });
+    expect(inReaderZone(readWrittenDate("2026-07-02 9:05Z")!)).toEqual({ day: "2026-07-02", time: "11:05" });
+  });
+
+  it("move to the reader's next day late in the evening", () => {
+    expect(inReaderZone(readWrittenDate("2026-11-02 23:30Z")!)).toEqual({ day: "2026-11-03", time: "0:30" });
+  });
+
+  it("leave a date without Z as written", () => {
+    expect(inReaderZone(readWrittenDate("2026-11-02 23:30")!)).toEqual({ day: "2026-11-02", time: "23:30" });
+  });
+
+  it("file an item under the reader's day", () => {
+    const late = item({ text: "Deploy 2026-11-02 23:30Z" });
+    expect(datesOf(late)).toEqual([{ day: "2026-11-03", time: "0:30", role: "text" }]);
+  });
+
+  it("show as a chip in the reader's zone with the Z text kept", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 3, 12));
+    try {
+      expect(renderInline("2026-11-02 23:30Z")).toContain('class="date today" data-date="2026-11-02 23:30Z" data-label="today 0:30"');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("need a time: 2026-11-02Z is not a date", () => {
+    expect(readWrittenDate("2026-11-02Z")).toBeNull();
   });
 });

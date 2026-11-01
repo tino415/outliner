@@ -144,6 +144,11 @@ click on a chip changes or removes it. The properties `scheduled` and
 date of the item: `scheduled`, `due` or one in its text) and `is:overdue`
 (open, every date passed).
 
+A time written with a trailing Z, `2026-10-14 9:00Z`, is UTC: its chip shows
+the reader's local time, and the agenda and `date:` search file it under the
+reader's local day. The text and `outline show` keep the UTC form. Without Z
+nothing changes.
+
 ## Agenda
 
 ⋯ → Agenda (Ctrl-J G) lists, from all over the outline, the open items
