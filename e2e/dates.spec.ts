@@ -95,12 +95,11 @@ test("search understands due:, date: and is:overdue", async ({ page }) => {
 test.describe("a UTC time", () => {
   test.use({ timezoneId: "Europe/Bratislava" });
 
-  test("shows in the reader's local time and day, and as written with its Z while editing", async ({ page }, info) => {
+  test("shows in the reader's local time and day, and as written with its Z while editing", async ({ page }) => {
     await onMonday(page, "Deploy 2026-10-19 9:00Z\nRelease 2026-10-19 23:30Z\nSync 2026-10-20 9:00");
     await expect(row(page, "Deploy 2026-10-19 9:00Z").locator(".date")).toHaveAttribute("data-label", "today 11:00");
     await expect(row(page, "Release 2026-10-19 23:30Z").locator(".date")).toHaveAttribute("data-label", "tomorrow 1:30");
     await expect(row(page, "Sync 2026-10-20 9:00").locator(".date")).toHaveAttribute("data-label", "tomorrow 9:00");
-    await page.screenshot({ path: `screenshots/${info.project.name}-utc-dates.png` });
     const deploy = editor(page, "Deploy 2026-10-19 9:00Z");
     await deploy.click({ position: { x: 4, y: 8 } });
     await expect(deploy).toHaveText("Deploy 2026-10-19 9:00Z");
