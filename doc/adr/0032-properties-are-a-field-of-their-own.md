@@ -28,8 +28,8 @@ survive. The server accepts any `prop:` field whose key is letters, digits,
 as muted chips; `approved` is not shown.
 
 **Properties show as chips under the item's text**, under the page title
-for the page's own. A click on a chip changes or removes its value; Ctrl-J P
-(⌘J P on a Mac), the item menu and a Property button in the phone's toolbar
+for the page's own. A click on a chip changes or removes its value; Ctrl-;
+(⌘; on a Mac), the item menu and a Property button in the phone's toolbar
 set one in two steps, a key (the page's columns first, then the keys in
 use, or a new one) and a value (the key's values elsewhere, or what is
 typed). In column view the chips of keys shown as columns are left out.

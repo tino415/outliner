@@ -7,7 +7,7 @@
 
 Org mode, WorkFlowy and others let a date be inserted without typing it,
 show it as something more readable than digits, and search by it. The
-choice (2026-10-10) is ISO dates shown as chips, with a picker on ⌘J I D
+choice (2026-10-10) is ISO dates shown as chips, with a picker on ⌘J ;
 or on typing `!!`. The agenda (ADR 37) needs to know an item's dates.
 
 ## Decision
@@ -26,7 +26,7 @@ an attribute, so `textContent` is still the raw text. The label depends on
 the day, so the day is part of each row's display state (ADR 9), and a page
 renders again when it is looked at on a new day.
 
-**The picker** opens on ⌘J I D (Ctrl-J I D elsewhere), on typing `!!`, on a
+**The picker** opens on ⌘J ; (Ctrl-J ; elsewhere), on typing `!!`, on a
 click on a chip outside editing (to change or remove that date), and as
 the value step of the properties `scheduled` and `due`. It reads
 `today`, `tomorrow`, weekdays (`fri`, the next one from today on), `+3d`,
