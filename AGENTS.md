@@ -86,8 +86,9 @@ is gitignored.
 - A test must fail against the old code before it counts. Check that it
   exercises the broken path: a click-swallowing bug is invisible to a test
   that only checks focus, which comes from pointerdown.
-- Running the suite rewrites `screenshots/`; commit them with the change
-  that altered the UI.
+- Running the suite rewrites `screenshots/`. Stage files by name after a suite
+  run, never `git add -A`. Screenshots asked for on a PR go by `pr-images`;
+  `screenshots/` changes only when an existing image's UI changed.
 
 ## Conventions set so far
 
