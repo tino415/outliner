@@ -5,7 +5,7 @@ import { MAX_TEXT, isPropertyField } from "./sync/protocol";
 import { Change, Field, Replica, allChanges, diff, materialize, merge } from "./sync/replica";
 import { $, commitAndRender, doc, onChangeHere, state } from "./app";
 import { caretNow } from "./editing";
-import { zoomTo } from "./navigation";
+import { zoomFromHash, zoomTo } from "./navigation";
 import { render } from "./render";
 import { flushSave, saveDocSoon } from "./storage";
 import { toast } from "./chrome";
@@ -225,7 +225,8 @@ function showRemoteChanges(): void {
   const next = materialize(saved!.replica, doc());
   state.history.reset(next);
   saveDocSoon(next);
-  if (!next.items[state.zoom]) zoomTo(ROOT);
+  const linked = zoomFromHash();
+  if (linked !== state.zoom) zoomTo(linked);
   else render(caret);
 }
 

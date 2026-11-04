@@ -9,6 +9,7 @@ import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
 import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
+import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
@@ -90,7 +91,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -254,6 +255,10 @@ const menuActions: Record<string, () => void> = {
   jump: () => {
     ui.menu.hidePopover();
     searchEverything(paletteCommands());
+  },
+  "copy-link": () => {
+    ui.menu.hidePopover();
+    copyLinkToPage();
   },
   capture: () => {
     ui.menu.hidePopover();
@@ -430,6 +435,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   attach: (c) => actions.attachFile(c),
   property: (c) => actions.setProperty(c),
   private: (c) => actions.makePrivate(c),
+  "copy-link": (c) => copyLink(c.id),
   copy: (c) => {
     copyItems([c.id]);
     toast("Copied as text");
@@ -465,6 +471,7 @@ export function renderMenuState(): void {
       button.setAttribute("aria-checked", String(button.dataset.value === current));
     }
   }
+  ui.menu.querySelector<HTMLElement>('[data-action="copy-link"]')!.hidden = state.zoom === ROOT;
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
   $("board-switch").classList.toggle("on", boardShown());

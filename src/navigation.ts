@@ -5,15 +5,26 @@ import { plainText } from "./inline";
 import { Command } from "./keys";
 import { Focus, doc, filter, isUnder, state, ui } from "./app";
 import { render, replayAnimation } from "./render";
+import { toast } from "./chrome";
 
 export function zoomFromHash(): ItemId {
-  let id = "";
-  try {
-    id = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
-  } catch {
-    return ROOT;
-  }
+  const id = linkedId();
   return id && doc().items[id] ? id : ROOT;
+}
+
+function linkedId(): string {
+  try {
+    return decodeURIComponent(location.hash.replace(/^#\/?/, ""));
+  } catch {
+    return "";
+  }
+}
+
+/** A link to an item this device has not received stays in the address until the first sync answer; after it, the item is not coming. */
+export function leaveLinkToMissingItem(): void {
+  if (!linkedId() || zoomFromHash() !== ROOT || doc().items[linkedId()]) return;
+  zoomTo(ROOT);
+  toast("That item isn't here");
 }
 
 let hashShownAhead: string | null = null;

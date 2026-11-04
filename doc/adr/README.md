@@ -56,3 +56,4 @@ file that says so.
 47. [The date is ⌘J I D, and key sequences take up to three keys](0047-the-date-is-mod-j-i-d-and-sequences-take-three-keys.md) (supersedes part of 32, 35 and 36)
 48. [The outline and the sync state live in IndexedDB](0048-the-outline-and-sync-state-live-in-indexeddb.md) (supersedes part of 4)
 49. [A left swipe opens the item menu](0049-a-left-swipe-opens-the-item-menu.md) (supersedes 19 and part of 16)
+50. [A link to an item, its base, and the wait for sync](0050-links-to-items-and-the-link-base.md)

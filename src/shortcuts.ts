@@ -49,6 +49,7 @@ export const COMMAND_NAMES = [
   "toggle-board",
   "agenda",
   "capture",
+  "copy-link",
 ] as const;
 
 export type CommandName = (typeof COMMAND_NAMES)[number];

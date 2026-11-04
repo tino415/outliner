@@ -5,6 +5,7 @@ vi.mock("../src/selection", () => ({ selectionActions: {} }));
 vi.mock("../src/chrome", () => ({ globalActions: {} }));
 vi.mock("../src/board", () => ({ moveSideways: () => {}, toggleBoard: () => {} }));
 vi.mock("../src/agenda", () => ({ openAgenda: () => {} }));
+vi.mock("../src/links", () => ({ copyLink: () => {}, copyLinkToPage: () => {} }));
 
 const { bindingFor, bindingForKeys, extendSequence, isPrefix, keyString, sequenceContinues } = await import("../src/keys");
 
@@ -81,6 +82,11 @@ describe("the Ctrl-J prefix", () => {
     expect(extendSequence("Mod+j", press({ key: "d" }))).toBe("Mod+j d");
     expect(extendSequence("Mod+j", ctrl("d"))).toBe("Mod+j d");
     expect(bindingForKeys("Mod+j d", "editor")?.label).toBe("Duplicate item");
+  });
+
+  it("copies a link to the item being edited, or to the page when no field has the caret", () => {
+    expect(bindingForKeys("Mod+j y", "editor")?.name).toBe("copy-link");
+    expect(bindingForKeys("Mod+j y", "global")?.name).toBe("copy-link");
   });
 });
 
