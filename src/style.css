@@ -2095,8 +2095,6 @@ body.dragging {
   background: light-dark(#2f9e5b, #2b7a4b);
 }
 
-.swipe-band.armed[data-action="collapse"],
-.swipe-band.armed[data-action="expand"],
 .swipe-band.armed[data-action="menu"] {
   background: var(--accent);
 }
