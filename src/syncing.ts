@@ -7,11 +7,13 @@ import { $, commitAndRender, doc, onChangeHere, state } from "./app";
 import { caretNow } from "./editing";
 import { zoomTo } from "./navigation";
 import { render } from "./render";
-import { saveDocSoon } from "./storage";
+import { flushSave, saveDocSoon } from "./storage";
 import { toast } from "./chrome";
 import { uploadPendingFiles } from "./attachments";
 import { Merged, Outgoing, mergeIncoming, sealOutgoing, sealedIn } from "./sync/privacy";
 import { keys } from "./keyring";
+import { loaded } from "./loaded";
+import { REMOVE, announceStored, onStoredElsewhere, readStored, reportSaveFailure, updateStored } from "./stateStore";
 
 /*
  * The app's side of sync (doc/adr/0011, 0012). Every change made here is
@@ -21,7 +23,6 @@ import { keys } from "./keyring";
  * (doc/adr/0015). Tabs of one browser are replicas too (doc/adr/0018).
  */
 
-const SYNC_KEY = "outliner-lab:sync:v1";
 const PUSH_DELAY_MS = 400;
 const POLL_MS = 5000;
 
@@ -32,6 +33,8 @@ interface Saved extends Endpoint {
   pending: Change[];
   /** Items this device has sealed or opened, private until made public here (doc/adr/0029). */
   privateItems?: string[];
+  /** Which tab wrote this last; a tab that finds another id when it writes merges that state in first. */
+  writeId?: string;
 }
 
 type Status = "off" | "synced" | "pending" | "offline" | "refused" | "rejected";
@@ -48,8 +51,9 @@ let again = false;
 let pushTimer: number | undefined;
 
 export function syncedDoc(): Doc | null {
-  saved = loadSaved();
+  saved = restore(loaded.sync);
   if (!saved) return null;
+  knownWriteId = saved.writeId;
   clock = clockFor(saved);
   return materialize(saved.replica);
 }
@@ -65,18 +69,16 @@ export function isSyncing(): boolean {
 export function startSync(): void {
   onChangeHere((before, after) => {
     if (!saved || !clock) return;
-    const fromTabs = absorbOtherTabs();
     const changes = diff(before, after, saved.replica, () => clock!.tick());
-    if (changes.length + fromTabs.length === 0) return;
+    if (changes.length === 0) return;
     merge(saved.replica, changes);
     saved.pending = latestPerField([...saved.pending, ...changes]);
     write();
-    if (fromTabs.length > 0) showRemoteChanges();
     setStatus("pending");
     window.clearTimeout(pushTimer);
     pushTimer = window.setTimeout(syncNow, PUSH_DELAY_MS);
   });
-  window.addEventListener("storage", (event) => event.key === SYNC_KEY && followOtherTab());
+  onStoredElsewhere("sync", () => void followOtherTab());
   window.setInterval(() => document.visibilityState === "visible" && syncNow(), POLL_MS);
   window.addEventListener("online", () => syncNow());
   window.addEventListener("focus", () => syncNow());
@@ -121,7 +123,6 @@ async function roundTrip(): Promise<void> {
     const sent = outgoing.changes.filter(fitsOnServer);
     const response = await exchange(current, { since: current.seq, changes: sent });
     if (saved !== current) return;
-    const fromTabs = absorbOtherTabs();
     const sealedTooLong = sent.length < outgoing.changes.length;
     const done = taken.filter((change) => (sealedTooLong ? sent.includes(change) : !outgoing.held.includes(change)));
     current.pending = current.pending.filter((change) => !done.some((each) => sameChange(each, change)));
@@ -130,7 +131,7 @@ async function roundTrip(): Promise<void> {
     afterMerging(current, merged);
     current.seq = Math.max(current.seq, response.seq);
     write();
-    if (fromTabs.length + merged.accepted.length > 0) showRemoteChanges();
+    if (merged.accepted.length > 0) showRemoteChanges();
     publishStranded(merged.stranded);
     firstRoundDone = true;
     for (const change of waitingForFirstRound.splice(0)) change();
@@ -245,8 +246,9 @@ function sameChange(a: Change, b: Change): boolean {
 
 // ---- other tabs of this browser ---------------------------------------------------------------
 
-function followOtherTab(): void {
-  const stored = loadSaved();
+async function followOtherTab(): Promise<void> {
+  const stored = await loadSaved();
+  if (!writing) knownWriteId = stored?.writeId;
   if (!stored) {
     saved = null;
     clock = null;
@@ -256,14 +258,13 @@ function followOtherTab(): void {
     clock = clockFor(stored);
     showRemoteChanges();
     showQueueStatus();
-  } else if (absorbOtherTabs().length > 0) {
+  } else if (absorbOtherTabs(stored).length > 0) {
     showRemoteChanges();
   }
 }
 
 /** Merges in what other tabs stored since this tab last read it; returns the field changes that won here. */
-function absorbOtherTabs(): Change[] {
-  const stored = loadSaved();
+function absorbOtherTabs(stored: Saved | null): Change[] {
   if (!saved || !stored || stored.server !== saved.server) return [];
   const theirs = allChanges(stored.replica);
   for (const change of theirs) clock!.observe(change.clock);
@@ -296,6 +297,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
   }
   saved = fresh;
   clock = newClock;
+  replaceStored = true;
   write();
   if (serverHasOutline) showRemoteChanges();
   await syncNow();
@@ -305,7 +307,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
 function disconnect(): void {
   saved = null;
   clock = null;
-  localStorage.removeItem(SYNC_KEY);
+  write();
   setStatus("off");
 }
 
@@ -320,13 +322,16 @@ function clockFor(state: Saved): Clock {
   return result;
 }
 
-function loadSaved(): Saved | null {
+async function loadSaved(): Promise<Saved | null> {
   try {
-    const stored: Saved | null = JSON.parse(localStorage.getItem(SYNC_KEY) ?? "null");
-    return stored && withoutRefusedKeys(stored);
+    return restore(await readStored("sync"));
   } catch {
     return null;
   }
+}
+
+function restore(stored: unknown): Saved | null {
+  return stored ? withoutRefusedKeys(stored as Saved) : null;
 }
 
 /** An older build could queue a property whose key the server refuses; one such change would stop every round. */
@@ -338,13 +343,44 @@ function withoutRefusedKeys(stored: Saved): Saved {
   return { ...stored, pending: stored.pending.filter((change) => accepted(change.field)) };
 }
 
+let knownWriteId: string | undefined;
+let replaceStored = false;
+let writing = false;
+let writeAgain = false;
+
+/** Stores the sync state; calls made while a write is under way fold into one more write. */
 function write(): void {
-  if (!saved) return;
-  try {
-    localStorage.setItem(SYNC_KEY, JSON.stringify(saved));
-  } catch (error) {
-    console.error("could not save sync state", error);
+  writeAgain = true;
+  if (!writing) void writeWhileWanted();
+}
+
+async function writeWhileWanted(): Promise<void> {
+  writing = true;
+  while (writeAgain) {
+    writeAgain = false;
+    try {
+      await storeSaved();
+    } catch (error) {
+      reportSaveFailure("sync state", error);
+    }
   }
+  writing = false;
+}
+
+/** Another tab may have written since this one last looked; its changes are merged in before this tab's state replaces it. */
+async function storeSaved(): Promise<void> {
+  let fromTabs: Change[] = [];
+  await updateStored("sync", (stored) => {
+    if (!saved) return REMOVE;
+    const other = replaceStored ? null : restore(stored);
+    if (other && other.writeId !== knownWriteId) fromTabs = absorbOtherTabs(other);
+    replaceStored = false;
+    knownWriteId = newDeviceId();
+    saved.writeId = knownWriteId;
+    return saved;
+  });
+  announceStored("sync");
+  if (fromTabs.length > 0) showRemoteChanges();
 }
 
 // ---- status and the sync dialog -------------------------------------------------------------
@@ -403,8 +439,9 @@ function bindSyncDialog(): void {
     }
   });
 
-  $("sync-disconnect").addEventListener("click", () => {
+  $("sync-disconnect").addEventListener("click", async () => {
     disconnect();
+    await flushSave();
     dialog.close();
     toast("Sync is off; the outline stays on this device");
   });

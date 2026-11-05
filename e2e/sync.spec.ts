@@ -1,5 +1,5 @@
 import { Browser, Page, expect, test } from "@playwright/test";
-import { clickEnd, editor, expectOutline, freshOutline, outlineText, row } from "./helpers";
+import { clickEnd, editor, expectOutline, freshOutline, outlineText, row, removeStored, storedValue, storeValue } from "./helpers";
 import { RunningServer, startSyncServer } from "./sync-server";
 import { run } from "../cli/run";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -132,17 +132,15 @@ test("note lines left by an older build become properties only after the server'
   const two = await device(browser, "x");
   await connect(two);
   await synced(two);
-  await expect.poll(() => two.evaluate(() => localStorage.getItem("outliner-lab:doc:v1"))).toContain("Soup");
+  await expect.poll(async () => JSON.stringify(await storedValue(two, "doc"))).toContain("Soup");
   await two.context().setOffline(true);
-  await two.evaluate(() => {
-    const doc = JSON.parse(localStorage.getItem("outliner-lab:doc:v1")!);
-    const soup = Object.values<{ id: string; text: string; note: string }>(doc.items).find((item) => item.text === "Soup")!;
-    soup.note = ":effort: 3\nfoo";
-    localStorage.setItem("outliner-lab:doc:v1", JSON.stringify(doc));
-    const sync = JSON.parse(localStorage.getItem("outliner-lab:sync:v1")!);
-    sync.replica[soup.id].note = { value: soup.note, clock: sync.replica[soup.id].text.clock };
-    localStorage.setItem("outliner-lab:sync:v1", JSON.stringify(sync));
-  });
+  const doc = (await storedValue(two, "doc"))!;
+  const soupItem = Object.values<{ id: string; text: string; note: string }>(doc.items).find((item) => item.text === "Soup")!;
+  soupItem.note = ":effort: 3\nfoo";
+  await storeValue(two, "doc", doc, { announce: false });
+  const sync = (await storedValue(two, "sync"))!;
+  sync.replica[soupItem.id].note = { value: soupItem.note, clock: sync.replica[soupItem.id].text.clock };
+  await storeValue(two, "sync", sync, { announce: false });
   const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
   expect((await run(["note", "Soup", "rewritten on the Mac"], env)).code).toBe(0);
   expect((await run(["set", "Soup", "effort", "5"], env)).code).toBe(0);
@@ -359,13 +357,56 @@ test("a change the server refuses for its key, queued by an older build, is drop
   const one = await device(browser, "Soup");
   await connect(one);
   await synced(one);
-  await one.evaluate(() => {
-    const sync = JSON.parse(localStorage.getItem("outliner-lab:sync:v1")!);
-    const id = Object.keys(sync.replica).find((each) => sync.replica[each].text?.value === "Soup")!;
-    sync.pending.push({ item: id, field: `prop:${"a".repeat(65)}`, value: "x", clock: sync.replica[id].text.clock });
-    localStorage.setItem("outliner-lab:sync:v1", JSON.stringify(sync));
-  });
+  const sync = (await storedValue(one, "sync"))!;
+  const id = Object.keys(sync.replica).find((each) => sync.replica[each].text?.value === "Soup")!;
+  sync.pending.push({ item: id, field: `prop:${"a".repeat(65)}`, value: "x", clock: sync.replica[id].text.clock });
+  await storeValue(one, "sync", sync, { announce: false });
   await one.reload();
   await syncNow(one);
   await synced(one);
+});
+
+test("sync state kept in localStorage by an older build moves to IndexedDB with its unsent changes", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  await one.context().setOffline(true);
+  await clickEnd(one, "Soup");
+  await one.keyboard.type(" hot");
+  await expect.poll(async () => (await storedValue(one, "sync"))!.pending.length).toBeGreaterThan(0);
+
+  const sync = (await storedValue(one, "sync"))!;
+  const doc = (await storedValue(one, "doc"))!;
+  await removeStored(one, "sync");
+  await removeStored(one, "doc");
+  await one.evaluate(([oldSync, oldDoc]) => {
+    localStorage.setItem("outliner-lab:sync:v1", JSON.stringify(oldSync));
+    localStorage.setItem("outliner-lab:doc:v1", JSON.stringify(oldDoc));
+  }, [sync, doc]);
+  await one.reload();
+
+  await expectOutline(one, "Soup hot");
+  expect(await one.evaluate(() => [localStorage.getItem("outliner-lab:sync:v1"), localStorage.getItem("outliner-lab:doc:v1")])).toEqual([null, null]);
+  expect((await storedValue(one, "sync"))!.pending.length).toBeGreaterThan(0);
+  await one.context().setOffline(false);
+  await syncNow(one);
+  await synced(one);
+  const shown = JSON.parse((await run(["show", "--json"], { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token })).output);
+  expect(shown.children[0].text).toBe("Soup hot");
+});
+
+test("a sync state the browser refuses to store says so", async ({ browser }) => {
+  const one = await device(browser, "Soup");
+  await connect(one);
+  await synced(one);
+  await one.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      if (key === "sync") throw new DOMException("full", "QuotaExceededError");
+      return put.call(this, value, key);
+    };
+  });
+  await clickEnd(one, "Soup");
+  await one.keyboard.type("!");
+  await expect(one.locator("#toast")).toContainText("Could not save the sync state");
 });

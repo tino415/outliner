@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { caret, clickEnd, editor, expectOutline, freshOutline, outlineText, row } from "./helpers";
+import { caret, clickEnd, editor, expectOutline, freshOutline, outlineText, row, storedValue, storeValue } from "./helpers";
 import { startSyncServer } from "./sync-server";
 
 async function selectDown(page: import("@playwright/test").Page, from: string, steps: number) {
@@ -132,15 +132,12 @@ test("a change from another tab is not overwritten by this tab's pending save", 
   await first.waitForTimeout(400);
   await clickEnd(first, "a");
   await first.keyboard.type("1");
-  await second.evaluate(() => {
-    const key = "outliner-lab:doc:v1";
-    const doc = JSON.parse(localStorage.getItem(key)!);
-    doc.items.i0.text = "from the other tab";
-    localStorage.setItem(key, JSON.stringify(doc));
-  });
+  const doc = (await storedValue(second, "doc"))!;
+  doc.items.i0.text = "from the other tab";
+  await storeValue(second, "doc", doc);
   await first.waitForTimeout(600);
 
-  const stored = await first.evaluate(() => JSON.parse(localStorage.getItem("outliner-lab:doc:v1")!).items.i0.text);
+  const stored = (await storedValue(first, "doc"))!.items.i0.text;
   expect(stored).toBe("from the other tab");
   expect(await outlineText(first)).toBe(stored);
 });
@@ -635,4 +632,52 @@ test("a board card's property chip sits under its heading and leaves the heading
   expect(chips!.x).toBeCloseTo(text!.x, 0);
   expect(chips!.y).toBeGreaterThanOrEqual(text!.y + text!.height - 1);
   expect(text!.x).toBeLessThan(handle!.x + handle!.width + 12);
+});
+
+test("an outline too big for localStorage is saved and survives a reload", async ({ page }) => {
+  test.setTimeout(150_000);
+  await freshOutline(page, "first");
+  const lines = Array.from({ length: 3000 }, (_, i) => `item ${i} ${"lorem ipsum ".repeat(45)}`).join("\n");
+  for (const name of ["one.txt", "two.txt", "three.txt", "four.txt"]) {
+    await page.locator("#import-file").setInputFiles({ name, mimeType: "text/plain", buffer: Buffer.from(lines) });
+    await expect(page.locator("#toast")).toContainText(`Imported 3000 items from ${name}`);
+  }
+  await page.waitForTimeout(600);
+  await expect(page.locator("#toast")).not.toContainText("Could not save");
+
+  await page.reload();
+  await expect(page.locator(".tree .text", { hasText: "item 2999 " }).first()).toBeAttached();
+  await expect(row(page, "first")).toBeVisible();
+});
+
+test("an outline stored by an older build in localStorage moves to IndexedDB and is removed from localStorage", async ({ page }) => {
+  await freshOutline(page, "kept\n  child");
+  await expect.poll(() => storedValue(page, "doc")).toMatchObject({ items: { i0: { text: "kept" } } });
+  expect(await page.evaluate(() => localStorage.getItem("outliner-lab:doc:v1"))).toBeNull();
+  await page.reload();
+  await expectOutline(page, "kept\n  child");
+});
+
+test("a warning shows when storage passes 80% of the quota", async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.storage.estimate = async () => ({ usage: 85, quota: 100 });
+  });
+  await freshOutline(page, "a");
+  await clickEnd(page, "a");
+  await page.keyboard.type("b");
+  await expect(page.locator("#toast")).toContainText("Browser storage is over 80% full");
+  await expect(page.locator("#toast")).toContainText("Export a backup");
+});
+
+test("a save the browser refuses says so", async ({ page }) => {
+  await freshOutline(page, "a");
+  await page.evaluate(() => {
+    IDBObjectStore.prototype.put = () => {
+      throw new DOMException("full", "QuotaExceededError");
+    };
+  });
+  await clickEnd(page, "a");
+  await page.keyboard.type("b");
+  await expect(page.locator("#toast")).toContainText("Could not save the outline");
+  await expect(page.locator("#toast")).toContainText("Export a backup");
 });

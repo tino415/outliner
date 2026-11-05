@@ -54,3 +54,4 @@ file that says so.
 45. [The sync server also serves the app](0045-the-sync-server-also-serves-the-app.md)
 46. [Desktop WebKit runs in the check, and the app container has no process limit](0046-desktop-webkit-runs-in-the-check.md) (supersedes part of 41)
 47. [The date is ⌘J I D, and key sequences take up to three keys](0047-the-date-is-mod-j-i-d-and-sequences-take-three-keys.md) (supersedes part of 32, 35 and 36)
+48. [The outline and the sync state live in IndexedDB](0048-the-outline-and-sync-state-live-in-indexeddb.md) (supersedes part of 4)

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { caret, clickEnd, editor, freshOutline, row } from "./helpers";
+import { caret, clickEnd, editor, freshOutline, row, storedValue } from "./helpers";
 
 test("Ctrl-; sets a property by key and value, and the caret stays where it was", async ({ page }, info) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
@@ -70,7 +70,7 @@ test("the private chip offers to make the item public again, as Make private… 
   await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Make private with the key…");
   await page.locator("#palette li", { hasText: "Make public again" }).click();
   await expect(row(page, "Journal").locator(".prop-chip")).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("outliner-lab:doc:v1")!).items).some((id) => id.includes("~")))).toBe(false);
+  await expect.poll(async () => Object.keys((await storedValue(page, "doc"))!.items).some((id) => id.includes("~"))).toBe(false);
 });
 
 test("settings of a page show as muted chips under its title", async ({ page }) => {
