@@ -2,7 +2,7 @@
 
 A WorkFlowy-style outliner that lives in the browser: nested bullets, zoom,
 search, keyboard editing, light and dark themes, installable and offline. The
-outline is stored in `localStorage` and never leaves the browser.
+outline is stored in IndexedDB and leaves the browser only through sync.
 
 The decisions behind the code are in [doc/adr](doc/adr/README.md).
 

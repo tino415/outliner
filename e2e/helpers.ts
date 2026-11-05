@@ -87,3 +87,67 @@ export async function clickEnd(page: Page, text: string) {
   await target.click();
   await page.keyboard.press("End");
 }
+
+export type StoredKey = "doc" | "sync";
+
+/** What the app keeps in IndexedDB under `key` (src/stateStore.ts), or null. */
+export async function storedValue<T = any>(page: Page, key: StoredKey): Promise<T | null> {
+  return page.evaluate(
+    (name) =>
+      new Promise((resolve, reject) => {
+        const opening = indexedDB.open("outliner-lab-state", 1);
+        opening.onerror = () => reject(opening.error);
+        opening.onupgradeneeded = () => opening.result.createObjectStore("state");
+        opening.onsuccess = () => {
+          const request = opening.result.transaction("state").objectStore("state").get(name);
+          request.onsuccess = () => resolve(request.result ?? null);
+          request.onerror = () => reject(request.error);
+        };
+      }),
+    key,
+  ) as Promise<T | null>;
+}
+
+/** Writes `value` the way another tab's save does, and tells the tabs of this browser. */
+export async function storeValue(page: Page, key: StoredKey, value: unknown, { announce = true } = {}): Promise<void> {
+  await page.evaluate(
+    ([name, stored, tell]) =>
+      new Promise<void>((resolve, reject) => {
+        const opening = indexedDB.open("outliner-lab-state", 1);
+        opening.onerror = () => reject(opening.error);
+        opening.onupgradeneeded = () => opening.result.createObjectStore("state");
+        opening.onsuccess = () => {
+          const transaction = opening.result.transaction("state", "readwrite");
+          transaction.objectStore("state").put(stored, name as string);
+          transaction.oncomplete = () => {
+            if (tell) {
+              const channel = new BroadcastChannel("outliner-lab:stored");
+              channel.postMessage(name);
+              channel.close();
+            }
+            resolve();
+          };
+          transaction.onerror = () => reject(transaction.error);
+        };
+      }),
+    [key, value, announce] as const,
+  );
+}
+
+/** Drops `key` from IndexedDB without telling the app, as if an older build had never moved it there. */
+export async function removeStored(page: Page, key: StoredKey): Promise<void> {
+  await page.evaluate(
+    (name) =>
+      new Promise<void>((resolve, reject) => {
+        const opening = indexedDB.open("outliner-lab-state", 1);
+        opening.onerror = () => reject(opening.error);
+        opening.onsuccess = () => {
+          const transaction = opening.result.transaction("state", "readwrite");
+          transaction.objectStore("state").delete(name);
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+        };
+      }),
+    key,
+  );
+}

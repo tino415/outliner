@@ -12,14 +12,18 @@ export function keepUpToDate(): void {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (updatingAnInstalledApp) offerReload();
   });
-  window.addEventListener("load", async () => {
-    try {
-      const registration = await navigator.serviceWorker.register("./sw.js");
-      document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && registration.update().catch(() => undefined));
-    } catch (error) {
-      console.error("service worker failed", error);
-    }
-  });
+  if (document.readyState === "complete") void register();
+  else window.addEventListener("load", register);
+}
+
+/** Startup waits for stored data, so the page may have loaded before this runs. */
+async function register(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && registration.update().catch(() => undefined));
+  } catch (error) {
+    console.error("service worker failed", error);
+  }
 }
 
 function offerReload(): void {

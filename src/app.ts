@@ -2,7 +2,9 @@ import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
 import { Doc, ItemId, ROOT, ViewFilter, isDescendant, liftNoteProperties, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
-import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, onSaveFailed, saveDocSoon } from "./storage";
+import { loaded } from "./loaded";
+import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
+import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, saveDocSoon } from "./storage";
 import { SearchResult } from "./search";
 import { welcomeDoc } from "./welcome";
 import { enableBulletHandles } from "./bullets";
@@ -43,7 +45,7 @@ export const ui = {
 };
 
 export const state = {
-  history: new History(syncedDoc() ?? loadDoc() ?? welcomeDoc()),
+  history: new History(syncedDoc() ?? loadDoc(loaded.doc) ?? welcomeDoc()),
   prefs: loadPrefs(),
   zoom: ROOT as ItemId,
   query: "",
@@ -83,7 +85,8 @@ export function start(): void {
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushSave());
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && renderIfTheDayChanged());
   window.addEventListener("focus", renderIfTheDayChanged);
-  onSaveFailed(() => toast("Could not save: browser storage is full. Export a backup from the menu."));
+  onSaveFailed((what) => toast(`Could not save the ${what}: browser storage is full. Export a backup from the menu.`));
+  onStorageNearlyFull(() => toast("Browser storage is over 80% full. Export a backup from the menu and free some space.", undefined, { stays: true }));
   render(null);
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);

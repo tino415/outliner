@@ -1,7 +1,7 @@
 import { Doc, ROOT } from "./model";
 import { propertyKey } from "./notes";
+import { announceStored, onStoredElsewhere, readStored, reportSaveFailure, writeStored } from "./stateStore";
 
-const DOC_KEY = "outliner-lab:doc:v1";
 const PREFS_KEY = "outliner-lab:prefs:v1";
 
 type Theme = "system" | "light" | "dark";
@@ -19,11 +19,10 @@ export type AppearancePref = keyof Pick<Prefs, "theme" | "textSize">;
 
 const defaultPrefs: Prefs = { theme: "system", textSize: "medium", showCompleted: true, columnPages: {} };
 
-export function loadDoc(): Doc | null {
-  const raw = localStorage.getItem(DOC_KEY);
-  if (!raw) return null;
+export function loadDoc(stored: unknown): Doc | null {
+  if (!stored) return null;
   try {
-    return parseDoc(raw);
+    return normalizeDoc(stored as Doc);
   } catch (error) {
     console.error("stored outline is unreadable", error);
     return null;
@@ -31,7 +30,10 @@ export function loadDoc(): Doc | null {
 }
 
 export function parseDoc(raw: string): Doc {
-  const parsed = JSON.parse(raw) as Doc;
+  return normalizeDoc(JSON.parse(raw) as Doc);
+}
+
+function normalizeDoc(parsed: Doc): Doc {
   if (!parsed?.items?.[ROOT]) throw new Error("not an outline: no root item");
   return { items: Object.fromEntries(Object.entries(parsed.items).map(([id, item]) => [id, { ...item, properties: syncableProperties(item.properties ?? {}) }])) };
 }
@@ -41,42 +43,48 @@ function syncableProperties(properties: Record<string, string>): Record<string, 
   return Object.fromEntries(Object.entries(properties).flatMap(([key, value]) => (propertyKey(key) && typeof value === "string" ? [[propertyKey(key)!, value]] : [])));
 }
 
-let pendingSave: number | undefined;
 let unsavedDoc: Doc | null = null;
-let saveFailed: () => void = () => undefined;
+let writingDoc: Doc | null = null;
+let writeDone: Promise<void> = Promise.resolve();
 
-export function onSaveFailed(handler: () => void): void {
-  saveFailed = handler;
-}
-
+/** Starts writing at once, since a write begun while the page unloads may be dropped; edits made during a write are written together after it. */
 export function saveDocSoon(doc: Doc): void {
   unsavedDoc = doc;
-  window.clearTimeout(pendingSave);
-  pendingSave = window.setTimeout(flushSave, 250);
+  void flushSave();
 }
 
 function discardPendingSave(): void {
-  window.clearTimeout(pendingSave);
   unsavedDoc = null;
 }
 
-export function flushSave(): void {
-  window.clearTimeout(pendingSave);
-  if (!unsavedDoc) return;
+export function flushSave(): Promise<void> {
+  if (unsavedDoc && !writingDoc) writeDone = saveDoc(unsavedDoc);
+  return writeDone;
+}
+
+async function saveDoc(doc: Doc): Promise<void> {
+  writingDoc = doc;
+  let saved = false;
   try {
-    localStorage.setItem(DOC_KEY, JSON.stringify(unsavedDoc));
-    unsavedDoc = null;
+    await writeStored("doc", doc);
+    saved = true;
+    if (unsavedDoc === doc) unsavedDoc = null;
+    announceStored("doc");
   } catch (error) {
-    console.error("could not save outline", error);
-    saveFailed();
+    reportSaveFailure("outline", error);
+  } finally {
+    writingDoc = null;
   }
+  if (saved && unsavedDoc) await flushSave();
 }
 
 export function onDocChangedInAnotherTab(apply: (doc: Doc) => void, unless: () => boolean): void {
-  window.addEventListener("storage", (event) => {
-    if (event.key !== DOC_KEY || !event.newValue || unless()) return;
+  onStoredElsewhere("doc", async () => {
+    if (unless()) return;
     try {
-      const incoming = parseDoc(event.newValue);
+      const stored = await readStored("doc");
+      if (!stored || unless()) return;
+      const incoming = normalizeDoc(stored as Doc);
       discardPendingSave();
       apply(incoming);
     } catch (error) {
