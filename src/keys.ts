@@ -123,6 +123,7 @@ const defaultBindings: Binding[] = [
   editor("delete-item", ["Mod+Shift+Backspace"], "Delete item", (c) => actions.deleteItem(c)),
   editor("duplicate", ["Mod+j d", "Mod+Shift+d"], "Duplicate item", (c) => actions.duplicate(c)),
   editor("move-to", ["Mod+j m"], "Move item to…", (c) => actions.moveToPicker(c)),
+  onBoard(editor("send-to-column", ["Mod+j o"], "Send to column…", (c) => actions.sendToColumnPicker(c))),
   editor("bold", ["Mod+b"], "Bold", (c) => actions.bold(c)),
   editor("italic", ["Mod+i"], "Italic", (c) => actions.italic(c)),
   editor("code", ["Mod+e"], "Code", (c) => actions.code(c)),

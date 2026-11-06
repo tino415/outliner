@@ -207,3 +207,7 @@ function columnDropAt(x: number, y: number, dragged: ItemId): Drop | null {
 function middle(rect: DOMRect): { x: number; y: number } {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
+
+export function otherColumns(card: ItemId): ItemId[] {
+  return shownChildren(doc(), state.zoom, filter()).filter((column) => column !== doc().items[card].parent);
+}

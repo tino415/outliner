@@ -27,6 +27,7 @@ export const COMMAND_NAMES = [
   "delete-item",
   "duplicate",
   "move-to",
+  "send-to-column",
   "bold",
   "italic",
   "code",
