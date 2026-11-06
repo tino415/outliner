@@ -9,7 +9,7 @@ import { SearchResult } from "./search";
 import { welcomeDoc } from "./welcome";
 import { enableBulletHandles } from "./bullets";
 import { bindEditorEvents, caretNow } from "./editing";
-import { zoomFromHash, zoomTo } from "./navigation";
+import { leaveLinkToMissingItem, zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, isMirroredOnScreen, render, rowShowsTypedText } from "./render";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
@@ -92,6 +92,7 @@ export function start(): void {
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
   afterFirstSync(liftPropertiesWrittenInNotes);
+  afterFirstSync(leaveLinkToMissingItem);
   bindAttachments(syncEndpoint);
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();

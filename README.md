@@ -37,7 +37,7 @@ Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
 P property, K kind, L link, R mirror, ; date, A attach, X private, M move to,
-D duplicate, B board, G agenda, C columns, N capture, and J again to jump
+D duplicate, B board, G agenda, C columns, N capture, Y copy a link, and J again to jump
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
@@ -199,6 +199,21 @@ the item, Enter or a tap on its text opens it; deleting it leaves the item,
 and a mirror of a deleted item shows "gone". On a blank item the item
 becomes the mirror, otherwise the mirror goes below. Sync, export and the
 CLI see an ordinary item with a `mirror: <id>` property.
+
+## Links to an item from outside
+
+Ctrl-J Y, "Copy link" in an item's menu and "Copy link to this page" in the ⋯
+menu copy a web address that opens the item zoomed in (doc/adr/0050), to
+paste into chat, a pull request or notes. A card is an item: on a phone open
+it, then ⋯ → Copy link to this page. On a phone the system share sheet opens
+instead, with the item's text as its title (nothing but the address for a
+private item).
+
+The address starts from the first `link-base` property in the outline, such as
+`link-base: https://dev.example.test/`, else from where the app was opened. A
+link to an item this device has not received yet waits for the first sync
+answer, then opens it, or goes to the top of the outline with "That item isn't
+here".
 
 ## Attachments
 

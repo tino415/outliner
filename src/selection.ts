@@ -150,7 +150,7 @@ export function copyItems(ids: ItemId[]): void {
   copyText(subtreesAsText(doc(), ids));
 }
 
-function copyText(text: string): void {
+export function copyText(text: string): void {
   if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).catch(() => copyWithTextarea(text));
   else copyWithTextarea(text);
 }

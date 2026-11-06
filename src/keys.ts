@@ -5,6 +5,7 @@ import { escape } from "./inline";
 import { Platform, isMac, platform } from "./platform";
 import { moveSideways, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
+import { copyLink, copyLinkToPage } from "./links";
 import { Doc } from "./model";
 import { CommandName, LostKeys, PREFIX, Refusal, applyShortcuts, chooseShortcuts, shortcutSettingsIn } from "./shortcuts";
 
@@ -120,6 +121,7 @@ const defaultBindings: Binding[] = [
   editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)),
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
+  editor("copy-link", ["Mod+j y"], "Copy link to this item", (c) => copyLink(c.id)),
   editor("undo", ["Mod+z"], "Undo", () => globalActions.undo()),
   editor("redo", ["Mod+Shift+z", "Mod+y"], "Redo", () => globalActions.redo()),
   typing(["Escape"], "Stop editing", (c) => actions.blur(c)),
@@ -164,6 +166,7 @@ const defaultBindings: Binding[] = [
   global("toggle-board", ["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
   global("agenda", ["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
   global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
+  global("copy-link", ["Mod+j y"], "Copy link to this page", "outsideFields", () => copyLinkToPage()),
   global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),

@@ -410,3 +410,30 @@ test("a sync state the browser refuses to store says so", async ({ browser }) =>
   await one.keyboard.type("!");
   await expect(one.locator("#toast")).toContainText("Could not save the sync state");
 });
+
+test("a link to an item still on its way from the server opens it, and one to an item that never comes falls back to the top", async ({ browser }) => {
+  const one = await device(browser, "a");
+  await connect(one);
+  await synced(one);
+  const two = await device(browser, "x");
+  await connect(two);
+  await expectOutline(two, "a");
+  await synced(two);
+
+  await clickEnd(one, "a");
+  await one.keyboard.press("Enter");
+  await one.keyboard.type("fresh");
+  await synced(one);
+  const fresh = await row(one, "fresh").locator("xpath=..").getAttribute("data-id");
+
+  await two.evaluate((id) => (location.hash = `#/${id}`), fresh);
+  await two.reload();
+  await expect(two.locator("#title")).toHaveText("fresh");
+  await expect(two.locator("#toast")).toBeHidden();
+
+  await two.evaluate(() => (location.hash = "#/nothing-here"));
+  await two.reload();
+  await expect(two.locator("#toast")).toContainText("That item isn't here");
+  await expect(two.locator("#title")).toHaveText("Test");
+  expect(new URL(two.url()).hash).toBe("#/");
+});
