@@ -619,6 +619,29 @@ for (const [what, selector, title] of [
   });
 }
 
+test("a finger dragged sideways over a board card scrolls the board", { tag: "@phone" }, async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || !isMobile, "real touch input is sent through the Chromium DevTools protocol, on the phone");
+  await freshOutline(page, "Project\n  To do\n    write\n  Doing\n  Done");
+  await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
+  await expect(page.locator("#board .board-card")).toHaveCount(1);
+
+  const board = page.locator("#board");
+  const before = await board.evaluate((element) => element.scrollLeft);
+  const box = (await page.locator(".board-card .text").first().boundingBox())!;
+  const y = box.y + box.height / 2;
+  const x = box.x + box.width - 20;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (let step = 1; step <= 10; step++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x - step * 15, y }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+  await expect.poll(() => board.evaluate((element) => element.scrollLeft)).toBeGreaterThan(before + 50);
+});
+
 test("a board card's property chip sits under its heading and leaves the heading the card's width", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Project\n  To do\n    Show the current block activity #feature | :todoist: 6hpvFW6wW64v9XwX\n  Doing");
   await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
