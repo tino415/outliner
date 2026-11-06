@@ -52,7 +52,7 @@ import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
-import { boardShown, foldShows, isColumn, joinStaysInColumn, moveSideways, pageAbove } from "./board";
+import { boardShown, foldShows, isColumn, isCard, joinStaysInColumn, moveSideways, otherColumns, pageAbove } from "./board";
 
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
@@ -698,6 +698,22 @@ export const actions = {
     });
   }),
 
+  sendToColumnPicker: onItem((c) => {
+    if (!isCard(c.id)) return;
+    const id = c.id;
+    const columns = (query: string): Candidate[] =>
+      otherColumns(id)
+        .map((column) => ({ id: column, text: doc().items[column].text || "Untitled", path: [] }))
+        .filter((column) => column.text.toLowerCase().includes(query.trim().toLowerCase()));
+    openPalette({
+      placeholder: `Send “${itemLabel(doc().items[id].text, 30)}” to column…`,
+      hint: "It goes where the column files new cards",
+      candidates: columns,
+      choose: (column) => sendToColumn(id, column.id),
+    });
+  }),
+
+
   selectUp(c: EditorContext): boolean | void {
     if (c.inNote || c.isTitle || c.inAgenda || c.start !== 0 || !isCaretOnFirstLine(c.editor)) return false;
     const previous = neighbourEditor(c.editor, -1);
@@ -901,4 +917,10 @@ function focusAtX(editor: HTMLElement, x: number, edge: "top" | "bottom"): void 
   const offset = offsetAtPoint(editor, x, y) ?? (edge === "top" ? 0 : length);
   select(editor, Math.min(offset, length));
   editor.scrollIntoView({ block: "nearest" });
+}
+
+export function sendToColumn(id: ItemId, column: ItemId): void {
+  const { before, after } = rowsAround([id]);
+  commitAndRender(moveTo(doc(), id, column, newChildIndex(doc(), column)), startsOf(id, before, after));
+  toastWithUndo(`Sent to “${shortLabel(doc().items[column].text || "Untitled", 30)}”`);
 }

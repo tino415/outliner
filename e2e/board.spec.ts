@@ -510,3 +510,62 @@ test("a column shows its note under its title, editable in place", { tag: ["@pho
   await page.keyboard.type("shipped this week");
   await expect(page.locator(".board-column-head .note").nth(1)).toHaveText("shipped this week");
 });
+
+test("Mod-J O lists the other columns, narrows as you type and sends the card where the column files new cards", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, "Project\n  To do\n    write\n  Doing | :new: top\n    draft\n  Done");
+  await card(page, "write").locator(":scope > .row > .text").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("o");
+  await expect(page.locator("#palette li")).toHaveText(["Doing", "Done"]);
+  await page.keyboard.type("do");
+  await expect(page.locator("#palette li")).toHaveText(["Doing", "Done"]);
+  await page.keyboard.type("ne");
+  await expect(page.locator("#palette li")).toHaveText(["Done"]);
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("in");
+  await page.keyboard.press("Enter");
+  await expectBoard(page, "To do: \nDoing: write, draft\nDone: ");
+  await page.locator("#toast button").dispatchEvent("click");
+  await expectBoard(page, "To do: write\nDoing: draft\nDone: ");
+});
+
+test("Send to column is not offered in the outline or from the title", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await page.locator("#menu-button").click();
+  await page.locator("#menu").getByText("Board", { exact: true }).click();
+  await page.keyboard.press("Escape");
+  await row(page, "write").locator(".text").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("o");
+  await expect(page.locator("#palette")).toBeHidden();
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">column");
+  await expect(page.locator("#palette")).not.toContainText("Send to column");
+});
+
+test("the item menu lists the other columns as Send to entries, one tap sends the card", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await bulletOf(card(page, "test")).click({ button: "right" });
+  const menu = page.locator("#item-menu");
+  await expect(menu.getByRole("button", { name: /^Send to / })).toHaveText(["Send to Doing", "Send to Done"]);
+  await menu.getByRole("button", { name: "Send to Done" }).click();
+  await expectBoard(page, "To do: write\nDoing: draft, review\nDone: test");
+  await page.locator("#toast button").dispatchEvent("click");
+  await expectBoard(page, "To do: write, test\nDoing: draft, review\nDone: ");
+
+  await page.locator(".board-column").nth(1).locator(".board-column-head .bullet").click({ button: "right" });
+  await expect(menu.getByRole("button", { name: /^Send to / })).toHaveCount(0);
+});
+
+test("a long press on a card opens a menu whose Send to entry is one tap", { tag: "@touch" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  const bullet = bulletOf(card(page, "draft"));
+  const box = (await bullet.boundingBox())!;
+  const at = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, pointerType: "touch", pointerId: 7, isPrimary: true, button: 0 };
+  await bullet.dispatchEvent("pointerdown", at);
+  await page.waitForTimeout(600);
+  await bullet.dispatchEvent("pointerup", at);
+  await page.getByRole("button", { name: "Send to Done" }).tap();
+  await expectBoard(page, "To do: write, test\nDoing: review\nDone: draft");
+});

@@ -161,6 +161,17 @@ describe("the view shown", () => {
     expect(describeKeys()).not.toContain("Indent");
   });
 
+  it("puts Send to column… on Mod-J O on a board only, in the palette and the help too", () => {
+    const labels = () => keyCommands(editing).map((command) => command.label);
+    expect(bindingForKeys("Mod+j o", "editor")).toBeNull();
+    expect(labels()).not.toContain("Send to column…");
+    expect(describeKeys()).not.toContain("Send to column…");
+    view.shown = "board";
+    expect(bindingForKeys("Mod+j o", "editor")?.name).toBe("send-to-column");
+    expect(labels()).toContain("Send to column…");
+    expect(describeKeys()).toContain("Send to column…");
+  });
+
   it("lists Tab and Alt-Shift-→ for the move on a board, with the command's name", () => {
     view.shown = "board";
     const row = describeKeys().split(`<div class="help-label">`).find((each) => each.startsWith("To the column on the right"))!;

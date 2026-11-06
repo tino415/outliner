@@ -7,14 +7,14 @@ import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlo
 import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
-import { EditorContext, actions, caretNow, editorContext, editorOf } from "./editing";
+import { EditorContext, actions, caretNow, editorContext, editorOf, sendToColumn } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
 import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
-import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, pageAbove, shownView, toggleBoard } from "./board";
+import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
@@ -421,6 +421,7 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   const holdsFolds = !state.results && (foldShows(id) || isColumn(id)) && foldableInside(doc(), id).length > 0;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action$="-inside"]')) entry.hidden = !holdsFolds;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action^="column-"]')) entry.hidden = !isCard(id);
+  fillSendToColumns(menu, id);
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
   const height = menu.offsetHeight;
@@ -428,6 +429,16 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
   menu.style.top = `${fitsBelow ? rect.bottom + 4 : Math.max(8, rect.top - height - 4)}px`;
   menu.querySelector<HTMLElement>("[data-item-action]")!.focus();
+}
+
+function fillSendToColumns(menu: HTMLElement, card: ItemId): void {
+  const columns = isCard(card) ? otherColumns(card) : [];
+  menu.querySelector<HTMLElement>("[data-send-to-columns]")!.innerHTML = columns
+    .map((column) => {
+      const name = itemLabel(doc().items[column].text, 40) || "Untitled";
+      return `<button type="button" class="menu-item" data-send-to="${escape(column)}"><span>Send to ${escape(name)}</span></button>`;
+    })
+    .join("");
 }
 
 const itemActions: Record<string, (c: EditorContext) => void> = {
@@ -456,6 +467,13 @@ const itemActionsThatType = new Set(["note", "move", "property"]);
 
 function bindItemMenu(): void {
   $("item-menu").addEventListener("click", (event) => {
+    const column = (event.target as Element).closest<HTMLElement>("[data-send-to]")?.dataset.sendTo;
+    if (column && menuItem && doc().items[menuItem]) {
+      $("item-menu").hidePopover();
+      sendToColumn(menuItem, column);
+      if (menuOpenedByTouch) editorOf(document.activeElement)?.blur();
+      return;
+    }
     const action = (event.target as Element).closest<HTMLElement>("[data-item-action]")?.dataset.itemAction;
     const editor = menuItem && doc().items[menuItem] ? textEditorFor(menuItem) : null;
     if (!action || !editor) return;
