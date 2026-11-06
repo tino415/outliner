@@ -1,4 +1,5 @@
 import { Doc, ItemId, indexInParent, isDescendant, moveTo } from "./model";
+import { swallowNextClick } from "./clicks";
 
 interface DragHost {
   doc: () => Doc;
@@ -97,8 +98,10 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
     bullet.classList.remove("pressed");
     if (menuOpened && event.type === "pointerup") setTimeout(() => host.openMenu(id, bullet, true));
     if (event.type === "pointercancel" || menuOpened) return;
-    if (!dragged) host.zoomInto(id);
-    else if (drop) host.move(moveTo(host.doc(), id, drop.parent, drop.index), id);
+    if (!dragged) {
+      swallowNextClick();
+      host.zoomInto(id);
+    } else if (drop) host.move(moveTo(host.doc(), id, drop.parent, drop.index), id);
   };
 
   bullet.addEventListener("pointermove", onMove);
