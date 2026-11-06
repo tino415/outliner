@@ -603,8 +603,8 @@ test("a key pressed right after a bullet click acts on the page the click zoomed
 });
 
 for (const [what, selector, title] of [
-  ["card", ".board-card .board-bullet", "write"],
-  ["column", ".board-column-head .board-bullet", "To do"],
+  ["card", ".board-card .bullet", "write"],
+  ["column", ".board-column-head .bullet", "To do"],
 ]) {
   test(`a board's ${what} opens as a page from its bullet`, { tag: "@phone" }, async ({ page }, info) => {
     await freshOutline(page, "Project\n  To do\n    write\n  Doing");
@@ -651,7 +651,7 @@ test("a board card's property chip sits under its heading and leaves the heading
   const row = page.locator(".board-card > .row").first();
   const text = await row.locator(":scope > .text").boundingBox();
   const chips = await row.locator(":scope > .props").boundingBox();
-  const handle = await row.locator(".board-handle").boundingBox();
+  const handle = await row.locator(":scope > .bullet").boundingBox();
   expect(chips!.x).toBeCloseTo(text!.x, 0);
   expect(chips!.y).toBeGreaterThanOrEqual(text!.y + text!.height - 1);
   expect(text!.x).toBeLessThan(handle!.x + handle!.width + 12);

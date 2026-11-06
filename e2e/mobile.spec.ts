@@ -108,7 +108,7 @@ test("tapping a board's bullet opens the board, not the column that appears unde
   await page.waitForTimeout(300);
   await expect(page.locator("#title")).toHaveText("Project");
 
-  const columnLink = (await page.locator(".board-column-head .board-bullet").first().boundingBox())!;
+  const columnLink = (await page.locator(".board-column-head .bullet").first().boundingBox())!;
   expect(finger.x).toBeGreaterThanOrEqual(columnLink.x);
   expect(finger.x).toBeLessThanOrEqual(columnLink.x + columnLink.width);
   expect(finger.y).toBeGreaterThanOrEqual(columnLink.y);

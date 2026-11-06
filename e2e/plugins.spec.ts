@@ -114,7 +114,7 @@ function column(page: Page, title: string) {
 }
 
 async function dragCard(page: Page, text: string, into: string) {
-  const from = (await card(page, text).locator(".board-handle").boundingBox())!;
+  const from = (await card(page, text).locator(":scope > .row > .bullet").boundingBox())!;
   const to = (await column(page, into).locator(".board-cards").boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();

@@ -18,6 +18,7 @@ import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
 import { today } from "./dates";
 import { liveMirrorTarget } from "./mirrors";
+import { boardDrops } from "./board";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -65,15 +66,17 @@ export function start(): void {
   bindEditorEvents();
   bindCompletion(doc);
   bindChrome();
-  enableBulletHandles(ui.tree, {
+  const bullets = {
     doc,
-    zoomInto: (id) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
-    move: (next, id) => {
+    zoomInto: (id: ItemId) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
+    move: (next: Doc, id: ItemId) => {
       commitAndRender(next, null);
       flashRow(id);
     },
     openMenu: openItemMenu,
-  });
+  };
+  enableBulletHandles(ui.tree, bullets);
+  enableBulletHandles(ui.board, bullets, boardDrops);
   enableRowSwipes(ui.tree);
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();

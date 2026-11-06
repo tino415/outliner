@@ -14,7 +14,7 @@ import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigat
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
-import { bindBoard, boardShown, pageAbove, shownView, toggleBoard } from "./board";
+import { bindBoard, boardShown, isCard, moveSideways, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
@@ -416,8 +416,9 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   menu.querySelector('[data-item-action="complete"] span')!.textContent = item.completed ? "Uncomplete" : "Complete";
   menu.querySelector('[data-item-action="note"] span')!.textContent = item.note ? "Edit note" : "Add a note";
   const fold = menu.querySelector<HTMLElement>('[data-item-action="fold"]')!;
-  fold.hidden = item.children.length === 0 || Boolean(state.results);
+  fold.hidden = item.children.length === 0 || Boolean(state.results) || boardShown();
   fold.querySelector("span")!.textContent = item.collapsed ? "Expand" : "Collapse";
+  for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action^="column-"]')) entry.hidden = !isCard(id);
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
   const height = menu.offsetHeight;
@@ -434,6 +435,8 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   complete: (c) => actions.complete(c),
   duplicate: (c) => actions.duplicate(c),
   move: (c) => actions.moveToPicker(c),
+  "column-right": (c) => moveSideways(c.id, 1, caretNow()),
+  "column-left": (c) => moveSideways(c.id, -1, caretNow()),
   attach: (c) => actions.attachFile(c),
   property: (c) => actions.setProperty(c),
   private: (c) => actions.makePrivate(c),

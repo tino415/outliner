@@ -58,3 +58,4 @@ file that says so.
 49. [A left swipe opens the item menu](0049-a-left-swipe-opens-the-item-menu.md) (supersedes 19 and part of 16)
 50. [A link to an item, its base, and the wait for sync](0050-links-to-items-and-the-link-base.md)
 51. [A board has a key map of its own](0051-a-board-has-a-key-map-of-its-own.md) (supersedes part of 31)
+52. [A board's cards and columns have the outline's bullet](0052-a-board-card-has-the-outlines-bullet.md) (supersedes part of 31)

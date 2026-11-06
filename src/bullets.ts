@@ -8,10 +8,16 @@ interface DragHost {
   openMenu: (id: ItemId, anchor: HTMLElement, byTouch: boolean) => void;
 }
 
-interface Drop {
+export interface Drop {
   parent: ItemId;
   index: number;
-  indicator: { left: number; top: number; width: number };
+  indicator: { left: number; top: number; width: number } | { left: number; top: number; height: number };
+}
+
+/** Where a dragged item can land in one view, and how that view scrolls toward the pointer near its edges. */
+export interface DropPlaces {
+  dropAt: (x: number, y: number, dragged: ItemId, doc: Doc) => Drop | null;
+  scrollToward: (x: number, y: number) => void;
 }
 
 const DRAG_THRESHOLD = 5;
@@ -23,15 +29,15 @@ const LONG_PRESS_MS = 450;
  * a press that moves drags the item, and a long touch or a right click opens
  * the item's menu.
  */
-export function enableBulletHandles(tree: HTMLElement, host: DragHost): void {
-  tree.addEventListener("pointerdown", (event) => {
+export function enableBulletHandles(outline: HTMLElement, host: DragHost, places: DropPlaces = treeDrops(outline)): void {
+  outline.addEventListener("pointerdown", (event) => {
     const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
     if (!bullet || event.button !== 0) return;
     event.preventDefault();
     const source = bullet.closest<HTMLElement>(".item")!;
-    trackPointer(event, bullet, source, tree, host);
+    trackPointer(event, bullet, source, places, host);
   });
-  tree.addEventListener("contextmenu", (event) => {
+  outline.addEventListener("contextmenu", (event) => {
     const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
     if (!bullet) return;
     event.preventDefault();
@@ -42,7 +48,7 @@ export function enableBulletHandles(tree: HTMLElement, host: DragHost): void {
   });
 }
 
-function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElement, tree: HTMLElement, host: DragHost) {
+function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElement, places: DropPlaces, host: DragHost) {
   const id = source.dataset.id!;
   let ghost: HTMLElement | null = null;
   let indicator: HTMLElement | null = null;
@@ -73,16 +79,10 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
       source.classList.add("drag-source");
     }
     ghost.style.transform = `translate(${event.clientX + 14}px, ${event.clientY - 14}px)`;
-    drop = dropAt(event.clientX, event.clientY, id, tree, host.doc());
+    drop = places.dropAt(event.clientX, event.clientY, id, host.doc());
     indicator!.hidden = !drop;
-    if (drop) {
-      Object.assign(indicator!.style, {
-        left: `${drop.indicator.left}px`,
-        top: `${drop.indicator.top}px`,
-        width: `${drop.indicator.width}px`,
-      });
-    }
-    autoScroll(event.clientY);
+    if (drop) placeIndicator(indicator!, drop.indicator);
+    places.scrollToward(event.clientX, event.clientY);
   };
 
   const finish = (event: PointerEvent) => {
@@ -109,6 +109,17 @@ function trackPointer(start: PointerEvent, bullet: HTMLElement, source: HTMLElem
   bullet.addEventListener("pointercancel", finish);
 }
 
+function placeIndicator(indicator: HTMLElement, at: Drop["indicator"]): void {
+  const upright = "height" in at;
+  indicator.classList.toggle("upright", upright);
+  Object.assign(indicator.style, {
+    left: `${at.left}px`,
+    top: `${at.top}px`,
+    width: upright ? "" : `${at.width}px`,
+    height: upright ? `${at.height}px` : "",
+  });
+}
+
 function createGhost(source: HTMLElement): HTMLElement {
   const ghost = document.createElement("div");
   ghost.className = "drag-ghost";
@@ -116,7 +127,11 @@ function createGhost(source: HTMLElement): HTMLElement {
   return ghost;
 }
 
-function dropAt(x: number, y: number, dragged: ItemId, tree: HTMLElement, doc: Doc): Drop | null {
+function treeDrops(tree: HTMLElement): DropPlaces {
+  return { dropAt: (x, y, dragged, doc) => dropInTree(x, y, dragged, tree, doc), scrollToward: (_x, y) => scrollPageToward(y) };
+}
+
+function dropInTree(x: number, y: number, dragged: ItemId, tree: HTMLElement, doc: Doc): Drop | null {
   const row = rowNear(x, y, tree);
   if (!row) return null;
   const target = row.closest<HTMLElement>(".item")!.dataset.id!;
@@ -152,7 +167,7 @@ function rowNear(x: number, y: number, tree: HTMLElement): HTMLElement | null {
   }) ?? null;
 }
 
-function autoScroll(y: number): void {
+export function scrollPageToward(y: number): void {
   const edge = 56;
   if (y < edge) window.scrollBy(0, -12);
   else if (y > window.innerHeight - edge) window.scrollBy(0, 12);
