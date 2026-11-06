@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { caret, clickEnd, editor, expectOutline, freshOutline, row } from "./helpers";
+import { caret, clickEnd, editor, expectOutline, freshOutline, reloadOnceStored, row } from "./helpers";
 
 test.describe("keyboard editing", { tag: "@keys" }, () => {
   test("Enter creates and splits items, Tab and Shift-Tab change depth", async ({ page }) => {
@@ -201,8 +201,7 @@ test.describe("keyboard editing", { tag: "@keys" }, () => {
     await page.keyboard.type(" please");
     await page.keyboard.press("Enter");
     await page.keyboard.type("new");
-    await page.waitForTimeout(400);
-    await page.reload();
+    await reloadOnceStored(page, "new");
     await expectOutline(page, "persist me please\nnew");
   });
 });

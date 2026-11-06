@@ -108,6 +108,16 @@ export async function storedValue<T = any>(page: Page, key: StoredKey): Promise<
   ) as Promise<T | null>;
 }
 
+/** Reloads once the outline in IndexedDB has an item reading `text`: a save still under way when the page unloads may be dropped (doc/adr/0048). */
+export async function reloadOnceStored(page: Page, text: string): Promise<void> {
+  await expect.poll(async () => storedTexts(await storedValue(page, "doc"))).toContain(text);
+  await page.reload();
+}
+
+function storedTexts(doc: { items: Record<string, { text: string }> } | null): string[] {
+  return Object.values(doc?.items ?? {}).map((item) => item.text);
+}
+
 /** Writes `value` the way another tab's save does, and tells the tabs of this browser. */
 export async function storeValue(page: Page, key: StoredKey, value: unknown, { announce = true } = {}): Promise<void> {
   await page.evaluate(
