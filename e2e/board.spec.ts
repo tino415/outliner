@@ -1,5 +1,5 @@
 import { Page, expect, test } from "@playwright/test";
-import { freshOutline } from "./helpers";
+import { freshOutline, reloadOnceStored } from "./helpers";
 
 /** The board as text: one column per line, "Column: card, card". */
 async function boardText(page: Page): Promise<string> {
@@ -40,7 +40,7 @@ test("a page shown as a board has its children as columns and theirs as cards", 
   await page.keyboard.press("Enter");
   await page.keyboard.type("review");
   await expectBoard(page, "To do: write, review, test\nDoing: \nDone: ");
-  await page.reload();
+  await reloadOnceStored(page, "review");
   await expectBoard(page, "To do: write, review, test\nDoing: \nDone: ");
 });
 
@@ -117,7 +117,7 @@ test("the line between two columns adds an empty column there and puts the caret
   await expectBoard(page, "To do: write, test\n: \nDoing: \nDone: ");
   await page.keyboard.type("Blocked");
   await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
-  await page.reload();
+  await reloadOnceStored(page, "Blocked");
   await expectBoard(page, "To do: write, test\nBlocked: \nDoing: \nDone: ");
 });
 
@@ -129,6 +129,6 @@ test("the line before the first column adds an empty column in front", { tag: ["
   await expectBoard(page, ": \nTo do: write, test\nDoing: \nDone: ");
   await page.keyboard.type("Backlog");
   await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
-  await page.reload();
+  await reloadOnceStored(page, "Backlog");
   await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
 });
