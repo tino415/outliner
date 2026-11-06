@@ -94,6 +94,27 @@ test("Enter and Backspace from a virtual keyboard split and join items", { tag: 
   await expectOutline(page, "hello world");
 });
 
+test("tapping a board's bullet opens the board, not the column that appears under the finger", { tag: "@touch" }, async ({ page }) => {
+  await freshOutline(page, "first\nProject\n  To do\n  Doing");
+  await row(page, "Project").locator(".bullet").tap();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
+  await expect(page.locator(".board-column")).toHaveCount(2);
+  await page.goto("./#/");
+
+  const bullet = (await row(page, "Project").locator(".bullet").boundingBox())!;
+  const finger = { x: bullet.x + bullet.width / 2, y: bullet.y + bullet.height / 2 };
+  await page.touchscreen.tap(finger.x, finger.y);
+  await page.waitForTimeout(300);
+  await expect(page.locator("#title")).toHaveText("Project");
+
+  const columnLink = (await page.locator(".board-column-head .board-bullet").first().boundingBox())!;
+  expect(finger.x).toBeGreaterThanOrEqual(columnLink.x);
+  expect(finger.x).toBeLessThanOrEqual(columnLink.x + columnLink.width);
+  expect(finger.y).toBeGreaterThanOrEqual(columnLink.y);
+  expect(finger.y).toBeLessThanOrEqual(columnLink.y + columnLink.height);
+});
+
 test("a long press on a bullet opens the item menu instead of zooming", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "projects\n  garden\nother");
   const bullet = row(page, "projects").locator(".bullet");

@@ -2,6 +2,7 @@ import { ItemId, toggleCompleted, isShown } from "./model";
 import { commitAndRender, doc, filter, state } from "./app";
 import { openItemMenu, toastWithUndo } from "./chrome";
 import { flashRow } from "./render";
+import { swallowNextClick } from "./clicks";
 
 /*
  * Swipes on rows for touch screens (doc/adr/0016, 0048): right completes, left opens the item menu.
@@ -106,16 +107,4 @@ function perform(action: SwipeAction, id: ItemId, row: HTMLElement): void {
   commitAndRender(next, null);
   if (isShown(next, id, filter())) flashRow(id);
   else toastWithUndo("Completed and hidden");
-}
-
-/** A swipe ends with the finger lifting, which the browser would also report as a tap on the row. */
-function swallowNextClick(): void {
-  const swallow = (event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-  const stopSwallowing = () => window.removeEventListener("click", swallow, { capture: true });
-  window.addEventListener("click", swallow, { capture: true, once: true });
-  window.addEventListener("pointerdown", stopSwallowing, { capture: true, once: true });
-  setTimeout(stopSwallowing, 400);
 }
