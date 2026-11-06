@@ -1204,19 +1204,20 @@ code {
 }
 
 .board-column-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 2px 4px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  column-gap: 6px;
+  padding: 2px 4px 2px 0;
   font-weight: 650;
 }
 
-.board-column-head .text {
-  flex: 1;
-  min-width: 0;
+.board-column-head .props {
+  grid-column: 2 / -1;
+  font-size: 0.86em;
+  font-weight: 500;
 }
 
 .board-count {
+  align-self: center;
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
@@ -1237,7 +1238,7 @@ code {
   align-items: start;
   column-gap: 6px;
   position: relative;
-  padding: 7px 30px 7px 2px;
+  padding: 7px 4px 7px 2px;
   border-radius: 8px;
   background: var(--surface);
 }
@@ -1254,42 +1255,22 @@ code {
   text-decoration: none;
 }
 
-.board-handle {
-  padding: 0 2px;
-  color: var(--faint);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.board-bullet {
-  display: grid;
-  place-items: center;
+.board .bullet {
   width: 22px;
-  height: 22px;
-  flex: none;
-  align-self: center;
+  height: calc(var(--line) * 1em);
 }
 
-.board-card .board-bullet {
-  position: absolute;
-  top: 8px;
-  right: 6px;
+.board-card .prop-add {
+  top: 7px;
+  right: 4px;
 }
 
-.board-bullet:hover .dot {
-  transform: scale(1.35);
-  box-shadow: 0 0 0 4px var(--halo);
+.board-column-head .prop-add {
+  position: static;
 }
 
-.board-card.dragging {
-  opacity: 0.4;
-}
-
-.board-drop {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent);
+.board-column-head .text {
+  padding-right: 0;
 }
 
 .board-new-card,
@@ -2013,6 +1994,16 @@ body.dragging {
   border-radius: 1px;
   background: var(--accent);
   pointer-events: none;
+}
+
+.drop-indicator.upright {
+  width: 2px;
+  margin: 0 0 0 -1px;
+}
+
+.drop-indicator.upright::before {
+  left: -3px;
+  top: -6px;
 }
 
 .drop-indicator::before {

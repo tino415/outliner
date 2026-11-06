@@ -181,16 +181,18 @@ export function bindEditorEvents(): void {
     if (toggle) toggleFold(toggle.closest<HTMLElement>(".item")!.dataset.id!);
   });
 
-  ui.tree.addEventListener("dragover", (event) => {
-    if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
-  });
-  ui.tree.addEventListener("drop", (event) => {
-    const files = [...(event.dataTransfer?.files ?? [])];
-    const item = (event.target as HTMLElement).closest<HTMLElement>(".item");
-    if (files.length === 0 || !item) return;
-    event.preventDefault();
-    void attachFilesTo(item.dataset.id!, files);
-  });
+  for (const outline of [ui.tree, ui.board]) {
+    outline.addEventListener("dragover", (event) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    });
+    outline.addEventListener("drop", (event) => {
+      const files = [...(event.dataTransfer?.files ?? [])];
+      const item = (event.target as HTMLElement).closest<HTMLElement>(".item");
+      if (files.length === 0 || !item) return;
+      event.preventDefault();
+      void attachFilesTo(item.dataset.id!, files);
+    });
+  }
 }
 
 /** Files go into the item's note as links, one line each (doc/adr/0028). */

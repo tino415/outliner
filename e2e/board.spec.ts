@@ -61,9 +61,9 @@ test("Alt-Shift-arrows move a card to the next column and back", { tag: "@phone"
   await expectBoard(page, "To do: write\nDoing: tested\nDone: ");
 });
 
-test("a card dragged by its handle lands where it is dropped", { tag: "@phone" }, async ({ page }) => {
+test("a card dragged by its bullet lands where it is dropped", { tag: "@phone" }, async ({ page }) => {
   await openProject(page);
-  const handle = card(page, "write").locator(".board-handle");
+  const handle = card(page, "write").locator(":scope > .row > .bullet");
   const target = page.locator(".board-column").nth(1).locator(".board-cards");
   const from = (await handle.boundingBox())!;
   const to = (await target.boundingBox())!;
@@ -77,7 +77,7 @@ test("a card dragged by its handle lands where it is dropped", { tag: "@phone" }
 test("a card dragged with a finger moves to another column", { tag: "@phone" }, async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== "chromium" || !isMobile, "real touch input is sent through the Chromium DevTools protocol, on the phone");
   await openProject(page);
-  const from = (await card(page, "test").locator(".board-handle").boundingBox())!;
+  const from = (await card(page, "test").locator(":scope > .row > .bullet").boundingBox())!;
   const to = (await page.locator(".board-column").nth(1).locator(".board-cards").boundingBox())!;
   const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
   const end = { x: to.x + 30, y: to.y + 4 };
@@ -233,7 +233,7 @@ test("Backspace and Delete join two cards of a column but never reach across col
 
 test("Ctrl-[ on a card's page goes back to the board, past the column", { tag: ["@phone", "@keys"] }, async ({ page }) => {
   await openBoard(page, twoColumns);
-  await card(page, "draft").locator(".board-bullet").click();
+  await card(page, "draft").locator(":scope > .row > .bullet").click();
   await expect(page.locator("#title")).toHaveText("draft");
   await page.locator("#title").click();
   await page.keyboard.press("Control+[");
@@ -241,7 +241,7 @@ test("Ctrl-[ on a card's page goes back to the board, past the column", { tag: [
   await expect(page.locator("#board")).toBeVisible();
   await expect.poll(() => caretText(page)).toBe("draft");
 
-  await card(page, "draft").locator(".board-bullet").click();
+  await card(page, "draft").locator(":scope > .row > .bullet").click();
   await expect(page.locator("#title")).toHaveText("draft");
   await expect(page.locator("#crumbs")).toContainText("Doing");
   await page.keyboard.press("Control+[");
@@ -296,4 +296,114 @@ test("on a board the selection highlight and the focused row clear as in the out
   await expect(page.locator("#board .item.selected")).not.toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.locator("#board .item.selected")).toHaveCount(0);
+});
+
+function bulletOf(item: ReturnType<typeof card>) {
+  return item.locator(":scope > .row > .bullet");
+}
+
+async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 10 });
+  await page.mouse.up();
+}
+
+function centre(box: { x: number; y: number; width: number; height: number }) {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test("a right click on a card's bullet opens the item menu, which moves the card to the next column", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await bulletOf(card(page, "test")).click({ button: "right" });
+  const menu = page.locator("#item-menu");
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Collapse" })).toBeHidden();
+  await menu.getByRole("button", { name: "To the column on the right" }).click();
+  await expectBoard(page, "To do: write\nDoing: draft, test, review\nDone: ");
+  await bulletOf(card(page, "test")).click({ button: "right" });
+  await menu.getByRole("button", { name: "To the column on the left" }).click();
+  await expectBoard(page, "To do: write, test\nDoing: draft, review\nDone: ");
+
+  await page.locator(".board-column").nth(1).locator(".board-column-head .bullet").click({ button: "right" });
+  await expect(page.locator("#item-menu-title")).toHaveText("Doing");
+  await expect(menu.getByRole("button", { name: "To the column on the right" })).toBeHidden();
+});
+
+test("a long press on a card's bullet opens the item menu and does not open the card", { tag: "@touch" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  const bullet = bulletOf(card(page, "draft"));
+  const box = (await bullet.boundingBox())!;
+  const at = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, pointerType: "touch", pointerId: 7, isPrimary: true, button: 0 };
+  await bullet.dispatchEvent("pointerdown", at);
+  await page.waitForTimeout(600);
+  await bullet.dispatchEvent("pointerup", at);
+  await expect(page.locator("#item-menu")).toBeVisible();
+  await expect(page.locator("#title")).toHaveText("Project");
+  await page.getByRole("button", { name: "To the column on the right" }).tap();
+  await expectBoard(page, "To do: write, test\nDoing: review\nDone: draft");
+});
+
+test("a column dragged by its bullet moves among the columns, and a card dropped outside every column goes back", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  const doing = page.locator(".board-column").nth(1);
+  const toDo = (await page.locator(".board-column").first().boundingBox())!;
+  await drag(page, centre((await doing.locator(".board-column-head .bullet").boundingBox())!), { x: toDo.x + 20, y: toDo.y + 20 });
+  await expectBoard(page, "Doing: draft, review\nTo do: write, test\nDone: ");
+
+  const title = (await page.locator("#title").boundingBox())!;
+  await drag(page, centre((await bulletOf(card(page, "test")).boundingBox())!), centre(title));
+  await expect(page.locator(".drop-indicator")).toHaveCount(0);
+  await expectBoard(page, "Doing: draft, review\nTo do: write, test\nDone: ");
+});
+
+test("a card is dropped between two cards, and its bullet still opens it", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  const review = (await card(page, "review").boundingBox())!;
+  await drag(page, centre((await bulletOf(card(page, "write")).boundingBox())!), { x: review.x + 40, y: review.y + 4 });
+  await expectBoard(page, "To do: test\nDoing: draft, write, review\nDone: ");
+  await bulletOf(card(page, "write")).click();
+  await expect(page.locator("#title")).toHaveText("write");
+});
+
+test("+ property on a card and on a column title sets a property shown as a chip there", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "draft").locator(".text").click();
+  await card(page, "draft").locator(".prop-add").click();
+  await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Property…");
+  await page.keyboard.type("effort");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("2h");
+  await page.keyboard.press("Enter");
+  await expect(card(page, "draft").locator(".prop-chip")).toHaveText("effort 2h");
+
+  const head = page.locator(".board-column-head").nth(1);
+  await head.locator(".text").click();
+  await head.locator(".prop-add").click();
+  await page.keyboard.type("limit");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("3");
+  await page.keyboard.press("Enter");
+  await expect(head.locator(".prop-chip")).toHaveText("limit 3");
+});
+
+test("a file dropped on a card is attached to that card", { tag: "@phone" }, async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "only Chromium carries files on a synthetic drop event");
+  await openBoard(page, twoColumns);
+  await card(page, "review").locator(".text").evaluate((text) => {
+    const data = new DataTransfer();
+    data.items.add(new File(["notes"], "notes.txt", { type: "text/plain" }));
+    text.dispatchEvent(new DragEvent("dragover", { dataTransfer: data, bubbles: true, cancelable: true }));
+    text.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(card(page, "review").locator(".note")).toContainText("notes.txt");
+});
+
+test("+ Add a card puts the card first in a column with :new: top", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, "Project\n  Inbox | :new: top\n    older\n  Done\n    shipped");
+  await page.locator(".board-column").first().getByRole("button", { name: "+ Add a card" }).click();
+  await page.keyboard.type("newest");
+  await page.locator(".board-column").nth(1).getByRole("button", { name: "+ Add a card" }).click();
+  await page.keyboard.type("last");
+  await expectBoard(page, "Inbox: newest, older\nDone: shipped, last");
 });
