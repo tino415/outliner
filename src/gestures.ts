@@ -1,25 +1,21 @@
-import { ItemId, setCollapsed, toggleCompleted, isShown } from "./model";
+import { ItemId, toggleCompleted, isShown } from "./model";
 import { commitAndRender, doc, filter, state } from "./app";
 import { openItemMenu, toastWithUndo } from "./chrome";
 import { flashRow } from "./render";
 
 /*
- * Swipes on rows for touch screens (doc/adr/0016, 0019): right completes; left
- * folds an item with children, and further left opens the item menu.
+ * Swipes on rows for touch screens (doc/adr/0016, 0048): right completes, left opens the item menu.
  */
 
 const SLOP = 10;
 const THRESHOLD = 72;
-const FAR_THRESHOLD = 160;
 const SCREEN_EDGE = 24;
 
-type SwipeAction = "complete" | "reopen" | "collapse" | "expand" | "menu";
+type SwipeAction = "complete" | "reopen" | "menu";
 
 const LABELS: Record<SwipeAction, string> = {
   complete: "Complete",
   reopen: "Reopen",
-  collapse: "Collapse",
-  expand: "Expand",
   menu: "More…",
 };
 
@@ -51,7 +47,7 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
       band = showBand(item, row);
     }
     const previous = action;
-    action = dx > 0 ? (doc().items[id].completed ? "reopen" : "complete") : leftSwipeAction(id, -dx);
+    action = dx > 0 ? (doc().items[id].completed ? "reopen" : "complete") : "menu";
     const nowArmed = Math.abs(dx) >= THRESHOLD;
     if (nowArmed && (!armed || action !== previous)) navigator.vibrate?.(8);
     armed = nowArmed;
@@ -92,16 +88,6 @@ function followSwipe(start: PointerEvent, row: HTMLElement): void {
   window.addEventListener("pointercancel", end);
 }
 
-function leftSwipeAction(id: ItemId, distance: number): SwipeAction {
-  const item = doc().items[id];
-  if (item.children.length === 0 || distance >= farThreshold()) return "menu";
-  return item.collapsed ? "expand" : "collapse";
-}
-
-function farThreshold(): number {
-  return Math.min(FAR_THRESHOLD, window.innerWidth * 0.45);
-}
-
 function showBand(item: HTMLElement, row: HTMLElement): HTMLElement {
   const band = document.createElement("div");
   band.className = "swipe-band";
@@ -114,10 +100,6 @@ function showBand(item: HTMLElement, row: HTMLElement): HTMLElement {
 function perform(action: SwipeAction, id: ItemId, row: HTMLElement): void {
   if (action === "menu") {
     openItemMenu(id, row.querySelector<HTMLElement>(".bullet")!, true);
-    return;
-  }
-  if (action === "collapse" || action === "expand") {
-    commitAndRender(setCollapsed(doc(), id, action === "collapse"), null);
     return;
   }
   const next = toggleCompleted(doc(), id);

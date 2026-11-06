@@ -25,7 +25,7 @@ file that says so.
 16. [Touch: a large fold target and swipes on rows](0016-touch-gestures-on-rows.md)
 17. [Properties in notes, and a column view with rollups](0017-properties-in-notes-and-a-column-view-with-rollups.md) (storage superseded by 32)
 18. [Tabs are replicas that share stored state](0018-tabs-are-replicas-that-share-stored-state.md)
-19. [A longer left swipe opens the item menu](0019-a-longer-left-swipe-opens-the-item-menu.md) (supersedes part of 16)
+19. [A longer left swipe opens the item menu](0019-a-longer-left-swipe-opens-the-item-menu.md) (supersedes part of 16; superseded by 48)
 20. [Properties written `:key: value`, as in org mode](0020-properties-written-as-org-drawer-lines.md) (supersedes part of 17) (superseded by 32)
 21. [Code blocks are ``` fenced lines in notes](0021-code-blocks-are-fenced-lines-in-notes.md)
 22. [Computed columns: a formula in the column spec](0022-computed-columns-with-formulas.md)
@@ -55,3 +55,4 @@ file that says so.
 46. [Desktop WebKit runs in the check, and the app container has no process limit](0046-desktop-webkit-runs-in-the-check.md) (supersedes part of 41)
 47. [The date is ⌘J I D, and key sequences take up to three keys](0047-the-date-is-mod-j-i-d-and-sequences-take-three-keys.md) (supersedes part of 32, 35 and 36)
 48. [The outline and the sync state live in IndexedDB](0048-the-outline-and-sync-state-live-in-indexeddb.md) (supersedes part of 4)
+49. [A left swipe opens the item menu](0049-a-left-swipe-opens-the-item-menu.md) (supersedes 19 and part of 16)

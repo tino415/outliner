@@ -149,20 +149,16 @@ test.describe("swipes on rows", { tag: "@touch" }, () => {
     await expectOutline(page, "task\nother");
   });
 
-  test("swiping left folds and unfolds an item with children", async ({ page }) => {
-    await freshOutline(page, "parent\n  child\nleaf");
-    await swipe(page, "parent", -120);
-    await expectOutline(page, "parent\nleaf");
-    await swipe(page, "parent", -120);
-    await expectOutline(page, "parent\n  child\nleaf");
-  });
-
-  test("swiping further left on an item with children opens its menu instead of folding", async ({ page }) => {
+  test("swiping left opens the item menu on an item with children, short or long", async ({ page }) => {
     await freshOutline(page, "parent\n  child");
-    await swipe(page, "parent", -200);
-    await expect(page.locator("#item-menu")).toBeVisible();
-    await expect(page.locator("#item-menu-title")).toHaveText("parent");
-    await expectOutline(page, "parent\n  child");
+    for (const distance of [-120, -200]) {
+      await swipe(page, "parent", distance);
+      await expect(page.locator("#item-menu")).toBeVisible();
+      await expect(page.locator("#item-menu-title")).toHaveText("parent");
+      await expectOutline(page, "parent\n  child");
+      await page.keyboard.press("Escape");
+      await expect(page.locator("#item-menu")).toBeHidden();
+    }
   });
 
   test("swiping left on an item without children opens its menu", async ({ page }) => {
