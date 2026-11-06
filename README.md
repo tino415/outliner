@@ -108,14 +108,17 @@ Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children
 are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
 property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item.
-Cards and column titles have the outline's bullet (doc/adr/0052): click it
-to open the item, drag it (mouse or finger) to move a card between cards
-or a column between columns, and right-click or long-press it for the item
-menu, which can also send a card to the next column. Tab / Shift-Tab (or
-Alt-Shift-→ / ←, or the toolbar's indent buttons) move a card to the next
-or previous column at the same height; on a column title they move the
-column. Enter always makes a card, Backspace and Delete join cards of one
-column only, and Ctrl-[ on a card's page goes back to the board. Keys that
+A card shows its children one level deep and folds like a row (the arrow,
+Ctrl-., the item menu or Collapse all), and a column shows its note under
+its title (doc/adr/0053). Cards and column titles have the outline's
+bullet (doc/adr/0052): click it to open the item, drag it (mouse or
+finger) to move a card between cards or a column between columns, and
+right-click or long-press it for the item menu, which can also send a card
+to the next column. Tab / Shift-Tab (or Alt-Shift-→ / ←, or the toolbar's
+indent buttons) move a card to the next or previous column at the same
+height; on a column title they move the column. Enter on a card makes a
+card and in a card's children a child, Backspace and Delete join cards of
+one column only, and Ctrl-[ on a card's page goes back to the board. Keys that
 mean nothing on a board are left out of the palette, the help and the ⋯
 menu there (doc/adr/0051). "+ property" and dropping a file work on cards
 and column titles as on rows. The buttons add cards and columns

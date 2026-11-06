@@ -130,11 +130,11 @@ describe("the view shown", () => {
     expect(bindingFor(shiftTab, "editor", "other")?.label).toBe("To the column on the left");
   });
 
-  it("leaves the fold keys to the outline and the column keys to the board", () => {
+  it("folds in both views and leaves the column keys to the board", () => {
     expect(bindingFor(ctrl("."), "editor", "other")?.label).toBe("Fold / unfold");
     expect(bindingFor(press({ key: "ArrowRight", alt: true, shift: true }), "editor", "other")).toBeNull();
     view.shown = "board";
-    expect(bindingFor(ctrl("."), "editor", "other")).toBeNull();
+    expect(bindingFor(ctrl("."), "editor", "other")?.label).toBe("Fold / unfold");
     expect(bindingFor(press({ key: "ArrowRight", alt: true, shift: true }), "editor", "other")?.label).toBe("To the column on the right");
   });
 
@@ -146,7 +146,7 @@ describe("the view shown", () => {
     view.shown = "board";
     expect(labels()).toEqual(expect.arrayContaining(["To the column on the right", "To the column on the left"]));
     expect(labels()).not.toEqual(expect.arrayContaining(["Indent"]));
-    expect(labels()).not.toContain("Fold / unfold");
+    expect(labels()).toContain("Fold / unfold");
     expect(labels()).not.toContain("Show / hide columns");
     expect(describeKeys()).toContain("To the column on the right");
     expect(describeKeys()).not.toContain("Indent");
