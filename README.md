@@ -41,6 +41,11 @@ D duplicate, B board, G agenda, C columns, N capture, Y copy a link, and J again
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
+Ctrl-. folds the item; Ctrl-Shift-. collapses everything inside it, or
+expands it all once nothing inside is open, as the item menu's Collapse
+everything inside and Expand everything inside do (doc/adr/0054). On a
+board it works on a card, and on a column's cards.
+
 Shortcuts can be changed in the outline (doc/adr/0040), so the change
 reaches every device. Give any item the property `shortcuts: on`; each
 other property on it is a command name, as ? shows beside each command,

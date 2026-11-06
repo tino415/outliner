@@ -1,4 +1,4 @@
-import { ItemId, ROOT, insertChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
+import { ItemId, ROOT, foldableInside, insertChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
@@ -14,7 +14,7 @@ import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigat
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
-import { bindBoard, boardShown, foldShows, isCard, moveSideways, pageAbove, shownView, toggleBoard } from "./board";
+import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
@@ -418,6 +418,8 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   const fold = menu.querySelector<HTMLElement>('[data-item-action="fold"]')!;
   fold.hidden = item.children.length === 0 || Boolean(state.results) || !foldShows(id);
   fold.querySelector("span")!.textContent = item.collapsed ? "Expand" : "Collapse";
+  const holdsFolds = !state.results && (foldShows(id) || isColumn(id)) && foldableInside(doc(), id).length > 0;
+  for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action$="-inside"]')) entry.hidden = !holdsFolds;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action^="column-"]')) entry.hidden = !isCard(id);
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
@@ -431,6 +433,8 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
 const itemActions: Record<string, (c: EditorContext) => void> = {
   zoom: (c) => zoomTo(c.id),
   fold: (c) => commitAndRender(setCollapsed(doc(), c.id, !doc().items[c.id].collapsed), null),
+  "collapse-inside": (c) => actions.collapseInside(c),
+  "expand-inside": (c) => actions.expandInside(c),
   note: (c) => actions.toggleNote(c),
   complete: (c) => actions.complete(c),
   duplicate: (c) => actions.duplicate(c),

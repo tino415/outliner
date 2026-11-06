@@ -112,6 +112,9 @@ const defaultBindings: Binding[] = [
   onBoard(editor("move-left", ["Alt+Shift+ArrowLeft"], "To the column on the left", (c) => actions.toColumn(c, -1))),
   onBoard(editor("move-right", ["Alt+Shift+ArrowRight"], "To the column on the right", (c) => actions.toColumn(c, 1))),
   editor("fold", ["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
+  editor("fold-inside", ["Ctrl+Shift+."], "Collapse / expand everything inside", (c) => actions.toggleInside(c)),
+  editor("collapse-inside", [], "Collapse everything inside", (c) => actions.collapseInside(c)),
+  editor("expand-inside", [], "Expand everything inside", (c) => actions.expandInside(c)),
   editor("collapse", ["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
   editor("expand", ["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
   editor("up-to-parent", ["Ctrl+u"], "Up to the parent item", (c) => actions.upToParent(c)),
@@ -246,7 +249,7 @@ export function keyString(event: KeyboardEvent): string {
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push("Mod");
   if (event.altKey) parts.push("Alt");
-  if (event.shiftKey && !isSymbol) parts.push("Shift");
+  if (event.shiftKey && (!isSymbol || event.code === "Period")) parts.push("Shift");
   parts.push(key);
   return parts.join("+");
 }
@@ -255,7 +258,8 @@ export function keyString(event: KeyboardEvent): string {
  * Letters follow the layout (Ctrl+Z is Z on QWERTZ too). Only when the key
  * does not produce a Latin letter, as on Cyrillic layouts or with Option on
  * a Mac, does the physical key position decide. Brackets fall back to their
- * position because many layouts put them behind AltGr.
+ * position because many layouts put them behind AltGr. The period key stays
+ * "." with Shift held, so Ctrl-Shift-. reads the same on every layout.
  */
 function baseKey(event: KeyboardEvent): string {
   const typed = event.key.length === 1 ? event.key.toLowerCase() : event.key;
@@ -264,6 +268,7 @@ function baseKey(event: KeyboardEvent): string {
   if (["[", "]", "/", "?"].includes(typed)) return typed;
   if (event.code === "BracketLeft") return "[";
   if (event.code === "BracketRight") return "]";
+  if (event.code === "Period") return ".";
   return event.key;
 }
 

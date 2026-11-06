@@ -364,6 +364,10 @@ export function setCollapsedEverywhere(doc: Doc, top: ItemId, collapsed: boolean
   });
 }
 
+export function foldableInside(doc: Doc, top: ItemId): ItemId[] {
+  return doc.items[top].children.flatMap((child) => [...(doc.items[child].children.length > 0 ? [child] : []), ...foldableInside(doc, child)]);
+}
+
 export function toggleCompleted(doc: Doc, id: ItemId): Doc {
   return edit(doc, (d) => {
     const item = d.write(id);

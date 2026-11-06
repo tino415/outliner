@@ -69,6 +69,39 @@ test("Ctrl-. folds and unfolds the item", { tag: "@phone" }, async ({ page }) =>
   expect((await caret(page)).text).toBe("parent");
 });
 
+test("Ctrl-Shift-. collapses everything inside the item, and expands it all once nothing inside is open", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "parent\n  child\n    grandchild\n  leaf\nother");
+  await clickEnd(page, "parent");
+  await page.keyboard.press("Control+Shift+Period");
+  await expectOutline(page, "parent\nother");
+  await page.keyboard.press("Control+.");
+  await expectOutline(page, "parent\n  child\n  leaf\nother");
+  await page.keyboard.press("Control+Shift+Period");
+  await expectOutline(page, "parent\n  child\n    grandchild\n  leaf\nother");
+  await page.keyboard.press("Control+Shift+Period");
+  await expectOutline(page, "parent\nother");
+  expect((await caret(page)).text).toBe("parent");
+});
+
+test("the palette and the item menu collapse and expand everything inside, where there is more than one level", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "parent\n  child\n    grandchild\nother\n  only child");
+  await clickEnd(page, "parent");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">collapse everything");
+  await expect(page.locator("#palette li").first()).toContainText("Collapse / expand everything inside");
+  await page.locator("#palette li").filter({ hasText: /^Collapse everything inside/ }).click();
+  await expectOutline(page, "parent\nother\n  only child");
+
+  await row(page, "parent").locator(".bullet").click({ button: "right" });
+  await page.locator("#item-menu").getByRole("button", { name: "Expand everything inside" }).click();
+  await expectOutline(page, "parent\n  child\n    grandchild\nother\n  only child");
+
+  await row(page, "other").locator(".bullet").click({ button: "right" });
+  await expect(page.locator("#item-menu").getByRole("button", { name: "Collapse", exact: true })).toBeVisible();
+  await expect(page.locator("#item-menu").getByRole("button", { name: "Collapse everything inside" })).toBeHidden();
+  await expect(page.locator("#item-menu").getByRole("button", { name: "Expand everything inside" })).toBeHidden();
+});
+
 test("Ctrl-U goes up to the parent item, from a note to its own item, and from the top to the page title", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "parent\n  child | a note");
   await row(page, "child").locator(".note").click();
