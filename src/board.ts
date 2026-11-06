@@ -1,11 +1,13 @@
 import { caretNow } from "./editing";
-import { commitAndRender, doc, filter, state, ui } from "./app";
-import { ItemId, indexInParent, insertChild, isBoard, moveTo, setItemProperty, shownChildren } from "./model";
+import { Focus, commitAndRender, doc, filter, state, ui } from "./app";
+import { ItemId, ROOT, indexInParent, insertChild, isBoard, moveTo, setItemProperty, shownChildren } from "./model";
 import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
 import { propertyChipsHtml } from "./propertyChips";
 import { ownFormulaResults } from "./render";
 import { isMirror, mirrorTextHtml } from "./mirrors";
+import { agendaShown } from "./agenda";
+import { queryViewShown } from "./queryView";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -13,8 +15,31 @@ import { isMirror, mirrorTextHtml } from "./mirrors";
  * edited in place; moving one to another column moves it in the outline.
  */
 
+export type View = "tree" | "board";
+
+export function shownView(): View {
+  return boardShown() ? "board" : "tree";
+}
+
 export function boardShown(): boolean {
-  return !state.results && isBoard(doc().items[state.zoom]);
+  return !state.results && !agendaShown() && !queryViewShown() && isBoard(doc().items[state.zoom]);
+}
+
+export function isColumn(id: ItemId): boolean {
+  return boardShown() && doc().items[id].parent === state.zoom;
+}
+
+/** Joining two items on a board keeps to two cards of one column, so no card hides inside another column's title or card. */
+export function joinStaysInColumn(id: ItemId, other: ItemId): boolean {
+  const parent = doc().items[id].parent;
+  return !boardShown() || (parent === doc().items[other].parent && parent !== state.zoom);
+}
+
+/** Out of a card's page straight back to its board; the column's page stays a breadcrumb away. */
+export function pageAbove(page: ItemId): ItemId {
+  const parent = doc().items[page].parent ?? ROOT;
+  const grandparent = doc().items[parent].parent;
+  return grandparent && isBoard(doc().items[grandparent]) ? grandparent : parent;
 }
 
 export function toggleBoard(): void {
@@ -65,22 +90,21 @@ function textEditor(id: ItemId): string {
   return `<div class="text${text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${escape(id)}">${renderItemText(text)}</div>`;
 }
 
-/** Alt-Shift-← and → on a board: a card to the next column, a column one place over. */
-export function moveSideways(id: ItemId, direction: -1 | 1, offset: number): boolean {
-  if (!boardShown()) return false;
-  const item = doc().items[id];
+/** Tab and Shift-Tab on a board: a card to the next column at the same height, a column one place over. */
+export function moveSideways(id: ItemId, direction: -1 | 1, caret: Focus): void {
   const columns = shownChildren(doc(), state.zoom, filter());
-  if (item.parent === state.zoom) {
-    const index = columns.indexOf(id);
-    const neighbour = columns[index + direction];
-    if (!neighbour) return true;
-    commitAndRender(moveTo(doc(), id, state.zoom, indexInParent(doc(), neighbour) + (direction === 1 ? 1 : 0)), { id, offset });
-    return true;
+  if (isColumn(id)) {
+    const neighbour = columns[columns.indexOf(id) + direction];
+    if (neighbour) commitAndRender(moveTo(doc(), id, state.zoom, indexInParent(doc(), neighbour) + (direction === 1 ? 1 : 0)), caret);
+    return;
   }
-  const column = columns[columns.indexOf(item.parent!) + direction];
-  if (!column) return true;
-  commitAndRender(moveTo(doc(), id, column, doc().items[column].children.length), { id, offset });
-  return true;
+  const from = doc().items[id].parent!;
+  const column = columns[columns.indexOf(from) + direction];
+  if (!column) return;
+  const height = shownChildren(doc(), from, filter()).indexOf(id);
+  const cardThere = shownChildren(doc(), column, filter())[height];
+  const index = cardThere ? indexInParent(doc(), cardThere) : doc().items[column].children.length;
+  commitAndRender(moveTo(doc(), id, column, index), caret);
 }
 
 // ---- adding and dragging ----------------------------------------------------------------

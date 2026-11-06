@@ -11,6 +11,7 @@ import {
   indexInParent,
   isBlank,
   isDescendant,
+  isExpanded,
   isShown,
   isPrivateItem,
   privateRootAbove,
@@ -49,6 +50,7 @@ import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
+import { boardShown, isColumn, joinStaysInColumn, moveSideways, pageAbove } from "./board";
 
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
@@ -298,7 +300,7 @@ function placeCaretBeforeLinesAppear(event: MouseEvent, note: HTMLElement): void
 }
 
 function clearFocusedRow(): void {
-  ui.tree.querySelector(".row.focused")?.classList.remove("focused");
+  for (const outline of [ui.tree, ui.board]) outline.querySelector(".row.focused")?.classList.remove("focused");
 }
 
 export interface EditorContext {
@@ -384,8 +386,8 @@ export const actions = {
     }
     if (isMirrorText(c.editor)) return openMirrored(c.id);
     if (c.inAgenda || (c.isTitle && queryViewShown())) return actions.blur(c);
-    if (c.isTitle) {
-      const created = insertChild(doc(), state.zoom, 0);
+    if (c.isTitle || isColumn(c.id)) {
+      const created = insertChild(doc(), c.id, 0);
       commitAndRender(created.doc, startOf(created.id));
       return;
     }
@@ -395,13 +397,14 @@ export const actions = {
       current = setText(current, c.id, text.slice(0, c.start) + text.slice(c.end));
     }
     const item = current.items[c.id];
+    const onBoard = boardShown();
     const isLastEmptyNested =
-      isBlank(item) && item.parent !== state.zoom && shownChildren(current, item.parent!, filter()).at(-1) === c.id;
+      !onBoard && isBlank(item) && item.parent !== state.zoom && shownChildren(current, item.parent!, filter()).at(-1) === c.id;
     if (isLastEmptyNested) {
       commitAndRender(outdent(current, c.id, state.zoom), startOf(c.id));
       return;
     }
-    const result = split(current, c.id, c.start, filter());
+    const result = split(current, c.id, c.start, filter(), !onBoard && isExpanded(current, c.id, filter()));
     commitAndRender(result.doc, startOf(result.focus));
   },
 
@@ -432,7 +435,7 @@ export const actions = {
       if (target) commitAndRender(remove(doc(), c.id), { id: target.dataset.id!, offset: previous ? END : 0 });
       return;
     }
-    if (!previous || previous === ui.title) return;
+    if (!previous || previous === ui.title || !joinStaysInColumn(c.id, previous.dataset.id!)) return;
     if (refusedAsPrivate(c.id, previous.dataset.id!)) return;
     const merged = mergeInto(doc(), c.id, previous.dataset.id!);
     const dropped = propertiesLeftBy(c.id);
@@ -443,7 +446,7 @@ export const actions = {
   deleteForward(c: EditorContext): boolean | void {
     if (c.inNote || c.isTitle || c.inAgenda || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
-    if (!next) return;
+    if (!next || !joinStaysInColumn(next.dataset.id!, c.id)) return;
     if (refusedAsPrivate(next.dataset.id!, c.id)) return;
     const merged = mergeInto(doc(), next.dataset.id!, c.id);
     const dropped = propertiesLeftBy(next.dataset.id!);
@@ -519,6 +522,11 @@ export const actions = {
     else if (!c.isTitle && !c.inAgenda) commitAndRender(outdent(doc(), c.id, state.zoom), keepCaret(c));
   },
 
+  toColumn(c: EditorContext, direction: -1 | 1): void {
+    if (inCodeBlock(c)) return direction === 1 ? insertText("  ") : takeBackIndentation(c);
+    if (!c.isTitle) moveSideways(c.id, direction, keepCaret(c));
+  },
+
   codeBlock(c: EditorContext): void {
     if (!c.inNote) actions.toggleNote(c);
     const note = editorFor(c.id, "note");
@@ -585,7 +593,7 @@ export const actions = {
   zoomOut(c: EditorContext): void {
     if (state.zoom === ROOT) return;
     const former = state.zoom;
-    zoomTo(doc().items[former].parent ?? ROOT, { id: former, offset: c.isTitle ? c.start : 0 });
+    zoomTo(pageAbove(former), { id: former, offset: c.isTitle ? c.start : 0 });
   },
 
   bold(c: EditorContext): void {

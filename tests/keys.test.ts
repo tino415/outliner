@@ -1,13 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/editing", () => ({ actions: {} }));
 vi.mock("../src/selection", () => ({ selectionActions: {} }));
 vi.mock("../src/chrome", () => ({ globalActions: {} }));
-vi.mock("../src/board", () => ({ moveSideways: () => {}, toggleBoard: () => {} }));
+const view = vi.hoisted(() => ({ shown: "tree" }));
+
+vi.mock("../src/board", () => ({ shownView: () => view.shown, toggleBoard: () => {} }));
 vi.mock("../src/agenda", () => ({ openAgenda: () => {} }));
 vi.mock("../src/links", () => ({ copyLink: () => {}, copyLinkToPage: () => {} }));
 
-const { bindingFor, bindingForKeys, extendSequence, isPrefix, keyString, sequenceContinues } = await import("../src/keys");
+const { bindingFor, bindingForKeys, describeKeys, extendSequence, isPrefix, keyCommands, keyString, sequenceContinues } = await import("../src/keys");
 
 interface Press {
   key: string;
@@ -108,5 +110,53 @@ describe("keyboard layouts", () => {
   it("does not add Shift to a symbol that needs it", () => {
     expect(keyString(press({ key: "?", code: "Slash", shift: true }))).toBe("?");
     expect(bindingFor(press({ key: "?", code: "Slash", shift: true }), "global", "other")?.label).toBe("Show shortcuts");
+  });
+});
+
+describe("the view shown", () => {
+  const tab = press({ key: "Tab" });
+  const shiftTab = press({ key: "Tab", shift: true });
+  const editing = {} as Parameters<typeof keyCommands>[0];
+
+  afterEach(() => {
+    view.shown = "tree";
+  });
+
+  it("makes Tab indent in the outline and move a card to the next column on a board", () => {
+    expect(bindingFor(tab, "editor", "other")?.label).toBe("Indent");
+    expect(bindingFor(shiftTab, "editor", "other")?.label).toBe("Outdent");
+    view.shown = "board";
+    expect(bindingFor(tab, "editor", "other")?.label).toBe("To the column on the right");
+    expect(bindingFor(shiftTab, "editor", "other")?.label).toBe("To the column on the left");
+  });
+
+  it("leaves the fold keys to the outline and the column keys to the board", () => {
+    expect(bindingFor(ctrl("."), "editor", "other")?.label).toBe("Fold / unfold");
+    expect(bindingFor(press({ key: "ArrowRight", alt: true, shift: true }), "editor", "other")).toBeNull();
+    view.shown = "board";
+    expect(bindingFor(ctrl("."), "editor", "other")).toBeNull();
+    expect(bindingFor(press({ key: "ArrowRight", alt: true, shift: true }), "editor", "other")?.label).toBe("To the column on the right");
+  });
+
+  it("offers in the palette and the help only what applies there", () => {
+    const labels = () => keyCommands(editing).map((command) => command.label);
+    expect(labels()).toContain("Indent");
+    expect(labels()).toContain("Show / hide columns");
+    expect(labels()).not.toContain("To the column on the right");
+    view.shown = "board";
+    expect(labels()).toEqual(expect.arrayContaining(["To the column on the right", "To the column on the left"]));
+    expect(labels()).not.toEqual(expect.arrayContaining(["Indent"]));
+    expect(labels()).not.toContain("Fold / unfold");
+    expect(labels()).not.toContain("Show / hide columns");
+    expect(describeKeys()).toContain("To the column on the right");
+    expect(describeKeys()).not.toContain("Indent");
+  });
+
+  it("lists Tab and Alt-Shift-→ for the move on a board, with the command's name", () => {
+    view.shown = "board";
+    const row = describeKeys().split(`<div class="help-label">`).find((each) => each.startsWith("To the column on the right"))!;
+    expect(row).toContain("move-right");
+    expect(row).toContain("<kbd>Tab</kbd>");
+    expect(row).toContain("<kbd>→</kbd>");
   });
 });

@@ -57,3 +57,4 @@ file that says so.
 48. [The outline and the sync state live in IndexedDB](0048-the-outline-and-sync-state-live-in-indexeddb.md) (supersedes part of 4)
 49. [A left swipe opens the item menu](0049-a-left-swipe-opens-the-item-menu.md) (supersedes 19 and part of 16)
 50. [A link to an item, its base, and the wait for sync](0050-links-to-items-and-the-link-base.md)
+51. [A board has a key map of its own](0051-a-board-has-a-key-map-of-its-own.md) (supersedes part of 31)
