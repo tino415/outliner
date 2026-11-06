@@ -35,6 +35,11 @@ export function isCard(id: ItemId): boolean {
   return Boolean(parent) && isColumn(parent!);
 }
 
+/** On a board only a card shows whether it is folded; a column, and a card's children, show their children another way. */
+export function foldShows(id: ItemId): boolean {
+  return !boardShown() || isCard(id);
+}
+
 /** Joining two items on a board keeps to two cards of one column, so no card hides inside another column's title or card. */
 export function joinStaysInColumn(id: ItemId, other: ItemId): boolean {
   const parent = doc().items[id].parent;
@@ -67,23 +72,50 @@ function columnHtml(id: ItemId): string {
   const cards = shownChildren(doc(), id, filter());
   return (
     `<section class="item board-column${item.completed ? " completed" : ""}" data-id="${escape(id)}">` +
-    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}${propertyButton()}<span class="board-count">${cards.length}</span>${propertyChipsHtml(item, undefined, ownFormulaResults(id))}</div>` +
+    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}${propertyButton()}<span class="board-count">${cards.length}</span>${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
     `<ol class="board-cards">${cards.map(cardHtml).join("")}</ol>` +
     `<button type="button" class="board-new-card" data-board-new-card="${escape(id)}">+ Add a card</button></section>`
   );
 }
 
+/** An expanded card shows one level of its children as rows; deeper levels, and a folded card's children, are a count. */
 function cardHtml(id: ItemId): string {
   const item = doc().items[id];
-  const inside = shownChildren(doc(), id, filter()).length;
-  const noteOpen = item.note !== "" || state.openNotes.has(id);
+  const children = shownChildren(doc(), id, filter());
+  const expanded = children.length > 0 && !item.collapsed;
+  const classes = ["item", "board-card", item.completed && "completed", children.length > 0 && "has-children", children.length > 0 && !expanded && "folded"];
   return (
-    `<li class="item board-card${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
-    `${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}` +
-    `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
-    (inside ? `<a class="board-inside" href="#/${encodeURIComponent(id)}">${inside} inside</a>` : "") +
+    `<li class="${classes.filter(Boolean).join(" ")}" data-id="${escape(id)}"><div class="row">` +
+    `${foldToggle(expanded)}${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
+    (expanded ? "" : insideLink(id, children.length)) +
+    `</div>` +
+    (expanded ? `<ol class="board-children">${children.map(cardChildHtml).join("")}</ol>` : "") +
+    `</li>`
+  );
+}
+
+function cardChildHtml(id: ItemId): string {
+  const item = doc().items[id];
+  return (
+    `<li class="item board-child${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
+    `${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
+    insideLink(id, shownChildren(doc(), id, filter()).length) +
     `</div></li>`
   );
+}
+
+function foldToggle(expanded: boolean): string {
+  return `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>`;
+}
+
+function insideLink(id: ItemId, inside: number): string {
+  return inside ? `<a class="board-inside" href="#/${encodeURIComponent(id)}">${inside} inside</a>` : "";
+}
+
+function noteEditor(id: ItemId): string {
+  const note = doc().items[id].note;
+  const open = note !== "" || state.openNotes.has(id);
+  return `<div class="note" contenteditable="${isSealed(note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${escape(id)}"${open ? "" : " hidden"}>${renderNote(note)}</div>`;
 }
 
 function bullet(id: ItemId): string {
@@ -104,6 +136,7 @@ function textEditor(id: ItemId): string {
 /** Tab and Shift-Tab on a board: a card to the next column at the same height, a column one place over. */
 export function moveSideways(id: ItemId, direction: -1 | 1, caret: Focus | null): void {
   const columns = shownChildren(doc(), state.zoom, filter());
+  if (!isCard(id) && !isColumn(id)) return;
   if (isColumn(id)) {
     const neighbour = columns[columns.indexOf(id) + direction];
     if (neighbour) commitAndRender(moveTo(doc(), id, state.zoom, indexInParent(doc(), neighbour) + (direction === 1 ? 1 : 0)), caret);

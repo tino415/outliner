@@ -1210,10 +1210,16 @@ code {
   font-weight: 650;
 }
 
-.board-column-head .props {
+.board-column-head .props,
+.board-column-head .note {
   grid-column: 2 / -1;
   font-size: 0.86em;
   font-weight: 500;
+}
+
+.board-column-head .note {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .board-count {
@@ -1232,22 +1238,54 @@ code {
   list-style: none;
 }
 
-.board-card > .row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  column-gap: 6px;
-  position: relative;
-  padding: 7px 4px 7px 2px;
+.board-card {
   border-radius: 8px;
   background: var(--surface);
 }
 
-.board-card .props,
-.board-card .note,
-.board-card .board-inside {
-  grid-column: 2;
+.board-card.selected {
+  background: var(--accent-soft);
+}
+
+.board-card > .row {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 2px;
+  position: relative;
+  padding: 7px 4px 7px 0;
+}
+
+.board-card > .row > :is(.props, .note, .board-inside) {
+  grid-column: 3;
   font-size: 0.86em;
+}
+
+.board-card .toggle {
+  height: calc(var(--line) * 1em);
+}
+
+.board-children {
+  display: grid;
+  gap: 2px;
+  margin: -4px 0 0;
+  padding: 0 4px 7px 36px;
+  list-style: none;
+  font-size: 0.92em;
+}
+
+.board-child > .row {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 2px;
+}
+
+.board-child > .row > :is(.props, .note, .board-inside) {
+  grid-column: 2;
+  font-size: 0.9em;
+}
+
+.board-child .bullet {
+  width: 18px;
 }
 
 .board-inside {
@@ -1260,9 +1298,13 @@ code {
   height: calc(var(--line) * 1em);
 }
 
-.board-card .prop-add {
+.board-card > .row > .prop-add {
   top: 7px;
   right: 4px;
+}
+
+.board-child .prop-add {
+  top: 0;
 }
 
 .board-column-head .prop-add {

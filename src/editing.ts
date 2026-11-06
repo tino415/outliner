@@ -50,7 +50,7 @@ import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
-import { boardShown, isColumn, joinStaysInColumn, moveSideways, pageAbove } from "./board";
+import { boardShown, foldShows, isColumn, joinStaysInColumn, moveSideways, pageAbove } from "./board";
 
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
@@ -176,12 +176,11 @@ export function bindEditorEvents(): void {
     pasteLines(editor.dataset.id!, text);
   });
 
-  ui.tree.addEventListener("click", (event) => {
-    const toggle = (event.target as HTMLElement).closest<HTMLElement>(".toggle");
-    if (toggle) toggleFold(toggle.closest<HTMLElement>(".item")!.dataset.id!);
-  });
-
   for (const outline of [ui.tree, ui.board]) {
+    outline.addEventListener("click", (event) => {
+      const toggle = (event.target as HTMLElement).closest<HTMLElement>(".toggle");
+      if (toggle) toggleFold(toggle.closest<HTMLElement>(".item")!.dataset.id!);
+    });
     outline.addEventListener("dragover", (event) => {
       if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
     });
@@ -567,17 +566,17 @@ export const actions = {
   }),
 
   collapse: inPlace((c) => {
-    if (!state.results) commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
+    if (!state.results && foldShows(c.id)) commitAndRender(setCollapsed(doc(), c.id, true), keepCaret(c));
   }),
 
   expand: inPlace((c) => {
-    if (state.results) return;
+    if (state.results || !foldShows(c.id)) return;
     commitAndRender(setCollapsed(doc(), c.id, false), keepCaret(c));
     animateOpening(c.id);
   }),
 
   toggleFold: inPlace((c) => {
-    if (doc().items[c.id].children.length > 0) toggleFold(c.id);
+    if (doc().items[c.id].children.length > 0 && foldShows(c.id)) toggleFold(c.id);
   }),
 
   newFirstChild: inPlace((c) => {
