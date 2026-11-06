@@ -401,6 +401,7 @@ export function split(
   id: ItemId,
   offset: number,
   filter: ViewFilter,
+  childrenShown = isExpanded(doc, id, filter),
 ): { doc: Doc; id: ItemId; focus: ItemId } {
   const item = doc.items[id];
   const parent = item.parent!;
@@ -419,7 +420,7 @@ export function split(
   let created = "";
   const next = edit(doc, (d) => {
     d.write(id).text = head;
-    created = isExpanded(doc, id, filter)
+    created = childrenShown
       ? d.create(id, 0, tail).id
       : d.create(parent, index + 1, tail).id;
   });

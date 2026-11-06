@@ -108,10 +108,15 @@ Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children
 are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
 property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item;
-drag one by its handle (mouse or finger) or press Alt-Shift-← / → to move
-it to the next column. The buttons add cards and columns, and so does the
-thin line between two columns: click or tap it for an empty column there,
-with the caret in its name.
+drag one by its handle (mouse or finger), or press Tab / Shift-Tab (or
+Alt-Shift-→ / ←, or the toolbar's indent buttons) to move it to the next
+or previous column at the same height; on a column title they move the
+column. Enter always makes a card, Backspace and Delete join cards of one
+column only, and Ctrl-[ on a card's page goes back to the board. Keys that
+mean nothing on a board are left out of the palette, the help and the ⋯
+menu there (doc/adr/0051). The buttons add cards and columns, and so does
+the thin line between two columns: click or tap it for an empty column
+there, with the caret in its name.
 
 ## Kinds
 

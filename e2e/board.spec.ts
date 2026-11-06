@@ -1,5 +1,5 @@
 import { Page, expect, test } from "@playwright/test";
-import { freshOutline, reloadOnceStored } from "./helpers";
+import { freshOutline, reloadOnceStored, row } from "./helpers";
 
 /** The board as text: one column per line, "Column: card, card". */
 async function boardText(page: Page): Promise<string> {
@@ -23,12 +23,17 @@ function card(page: Page, text: string) {
 }
 
 async function openProject(page: Page) {
-  await freshOutline(page, "Project\n  To do\n    write\n    test\n  Doing\n  Done");
+  await openBoard(page, "Project\n  To do\n    write\n    test\n  Doing\n  Done");
+  await expectBoard(page, "To do: write, test\nDoing: \nDone: ");
+}
+
+async function openBoard(page: Page, outline: string) {
+  await freshOutline(page, outline);
   await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
   await expect(page.locator("#title")).toHaveText("Project");
   await page.keyboard.press("ControlOrMeta+j");
   await page.keyboard.press("b");
-  await expectBoard(page, "To do: write, test\nDoing: \nDone: ");
+  await expect(page.locator("#board")).toBeVisible();
 }
 
 test("a page shown as a board has its children as columns and theirs as cards", { tag: "@phone" }, async ({ page }, info) => {
@@ -131,4 +136,164 @@ test("the line before the first column adds an empty column in front", { tag: ["
   await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
   await reloadOnceStored(page, "Backlog");
   await expectBoard(page, "Backlog: \nTo do: write, test\nDoing: \nDone: ");
+});
+
+// ---- the board's own key map --------------------------------------------------------------
+
+const twoColumns = "Project\n  To do\n    write\n      outline\n    test\n  Doing\n    draft\n    review\n  Done";
+
+function columnTitle(page: Page, text: string) {
+  return page.locator(".board-column-head .text", { hasText: new RegExp(`^${text}$`) });
+}
+
+async function caretText(page: Page): Promise<string | null> {
+  return page.evaluate(() => document.activeElement?.textContent ?? null);
+}
+
+test("Tab and Shift-Tab move a card to the next column at its height, and a column one place over", { tag: ["@phone", "@keys"] }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "test").locator(".text").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Tab");
+  await expectBoard(page, "To do: write\nDoing: draft, test, review\nDone: ");
+  await page.keyboard.type("ed");
+  await expectBoard(page, "To do: write\nDoing: draft, tested, review\nDone: ");
+  await page.keyboard.press("Shift+Tab");
+  await expectBoard(page, "To do: write, tested\nDoing: draft, review\nDone: ");
+
+  await columnTitle(page, "Doing").click();
+  await page.keyboard.press("Tab");
+  await expectBoard(page, "To do: write, tested\nDone: \nDoing: draft, review");
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expectBoard(page, "Doing: draft, review\nTo do: write, tested\nDone: ");
+  expect(await caretText(page)).toBe("Doing");
+});
+
+test("Alt-Shift-arrows keep the card's height as Tab does", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "write").locator(".text").click();
+  await page.keyboard.press("Alt+Shift+ArrowRight");
+  await expectBoard(page, "To do: test\nDoing: write, draft, review\nDone: ");
+  await page.keyboard.press("Alt+Shift+ArrowLeft");
+  await expectBoard(page, "To do: write, test\nDoing: draft, review\nDone: ");
+});
+
+test("the toolbar's indent and outdent buttons move a card between columns on a board", { tag: "@touch" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "test").locator(".text").tap();
+  await page.getByRole("button", { name: "Indent" }).tap();
+  await expectBoard(page, "To do: write\nDoing: draft, test, review\nDone: ");
+  await page.getByRole("button", { name: "Outdent" }).tap();
+  await expectBoard(page, "To do: write, test\nDoing: draft, review\nDone: ");
+});
+
+test("Enter makes a card: after a card with children, first on a column title, and after an empty last card", { tag: ["@phone", "@keys"] }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "write").locator(".text").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("plan");
+  await expectBoard(page, "To do: write, plan, test\nDoing: draft, review\nDone: ");
+  await expect(card(page, "write").locator(".board-inside")).toHaveText("1 inside");
+
+  await columnTitle(page, "Done").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("ship");
+  await expectBoard(page, "To do: write, plan, test\nDoing: draft, review\nDone: ship");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("party");
+  await expectBoard(page, "To do: write, plan, test\nDoing: draft, review\nDone: ship, , party");
+});
+
+test("Backspace and Delete join two cards of a column but never reach across columns", { tag: ["@phone", "@keys"] }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  const unchanged = "To do: write, test\nDoing: draft, review\nDone: ";
+  await card(page, "draft").locator(".text").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Backspace");
+  await columnTitle(page, "Doing").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Backspace");
+  await card(page, "test").locator(".text").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Delete");
+  await columnTitle(page, "To do").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Delete");
+  await expectBoard(page, unchanged);
+
+  await card(page, "review").locator(".text").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Backspace");
+  await expectBoard(page, "To do: write, test\nDoing: draftreview\nDone: ");
+});
+
+test("Ctrl-[ on a card's page goes back to the board, past the column", { tag: ["@phone", "@keys"] }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "draft").locator(".board-bullet").click();
+  await expect(page.locator("#title")).toHaveText("draft");
+  await page.locator("#title").click();
+  await page.keyboard.press("Control+[");
+  await expect(page.locator("#title")).toHaveText("Project");
+  await expect(page.locator("#board")).toBeVisible();
+  await expect.poll(() => caretText(page)).toBe("draft");
+
+  await card(page, "draft").locator(".board-bullet").click();
+  await expect(page.locator("#title")).toHaveText("draft");
+  await expect(page.locator("#crumbs")).toContainText("Doing");
+  await page.keyboard.press("Control+[");
+  await expect(page.locator("#title")).toHaveText("Project");
+  await expect(page.locator("#board")).toBeVisible();
+});
+
+test("on a board the help, the palette and the menu offer what works there, and the outline's keys are back off it", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "write").locator(".text").click();
+  await page.keyboard.press("Control+.");
+  await page.keyboard.press("ControlOrMeta+ArrowUp");
+  await expect(card(page, "write").locator(".board-inside")).toHaveText("1 inside");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">column");
+  await expect(page.locator("#palette li")).toContainText(["To the column on the right"]);
+  await expect(page.locator("#palette")).not.toContainText("Show / hide columns");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">fold");
+  await expect(page.locator("#palette")).not.toContainText("Fold / unfold");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("ControlOrMeta+/");
+  await expect(page.locator("#help")).toContainText("To the column on the right");
+  await expect(page.locator("#help")).not.toContainText("Indent");
+  await expect(page.locator("#help")).not.toContainText("Fold / unfold");
+  await page.locator("#help-close").click();
+
+  await page.locator("#menu-button").click();
+  await expect(page.locator("#menu").getByText("Board", { exact: true })).toBeVisible();
+  await expect(page.locator("#menu").getByText("Columns", { exact: true })).toBeHidden();
+  await expect(page.locator("#menu").getByText("Collapse all", { exact: true })).toBeHidden();
+  await page.locator("#menu").getByText("Board", { exact: true }).click();
+  await expect(page.locator("#tree")).toBeVisible();
+  await expect(page.locator("#menu").getByText("Columns", { exact: true })).toBeVisible();
+  await expect(page.locator("#menu").getByText("Collapse all", { exact: true })).toBeVisible();
+  await expect(row(page, "outline")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+/");
+  await expect(page.locator("#help")).toContainText("Indent");
+  await expect(page.locator("#help")).not.toContainText("To the column on the right");
+});
+
+test("on a board the selection highlight and the focused row clear as in the outline", { tag: "@phone" }, async ({ page }) => {
+  await openBoard(page, twoColumns);
+  await card(page, "write").locator(".text").click();
+  await card(page, "test").locator(".text").click();
+  await expect(page.locator("#board .row.focused")).toHaveCount(1);
+  await page.keyboard.press("End");
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect(page.locator("#board .item.selected")).not.toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#board .item.selected")).toHaveCount(0);
 });

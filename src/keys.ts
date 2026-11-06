@@ -3,7 +3,7 @@ import { selectionActions } from "./selection";
 import { globalActions } from "./chrome";
 import { escape } from "./inline";
 import { Platform, isMac, platform } from "./platform";
-import { moveSideways, toggleBoard } from "./board";
+import { View, shownView, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
 import { copyLink, copyLinkToPage } from "./links";
 import { Doc } from "./model";
@@ -17,6 +17,7 @@ interface Shortcut {
   keys: string[];
   label: string;
   hidden?: boolean;
+  where: View | "any";
 }
 
 interface EditorBinding extends Shortcut {
@@ -46,6 +47,7 @@ const editor = (name: CommandName, keys: string[], label: string, run: EditorBin
   label,
   run,
   isCommand: true,
+  where: "any",
 });
 
 /** A command whose keys no setting changes. */
@@ -55,6 +57,7 @@ const fixed = (keys: string[], label: string, run: EditorBinding["run"]): Editor
   label,
   run,
   isCommand: true,
+  where: "any",
 });
 
 /** Keys that type or move the caret: in the shortcut list, but not commands of their own. */
@@ -65,6 +68,7 @@ const typing = (keys: string[], label: string, run: EditorBinding["run"], hidden
   run,
   hidden,
   isCommand: false,
+  where: "any",
 });
 
 /** A named selection key follows the command of that name when a setting changes it. */
@@ -75,6 +79,7 @@ const selection = (name: CommandName | undefined, keys: string[], run: Selection
   label: "",
   run,
   hidden: true,
+  where: "any",
 });
 
 const global = (name: CommandName | undefined, keys: string[], label: string, reach: Reach, run: GlobalBinding["run"], hidden = false): GlobalBinding => ({
@@ -85,12 +90,18 @@ const global = (name: CommandName | undefined, keys: string[], label: string, re
   reach,
   run,
   hidden,
+  where: "any",
 });
+
+const inTree = <B extends Binding>(binding: B): B => ({ ...binding, where: "tree" });
+const onBoard = <B extends Binding>(binding: B): B => ({ ...binding, where: "board" });
 
 const defaultBindings: Binding[] = [
   typing(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
-  fixed(["Tab"], "Indent", (c) => actions.indent(c)),
-  fixed(["Shift+Tab"], "Outdent", (c) => actions.outdent(c)),
+  inTree(fixed(["Tab"], "Indent", (c) => actions.indent(c))),
+  inTree(fixed(["Shift+Tab"], "Outdent", (c) => actions.outdent(c))),
+  onBoard(fixed(["Tab"], "To the column on the right", (c) => actions.toColumn(c, 1))),
+  onBoard(fixed(["Shift+Tab"], "To the column on the left", (c) => actions.toColumn(c, -1))),
   typing(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
   typing(["Delete"], "At the end: pull the next item up", (c) => actions.deleteForward(c), true),
   editor("toggle-note", ["Shift+Enter"], "Add or leave a note", (c) => actions.toggleNote(c)),
@@ -98,11 +109,11 @@ const defaultBindings: Binding[] = [
   editor("complete", ["Mod+Enter"], "Complete / uncomplete", (c) => actions.complete(c)),
   editor("move-up", ["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], "Move up", (c) => actions.moveUp(c)),
   editor("move-down", ["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], "Move down", (c) => actions.moveDown(c)),
-  editor("move-left", ["Alt+Shift+ArrowLeft"], "On a board: to the column on the left", (c) => moveSideways(c.id, -1, c.start)),
-  editor("move-right", ["Alt+Shift+ArrowRight"], "On a board: to the column on the right", (c) => moveSideways(c.id, 1, c.start)),
-  editor("fold", ["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c)),
-  editor("collapse", ["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c)),
-  editor("expand", ["Mod+ArrowDown"], "Expand", (c) => actions.expand(c)),
+  onBoard(editor("move-left", ["Alt+Shift+ArrowLeft"], "To the column on the left", (c) => actions.toColumn(c, -1))),
+  onBoard(editor("move-right", ["Alt+Shift+ArrowRight"], "To the column on the right", (c) => actions.toColumn(c, 1))),
+  inTree(editor("fold", ["Ctrl+."], "Fold / unfold", (c) => actions.toggleFold(c))),
+  inTree(editor("collapse", ["Mod+ArrowUp"], "Collapse", (c) => actions.collapse(c))),
+  inTree(editor("expand", ["Mod+ArrowDown"], "Expand", (c) => actions.expand(c))),
   editor("up-to-parent", ["Ctrl+u"], "Up to the parent item", (c) => actions.upToParent(c)),
   editor("zoom-in", ["Ctrl+]"], "Zoom in", (c) => actions.zoomIn(c)),
   editor("zoom-out", ["Ctrl+["], "Zoom out", (c) => actions.zoomOut(c)),
@@ -144,8 +155,8 @@ const defaultBindings: Binding[] = [
   selection(undefined, ["ArrowUp"], () => selectionActions.leaveAt("start")),
   selection(undefined, ["ArrowDown", "Enter"], () => selectionActions.leaveAt("end")),
   selection(undefined, ["Escape"], () => selectionActions.leave()),
-  selection(undefined, ["Tab"], () => selectionActions.indent()),
-  selection(undefined, ["Shift+Tab"], () => selectionActions.outdent()),
+  inTree(selection(undefined, ["Tab"], () => selectionActions.indent())),
+  inTree(selection(undefined, ["Shift+Tab"], () => selectionActions.outdent())),
   selection("move-up", ["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], () => selectionActions.moveUp()),
   selection("move-down", ["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], () => selectionActions.moveDown()),
   selection("complete", ["Mod+Enter"], () => selectionActions.complete()),
@@ -162,7 +173,7 @@ const defaultBindings: Binding[] = [
   global("help", ["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
   global("help", ["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
   global("toggle-completed", ["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
-  global("toggle-columns", ["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns()),
+  inTree(global("toggle-columns", ["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns())),
   global("toggle-board", ["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
   global("agenda", ["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
   global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
@@ -194,6 +205,12 @@ function keysOfUnnamedCommands(): string[] {
   return defaultBindings.filter((binding) => !binding.name && binding.context !== "selection").flatMap((binding) => binding.keys);
 }
 
+/** The bindings that mean something in the view shown: the outline's structure keys are not offered on a board, nor the board's in the outline. */
+function bindingsHere(): Binding[] {
+  const view = shownView();
+  return bindings.filter((binding) => binding.where === "any" || binding.where === view);
+}
+
 /**
  * "Mod" is Ctrl or ⌘ alike; "Ctrl" bindings are for the Ctrl key itself, as
  * Emacs habits expect. On a Mac the Ctrl key is free, so its bindings come
@@ -219,7 +236,7 @@ function isShadowed(keys: string, on: Platform = platform): boolean {
 }
 
 export function bindingForKeys<C extends Binding["context"]>(keys: string, context: C): BindingIn<C> | null {
-  const found = bindings.find((binding) => binding.context === context && binding.keys.includes(keys));
+  const found = bindingsHere().find((binding) => binding.context === context && binding.keys.includes(keys));
   return (found as BindingIn<C> | undefined) ?? null;
 }
 
@@ -266,12 +283,12 @@ export function extendSequence(sofar: string, event: KeyboardEvent): string {
 }
 
 export function sequenceContinues(sofar: string): boolean {
-  return bindings.some((binding) => binding.keys.some((keys) => keys.startsWith(`${sofar} `)));
+  return bindingsHere().some((binding) => binding.keys.some((keys) => keys.startsWith(`${sofar} `)));
 }
 
 /** What can follow the keys pressed so far, for the panel shown while it waits. */
 export function keysAfter(sofar: string): { key: string; label: string; needsItem: boolean }[] {
-  return bindings.flatMap((binding) =>
+  return bindingsHere().flatMap((binding) =>
     binding.keys
       .filter((keys) => keys.startsWith(`${sofar} `))
       .map((keys) => ({ key: pretty(keys.slice(sofar.length + 1)), label: binding.label, needsItem: binding.context === "editor" })),
@@ -318,7 +335,7 @@ export interface Command {
 /** What the palette can run: shortcuts that act on their own, with the item being edited if there is one. */
 export function keyCommands(editing: EditorContext | null): Command[] {
   const commands = new Map<string, Command>();
-  for (const binding of bindings) {
+  for (const binding of bindingsHere()) {
     if (binding.hidden || !binding.label || commands.has(binding.label)) continue;
     const shortcut = shortcutFor(binding.label);
     if (binding.context === "global") commands.set(binding.label, { label: binding.label, shortcut, run: () => binding.run() });
@@ -330,7 +347,7 @@ export function keyCommands(editing: EditorContext | null): Command[] {
 }
 
 function shortcutFor(label: string): string {
-  const keys = bindings.filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
+  const keys = bindingsHere().filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
   return keys.length ? pretty(keys[0]) : "";
 }
 
@@ -344,8 +361,9 @@ export function describeKeys(): string {
 
 function describeCommands(): string {
   const shown = new Map<string, { name?: CommandName; keys: string[] }>();
-  for (const binding of bindings.filter((binding) => !binding.hidden && binding.label && (binding.name || usableKeys(binding).length))) {
+  for (const binding of bindingsHere().filter((binding) => !binding.hidden && binding.label && (binding.name || usableKeys(binding).length))) {
     const row = shown.get(binding.label) ?? { name: binding.name, keys: [] };
+    row.name ??= binding.name;
     row.keys.push(...usableKeys(binding));
     shown.set(binding.label, row);
   }

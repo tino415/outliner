@@ -98,7 +98,7 @@ export function selectWholePage(): void {
 export function paintSelection(): void {
   const selected = selectedIds();
   if (selected.length === 0) state.selection = null;
-  ui.tree.querySelectorAll(".item.selected").forEach((item) => item.classList.remove("selected"));
+  for (const outline of [ui.tree, ui.board]) outline.querySelectorAll(".item.selected").forEach((item) => item.classList.remove("selected"));
   for (const id of selected) itemElementFor(id)?.classList.add("selected");
   document.body.classList.toggle("selecting", selected.length > 0);
 }

@@ -14,7 +14,7 @@ import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigat
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { openCapture } from "./capturing";
-import { bindBoard, boardShown, toggleBoard } from "./board";
+import { bindBoard, boardShown, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
@@ -76,7 +76,7 @@ export const globalActions = {
     else ui.addItem.click();
   },
   zoomOut: () => {
-    if (state.zoom !== ROOT) zoomTo(doc().items[state.zoom].parent ?? ROOT);
+    if (state.zoom !== ROOT) zoomTo(pageAbove(state.zoom));
   },
 };
 
@@ -95,7 +95,7 @@ const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-c
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
-    .filter((button) => !menuEntriesWithShortcuts.has(button.dataset.action!))
+    .filter((button) => !button.hidden && !menuEntriesWithShortcuts.has(button.dataset.action!))
     .map((button) => {
       const section = button.closest(".menu-section")?.querySelector(".menu-label")?.textContent;
       const name = button.querySelector("span")!.textContent!;
@@ -365,9 +365,10 @@ function bindMenu(): void {
   });
 }
 
-const toolbarActions: Record<string, keyof typeof actions> = {
-  indent: "indent",
-  outdent: "outdent",
+/** The indent buttons press Tab and Shift-Tab, so on a board they move the card between columns. */
+const toolbarKeys: Record<string, string> = { indent: "Tab", outdent: "Shift+Tab" };
+
+const toolbarActions: Record<string, Exclude<keyof typeof actions, "toColumn">> = {
   "move-up": "moveUp",
   "move-down": "moveDown",
   complete: "complete",
@@ -383,6 +384,7 @@ function bindToolbar(): void {
     const editor = editorOf(document.activeElement);
     if (!action || !editor) return;
     if (action === "undo") undo();
+    else if (toolbarKeys[action]) bindingForKeys(toolbarKeys[action], "editor")?.run(editorContext(editor));
     else if (toolbarActions[action]) actions[toolbarActions[action]](editorContext(editor));
   });
   keepToolbarAboveKeyboard();
@@ -475,6 +477,7 @@ export function renderMenuState(): void {
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
   $("board-switch").classList.toggle("on", boardShown());
+  for (const entry of ui.menu.querySelectorAll<HTMLElement>("[data-where]")) entry.hidden = entry.dataset.where !== shownView();
 }
 
 export function applyAppearance(): void {
