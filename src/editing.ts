@@ -4,6 +4,7 @@ import {
   ROOT,
   descendantCount,
   duplicate,
+  foldableInside,
   indent,
   insertChild,
   liftNoteProperties,
@@ -23,6 +24,7 @@ import {
   outdent,
   remove,
   setCollapsed,
+  setCollapsedEverywhere,
   setNote,
   setText,
   shownChildren,
@@ -579,6 +581,10 @@ export const actions = {
     if (doc().items[c.id].children.length > 0 && foldShows(c.id)) toggleFold(c.id);
   }),
 
+  collapseInside: inPlace((c) => foldEverythingInside(c, true)),
+  expandInside: inPlace((c) => foldEverythingInside(c, false)),
+  toggleInside: inPlace((c) => foldEverythingInside(c, collapsesInsideNext(c.id))),
+
   newFirstChild: inPlace((c) => {
     const created = insertChild(doc(), c.id, 0);
     commitAndRender(created.doc, startOf(created.id));
@@ -855,6 +861,21 @@ function toggleFold(id: ItemId): void {
   const opening = doc().items[id].collapsed;
   commitAndRender(setCollapsed(doc(), id, !opening), caretNow());
   if (opening) animateOpening(id);
+}
+
+/** The item and everything under it; on a board a column's cards, since the column itself shows no fold. */
+function foldEverythingInside(c: EditorContext, collapsed: boolean): void {
+  if (state.results || !(foldShows(c.id) || isColumn(c.id))) return;
+  const inside = setCollapsedEverywhere(doc(), c.id, collapsed);
+  const foldsItself = foldShows(c.id) && doc().items[c.id].children.length > 0;
+  commitAndRender(foldsItself ? setCollapsed(inside, c.id, collapsed) : inside, keepCaret(c));
+}
+
+/** Ctrl-Shift-. collapses while anything shown under the item is open, and expands an item that is folded or holds only folded items. */
+function collapsesInsideNext(id: ItemId): boolean {
+  const inside = foldableInside(doc(), id);
+  const itemOpen = !foldShows(id) || !doc().items[id].collapsed;
+  return itemOpen && (inside.length === 0 || inside.some((each) => !doc().items[each].collapsed));
 }
 
 function animateOpening(id: ItemId): void {

@@ -472,6 +472,28 @@ test("the item menu and ⋯ → Collapse all fold cards on a board, and a column
   await expect(childRows(card(page, "write"))).toHaveText(["outline"]);
 });
 
+test("Ctrl-Shift-. on a column folds and unfolds all its cards, and on a card everything inside it", { tag: ["@phone", "@keys"] }, async ({ page }) => {
+  await openBoard(page, "Project\n  To do\n    write\n      outline\n        headings\n      draft\n    test\n      unit\n  Done");
+  await columnTitle(page, "To do").click();
+  await page.keyboard.press("Control+Shift+Period");
+  await expect(card(page, "write")).toHaveClass(/folded/);
+  await expect(card(page, "test")).toHaveClass(/folded/);
+  await page.keyboard.press("Control+Shift+Period");
+  await expect(childRows(card(page, "write"))).toHaveText(["outline", "draft"]);
+  await expect(childRows(card(page, "test"))).toHaveText(["unit"]);
+
+  await card(page, "write").locator(":scope > .row > .text").click();
+  await page.keyboard.press("Control+Shift+Period");
+  await expect(card(page, "write")).toHaveClass(/folded/);
+  await expect(childRows(card(page, "test"))).toHaveText(["unit"]);
+
+  await card(page, "write").locator(":scope > .row > .bullet").click({ button: "right" });
+  await page.locator("#item-menu").getByRole("button", { name: "Expand everything inside" }).click();
+  await expect(childRows(card(page, "write"))).toHaveText(["outline", "draft"]);
+  await reloadOnceItemStored(page, "outline", (item) => !item.collapsed);
+  await expect(childRows(card(page, "write"))).toHaveText(["outline", "draft"]);
+});
+
 test("a column shows its note under its title, editable in place", { tag: ["@phone", "@keys"] }, async ({ page }) => {
   await openBoard(page, "Project\n  Deciding | Cards waiting on an answer\n    pick a name\n  Done");
   const note = page.locator(".board-column-head .note").first();

@@ -60,3 +60,4 @@ file that says so.
 51. [A board has a key map of its own](0051-a-board-has-a-key-map-of-its-own.md) (supersedes part of 31)
 52. [A board's cards and columns have the outline's bullet](0052-a-board-card-has-the-outlines-bullet.md) (supersedes part of 31)
 53. [A card folds like a row, and a column shows its note](0053-a-card-folds-like-a-row.md) (supersedes part of 31 and 51)
+54. [Collapse and expand everything inside an item](0054-collapse-and-expand-everything-inside-an-item.md)

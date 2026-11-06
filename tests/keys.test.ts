@@ -111,6 +111,15 @@ describe("keyboard layouts", () => {
     expect(keyString(press({ key: "?", code: "Slash", shift: true }))).toBe("?");
     expect(bindingFor(press({ key: "?", code: "Slash", shift: true }), "global", "other")?.label).toBe("Show shortcuts");
   });
+
+  it("reads Ctrl-Shift-. as the period key whatever the layout types with Shift there", () => {
+    const shiftedPeriod = (key: string) => press({ key, code: "Period", ctrl: true, shift: true });
+    expect(keyString(shiftedPeriod(">"))).toBe("Mod+Shift+.");
+    expect(bindingFor(shiftedPeriod(">"), "editor", "other")?.name).toBe("fold-inside");
+    expect(bindingFor(shiftedPeriod(":"), "editor", "other")?.name).toBe("fold-inside");
+    expect(bindingFor(shiftedPeriod(">"), "editor", "mac")?.name).toBe("fold-inside");
+    expect(bindingFor(ctrl(".", "Period"), "editor", "other")?.name).toBe("fold");
+  });
 });
 
 describe("the view shown", () => {
