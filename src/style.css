@@ -2114,7 +2114,7 @@ body.dragging {
     display: flex;
   }
 
-  .row {
+  .tree .row {
     touch-action: pan-y;
   }
 
