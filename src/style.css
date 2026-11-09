@@ -2439,3 +2439,9 @@ body.dragging {
 .page.with-query .agenda-section h2 a:hover {
   color: var(--accent);
 }
+
+.with-searching .board-new-card,
+.with-searching .board-new-column,
+.with-searching .board-gap {
+  display: none;
+}
