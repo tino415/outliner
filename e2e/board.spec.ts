@@ -569,3 +569,13 @@ test("a long press on a card opens a menu whose Send to entry is one tap", { tag
   await page.getByRole("button", { name: "Send to Done" }).tap();
   await expectBoard(page, "To do: write, test\nDoing: review\nDone: draft");
 });
+
+test("searching on a board keeps it a board with only the matching cards in their columns", async ({ page }) => {
+  await openBoard(page, "Project\n  To do\n    write #web\n    test #api\n  Doing\n    ship #web\n  Done\n    plan #api");
+  await page.locator("#search").fill("#web");
+  await expect(page.locator("#board")).toBeVisible();
+  await expect(page.locator("#tree")).toBeHidden();
+  await expectBoard(page, "To do: write #web\nDoing: ship #web");
+  await page.locator("#search").fill("");
+  await expectBoard(page, "To do: write #web, test #api\nDoing: ship #web\nDone: plan #api");
+});

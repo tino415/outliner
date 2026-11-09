@@ -4,7 +4,7 @@ import { ItemId, ROOT, indexInParent, insertChild, isBoard, moveTo, newChildInde
 import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
 import { propertyChipsHtml } from "./propertyChips";
-import { ownFormulaResults } from "./render";
+import { inResults, ownFormulaResults } from "./render";
 import { isMirror, mirrorBulletTitle, mirrorTextHtml } from "./mirrors";
 import { Drop, DropPlaces, scrollPageToward } from "./bullets";
 import { agendaShown } from "./agenda";
@@ -23,7 +23,7 @@ export function shownView(): View {
 }
 
 export function boardShown(): boolean {
-  return !state.results && !agendaShown() && !queryViewShown() && isBoard(doc().items[state.zoom]);
+  return !agendaShown() && !queryViewShown() && isBoard(doc().items[state.zoom]);
 }
 
 export function isColumn(id: ItemId): boolean {
@@ -59,7 +59,7 @@ export function toggleBoard(): void {
 }
 
 export function renderBoard(): void {
-  const columns = shownChildren(doc(), state.zoom, filter());
+  const columns = inResults(shownChildren(doc(), state.zoom, filter()));
   ui.board.innerHTML = columns.map((id) => columnGapHtml(id) + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
 }
 
@@ -69,7 +69,7 @@ function columnGapHtml(nextColumn: ItemId): string {
 
 function columnHtml(id: ItemId): string {
   const item = doc().items[id];
-  const cards = shownChildren(doc(), id, filter());
+  const cards = inResults(shownChildren(doc(), id, filter()));
   return (
     `<section class="item board-column${item.completed ? " completed" : ""}" data-id="${escape(id)}">` +
     `<div class="row board-column-head">${bullet(id)}${textEditor(id)}${propertyButton()}<span class="board-count">${cards.length}</span>${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
@@ -81,7 +81,7 @@ function columnHtml(id: ItemId): string {
 /** An expanded card shows one level of its children as rows; deeper levels, and a folded card's children, are a count. */
 function cardHtml(id: ItemId): string {
   const item = doc().items[id];
-  const children = shownChildren(doc(), id, filter());
+  const children = inResults(shownChildren(doc(), id, filter()));
   const expanded = children.length > 0 && !item.collapsed;
   const classes = ["item", "board-card", item.completed && "completed", children.length > 0 && "has-children", children.length > 0 && !expanded && "folded"];
   return (
@@ -135,7 +135,7 @@ function textEditor(id: ItemId): string {
 
 /** Tab and Shift-Tab on a board: a card to the next column at the same height, a column one place over. */
 export function moveSideways(id: ItemId, direction: -1 | 1, caret: Focus | null): void {
-  const columns = shownChildren(doc(), state.zoom, filter());
+  const columns = inResults(shownChildren(doc(), state.zoom, filter()));
   if (!isCard(id) && !isColumn(id)) return;
   if (isColumn(id)) {
     const neighbour = columns[columns.indexOf(id) + direction];

@@ -245,7 +245,7 @@ function shownChildrenOf(id: ItemId): ItemId[] {
   return inResults(shownChildren(doc(), id, filter()));
 }
 
-function inResults(children: ItemId[]): ItemId[] {
+export function inResults(children: ItemId[]): ItemId[] {
   const results = state.results;
   return results ? children.filter((child) => results.shown.has(child)) : children;
 }
