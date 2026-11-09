@@ -50,9 +50,13 @@ function listeningPort(child: ChildProcess): Promise<number> {
         resolve(Number(port));
       }
     });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
     child.on("exit", (code) => {
       clearTimeout(timeout);
-      reject(new Error(`sync server exited with ${code}`));
+      reject(new Error(`sync server exited with ${code}: ${output}`));
     });
   });
 }
