@@ -71,3 +71,14 @@ jobs:
           name: test-results
           path: test-results
           if-no-files-found: ignore
+
+  nix-package:
+    name: build the Nix package
+    needs: scope
+    if: needs.scope.outputs.docs_only == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix build .#outline --no-link --print-build-logs
