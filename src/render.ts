@@ -48,6 +48,7 @@ export function render(request: FocusRequest): void {
   ui.page.classList.toggle("with-agenda", agenda);
   ui.page.classList.toggle("with-query", queryView);
   ui.page.classList.toggle("with-board", board);
+  ui.page.classList.toggle("with-searching", board && Boolean(state.results));
   ui.tree.hidden = board || listing;
   if (agenda) renderAgenda();
   else if (queryView) renderQueryView();
@@ -245,7 +246,7 @@ function shownChildrenOf(id: ItemId): ItemId[] {
   return inResults(shownChildren(doc(), id, filter()));
 }
 
-function inResults(children: ItemId[]): ItemId[] {
+export function inResults(children: ItemId[]): ItemId[] {
   const results = state.results;
   return results ? children.filter((child) => results.shown.has(child)) : children;
 }
@@ -359,7 +360,7 @@ function highlightMatches(): void {
   registry.delete("search");
   if (!state.results || state.results.terms.length === 0) return;
   const ranges: Range[] = [];
-  for (const editor of ui.tree.querySelectorAll<HTMLElement>(".match > .row .text, .match > .row .note")) {
+  for (const editor of shownOutline().querySelectorAll<HTMLElement>(".match > .row .text, .match > .row .note, .match > .board-column-head .text")) {
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
       const haystack = node.data.toLowerCase();

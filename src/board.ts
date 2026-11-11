@@ -4,7 +4,7 @@ import { ItemId, ROOT, indexInParent, insertChild, isBoard, moveTo, newChildInde
 import { isSealed } from "./notes";
 import { escape, renderItemText, renderNote } from "./inline";
 import { propertyChipsHtml } from "./propertyChips";
-import { ownFormulaResults } from "./render";
+import { inResults, ownFormulaResults } from "./render";
 import { isMirror, mirrorBulletTitle, mirrorTextHtml } from "./mirrors";
 import { Drop, DropPlaces, scrollPageToward } from "./bullets";
 import { agendaShown } from "./agenda";
@@ -23,7 +23,7 @@ export function shownView(): View {
 }
 
 export function boardShown(): boolean {
-  return !state.results && !agendaShown() && !queryViewShown() && isBoard(doc().items[state.zoom]);
+  return !agendaShown() && !queryViewShown() && isBoard(doc().items[state.zoom]);
 }
 
 export function isColumn(id: ItemId): boolean {
@@ -59,7 +59,7 @@ export function toggleBoard(): void {
 }
 
 export function renderBoard(): void {
-  const columns = shownChildren(doc(), state.zoom, filter());
+  const columns = inResults(shownChildren(doc(), state.zoom, filter()));
   ui.board.innerHTML = columns.map((id) => columnGapHtml(id) + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
 }
 
@@ -69,9 +69,9 @@ function columnGapHtml(nextColumn: ItemId): string {
 
 function columnHtml(id: ItemId): string {
   const item = doc().items[id];
-  const cards = shownChildren(doc(), id, filter());
+  const cards = inResults(shownChildren(doc(), id, filter()));
   return (
-    `<section class="item board-column${item.completed ? " completed" : ""}" data-id="${escape(id)}">` +
+    `<section class="item board-column${item.completed ? " completed" : ""}${state.results?.matches.has(id) ? " match" : ""}" data-id="${escape(id)}">` +
     `<div class="row board-column-head">${bullet(id)}${textEditor(id)}${propertyButton()}<span class="board-count">${cards.length}</span>${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
     `<ol class="board-cards">${cards.map(cardHtml).join("")}</ol>` +
     `<button type="button" class="board-new-card" data-board-new-card="${escape(id)}">+ Add a card</button></section>`
@@ -81,9 +81,9 @@ function columnHtml(id: ItemId): string {
 /** An expanded card shows one level of its children as rows; deeper levels, and a folded card's children, are a count. */
 function cardHtml(id: ItemId): string {
   const item = doc().items[id];
-  const children = shownChildren(doc(), id, filter());
-  const expanded = children.length > 0 && !item.collapsed;
-  const classes = ["item", "board-card", item.completed && "completed", children.length > 0 && "has-children", children.length > 0 && !expanded && "folded"];
+  const children = inResults(shownChildren(doc(), id, filter()));
+  const expanded = children.length > 0 && (Boolean(state.results) || !item.collapsed);
+  const classes = ["item", "board-card", state.results?.matches.has(id) && "match", item.completed && "completed", children.length > 0 && "has-children", children.length > 0 && !expanded && "folded"];
   return (
     `<li class="${classes.filter(Boolean).join(" ")}" data-id="${escape(id)}"><div class="row">` +
     `${foldToggle(expanded)}${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
@@ -97,9 +97,9 @@ function cardHtml(id: ItemId): string {
 function cardChildHtml(id: ItemId): string {
   const item = doc().items[id];
   return (
-    `<li class="item board-child${item.completed ? " completed" : ""}" data-id="${escape(id)}"><div class="row">` +
+    `<li class="item board-child${item.completed ? " completed" : ""}${state.results?.matches.has(id) ? " match" : ""}" data-id="${escape(id)}"><div class="row">` +
     `${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
-    insideLink(id, shownChildren(doc(), id, filter()).length) +
+    insideLink(id, inResults(shownChildren(doc(), id, filter())).length) +
     `</div></li>`
   );
 }
@@ -135,7 +135,7 @@ function textEditor(id: ItemId): string {
 
 /** Tab and Shift-Tab on a board: a card to the next column at the same height, a column one place over. */
 export function moveSideways(id: ItemId, direction: -1 | 1, caret: Focus | null): void {
-  const columns = shownChildren(doc(), state.zoom, filter());
+  const columns = inResults(shownChildren(doc(), state.zoom, filter()));
   if (!isCard(id) && !isColumn(id)) return;
   if (isColumn(id)) {
     const neighbour = columns[columns.indexOf(id) + direction];
@@ -145,8 +145,8 @@ export function moveSideways(id: ItemId, direction: -1 | 1, caret: Focus | null)
   const from = doc().items[id].parent!;
   const column = columns[columns.indexOf(from) + direction];
   if (!column) return;
-  const height = shownChildren(doc(), from, filter()).indexOf(id);
-  const cardThere = shownChildren(doc(), column, filter())[height];
+  const height = inResults(shownChildren(doc(), from, filter())).indexOf(id);
+  const cardThere = inResults(shownChildren(doc(), column, filter()))[height];
   const index = cardThere ? indexInParent(doc(), cardThere) : doc().items[column].children.length;
   commitAndRender(moveTo(doc(), id, column, index), caret);
 }
@@ -171,7 +171,7 @@ function addChild(parent: ItemId, index = doc().items[parent].children.length): 
 
 /** A card lands between two cards of the column under the pointer, a column between two columns; anywhere else the drag snaps back. */
 export const boardDrops: DropPlaces = {
-  dropAt: (x, y, dragged) => (isColumn(dragged) ? columnDropAt(x, y, dragged) : cardDropAt(x, y, dragged)),
+  dropAt: (x, y, dragged) => (state.results ? null : isColumn(dragged) ? columnDropAt(x, y, dragged) : cardDropAt(x, y, dragged)),
   scrollToward: (x, y) => {
     const edge = 48;
     if (x < edge) ui.board.scrollLeft -= 12;
@@ -209,5 +209,5 @@ function middle(rect: DOMRect): { x: number; y: number } {
 }
 
 export function otherColumns(card: ItemId): ItemId[] {
-  return shownChildren(doc(), state.zoom, filter()).filter((column) => column !== doc().items[card].parent);
+  return inResults(shownChildren(doc(), state.zoom, filter())).filter((column) => column !== doc().items[card].parent);
 }
