@@ -471,8 +471,9 @@ chmod 600 ~/.config/outline/config
 
 On the server's own machine the file can name `http://127.0.0.1:8791`.
 
-After a change to `package-lock.json`, `nix build .#outline` fails with the
-new `npmDepsHash`; put it in `nix/outline.nix`.
+The package reads its dependencies from `package-lock.json` itself
+(`importNpmLock`), so a lockfile change needs no hash. CI builds
+`.#outline` on every PR.
 
 ## Publishing
 

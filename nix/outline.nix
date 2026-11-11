@@ -1,13 +1,14 @@
 {
   lib,
   buildNpmPackage,
+  importNpmLock,
   makeWrapper,
   nodejs_24,
   nodejs-slim_24,
   buildCommit ? "nix",
 }:
 
-buildNpmPackage {
+buildNpmPackage (finalAttrs: {
   pname = "outline";
   version = (lib.importJSON ../package.json).version;
 
@@ -28,7 +29,8 @@ buildNpmPackage {
   };
 
   nodejs = nodejs_24;
-  npmDepsHash = "sha256-PJFdkFDy/Z1y2BPHXereUdI1YLqtDQDKtwsChVh3s9g=";
+  npmDeps = importNpmLock { npmRoot = finalAttrs.src; };
+  npmConfigHook = importNpmLock.npmConfigHook;
   nativeBuildInputs = [ makeWrapper ];
 
   buildPhase = ''
@@ -56,4 +58,4 @@ buildNpmPackage {
     mainProgram = "outline";
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
-}
+})
