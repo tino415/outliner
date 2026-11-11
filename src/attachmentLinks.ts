@@ -27,12 +27,14 @@ export function typeFromName(name: string): string {
   return types[extension] ?? "application/octet-stream";
 }
 
+const linkTo = (hash: string) => new RegExp(String.raw`!?\[[^\]\n]*\]\(att:${hash}\)`, "g");
+
 export function linksAttachment(note: string, hash: string): boolean {
-  return note.includes(`](att:${hash})`);
+  return linkTo(hash).test(note);
 }
 
 export function withoutAttachment(note: string, hash: string): string {
-  const link = new RegExp(String.raw`!?\[[^\]\n]*\]\(att:${hash}\)`, "g");
+  const link = linkTo(hash);
   return note
     .split("\n")
     .map((line) => ({ line, left: line.replace(link, "") }))

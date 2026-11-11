@@ -239,9 +239,13 @@ async function detach(outline: Outline, args: string[]): Promise<string> {
   const [item, hash] = args.length === 1 ? [undefined, args[0]] : args;
   if (args.length > 2 || !/^[0-9a-f]{64}$/.test(hash ?? "")) throw new Error("detach needs [ITEM] HASH; HASH is the 64 letters after att: in a note");
   if (item) await unlinkAttachment(outline, resolveLinking(outline.doc, item, hash), hash);
-  const { linkedFrom, unchecked } = otherUses(outline.doc, hash, item ? resolve(outline.doc, item) : undefined);
-  if (linkedFrom.length) return linkedFrom.map((id) => `kept ${hash}, still linked from ${id} ${describe(outline.doc, id)}`).join("\n");
-  const deleted = await deleteFile(outline.endpoint, hash);
+  const current = await Outline.fetch(outline.endpoint);
+  const { linkedFrom, unchecked } = otherUses(current.doc, hash, item ? resolve(current.doc, item) : undefined);
+  if (linkedFrom.length) return linkedFrom.map((id) => `kept ${hash}, still linked from ${id} ${describe(current.doc, id)}`).join("\n");
+  const deleted = await deleteFile(outline.endpoint, hash).catch((error: Error) => {
+    if (!item) throw error;
+    throw new Error(`unlinked ${hash} from the note, but ${error.message}; outline detach ${hash} deletes the file later`);
+  });
   if (!deleted && !item) throw new Error(`no file ${hash} on the server`);
   const report = deleted ? `deleted ${hash}` : `no file ${hash} on the server`;
   return unchecked ? `${report}\n${unchecked} private items were not checked for a link to it` : report;

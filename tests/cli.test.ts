@@ -121,6 +121,12 @@ describe("outline CLI", () => {
       expect(await outline('show "Bug report"')).toBe("- Bug report\n  see below\n  thanks");
     });
 
+    it("takes out every link to the file, also inline in a line of text", async () => {
+      await outline(`note "Bug report" "see ![a](att:${hash}) here\n[b](att:${hash})"`);
+      await outline(`detach "Bug report" ${hash}`);
+      expect(await outline('show "Bug report"')).toBe("- Bug report\n  see  here");
+    });
+
     it("keeps the file while another item links it", async () => {
       await outline('add "Duplicate"');
       await outline(`note Duplicate "[again](att:${hash})"`);
