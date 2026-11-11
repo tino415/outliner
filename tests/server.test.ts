@@ -122,6 +122,21 @@ describe("attachments", () => {
     expect((await fetch(`${base}/files/${hash}`)).status).toBe(401);
   });
 
+  it("deletes a file, and says so when there is none", async () => {
+    await put(hash, bytes);
+    expect((await fetch(`${base}/files/${hash}`, { method: "DELETE", headers: auth })).status).toBe(204);
+    expect((await fetch(`${base}/files/${hash}`, { headers: auth })).status).toBe(404);
+    const again = await fetch(`${base}/files/${hash}`, { method: "DELETE", headers: auth });
+    expect(again.status).toBe(404);
+    expect(await again.json()).toEqual({ error: "no such file" });
+  });
+
+  it("needs the token to delete a file", async () => {
+    await put(hash, bytes);
+    expect((await fetch(`${base}/files/${hash}`, { method: "DELETE" })).status).toBe(401);
+    expect((await fetch(`${base}/files/${hash}`, { headers: auth })).status).toBe(200);
+  });
+
   it("refuses a file over the size limit", async () => {
     const big = new Uint8Array(MAX_FILE + 1);
     const response = await put(createHash("sha256").update(big).digest("hex"), big);

@@ -41,8 +41,14 @@ export function createSyncServer({ store, token, origins, appDir }: ServerOption
     const fileHash = FILE_PATH.exec(path)?.[1];
     if (fileHash && request.method === "PUT") return saveFile(request, response, store, fileHash);
     if (fileHash && request.method === "GET") return sendFile(response, store, fileHash);
+    if (fileHash && request.method === "DELETE") return removeFile(response, store, fileHash);
     return send(response, 404, { error: "not found" });
   });
+}
+
+function removeFile(response: ServerResponse, store: Store, hash: string): void {
+  if (!store.deleteFile(hash)) return send(response, 404, { error: "no such file" });
+  return send(response, 204);
 }
 
 async function saveFile(request: IncomingMessage, response: ServerResponse, store: Store, hash: string): Promise<void> {

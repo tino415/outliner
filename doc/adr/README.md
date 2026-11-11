@@ -61,3 +61,5 @@ file that says so.
 52. [A board's cards and columns have the outline's bullet](0052-a-board-card-has-the-outlines-bullet.md) (supersedes part of 31)
 53. [A card folds like a row, and a column shows its note](0053-a-card-folds-like-a-row.md) (supersedes part of 31 and 51)
 54. [Collapse and expand everything inside an item](0054-collapse-and-expand-everything-inside-an-item.md)
+55. [The Nix package reads the lockfile, and CI builds it](0055-the-nix-package-reads-the-lockfile-and-ci-builds-it.md)
+56. [Detaching deletes an attachment no other item links](0056-detaching-deletes-an-attachment-no-other-item-links.md) (amends 28)

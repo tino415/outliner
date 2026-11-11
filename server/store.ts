@@ -39,6 +39,10 @@ export class Store {
     return row ?? null;
   }
 
+  deleteFile(hash: string): boolean {
+    return this.db.prepare("delete from files where hash = ?").run(hash).changes > 0;
+  }
+
   latestSeq(): number {
     const row = this.db.prepare("select coalesce(max(seq), 0) as seq from fields").get() as { seq: number };
     return row.seq;

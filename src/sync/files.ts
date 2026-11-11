@@ -19,6 +19,14 @@ export async function downloadFile(endpoint: Endpoint, hash: string): Promise<Bl
   return response.blob();
 }
 
+export async function deleteFile(endpoint: Endpoint, hash: string): Promise<boolean> {
+  const response = await request(endpoint, hash, { method: "DELETE" });
+  if (response.ok) return true;
+  const why = await reason(response);
+  if (response.status === 404 && why.endsWith("no such file")) return false;
+  throw new SyncError(`cannot delete the file: ${why}`, response.status);
+}
+
 async function request(endpoint: Endpoint, hash: string, init: RequestInit): Promise<Response> {
   try {
     return await fetch(`${endpoint.server.replace(/\/+$/, "")}/files/${hash}`, {

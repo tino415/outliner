@@ -26,3 +26,17 @@ export function typeFromName(name: string): string {
   };
   return types[extension] ?? "application/octet-stream";
 }
+
+export function linksAttachment(note: string, hash: string): boolean {
+  return note.includes(`](att:${hash})`);
+}
+
+export function withoutAttachment(note: string, hash: string): string {
+  const link = new RegExp(String.raw`!?\[[^\]\n]*\]\(att:${hash}\)`, "g");
+  return note
+    .split("\n")
+    .map((line) => ({ line, left: line.replace(link, "") }))
+    .filter(({ line, left }) => left.trim() !== "" || line.trim() === "")
+    .map(({ left }) => left)
+    .join("\n");
+}

@@ -17,8 +17,8 @@ import {
   setText,
 } from "../src/model";
 import { exportJson, exportMarkdown, exportOpml, graft, parseIndentedText } from "../src/transfer";
-import { attachmentLink, typeFromName } from "../src/attachmentLinks";
-import { downloadFile, sha256Hex, uploadFile } from "../src/sync/files";
+import { attachmentLink, linksAttachment, typeFromName, withoutAttachment } from "../src/attachmentLinks";
+import { deleteFile, downloadFile, sha256Hex, uploadFile } from "../src/sync/files";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { Candidate, findItems, pathOf } from "../src/search";
@@ -53,6 +53,9 @@ commands:
   rm ITEM                  delete an item and everything under it
   attach ITEM FILE         upload FILE and link it in the item's note; prints
                            its hash
+  detach [ITEM] HASH       take the attachment's link out of ITEM's note, then
+                           delete the file unless another item links it too;
+                           without ITEM, only delete the file (same check)
   file HASH PATH           save the attached file with that hash to PATH
   export [ITEM]            --md (default), --opml or --json
   watch                    keep running and print a line per change made
@@ -211,6 +214,8 @@ async function perform(command: string, args: string[], options: Options, outlin
       await changeItem(outline, [item], (next, id) => setNote(next, id, [next.items[id].note, link].filter(Boolean).join("\n")));
       return hash;
     }
+    case "detach":
+      return detach(outline, args);
     case "file": {
       const [hash, path] = args;
       if (!/^[0-9a-f]{64}$/.test(hash ?? "") || !path) throw new Error("file needs HASH PATH; HASH is the 64 letters after att: in a note");
@@ -228,6 +233,36 @@ async function perform(command: string, args: string[], options: Options, outlin
     default:
       throw new Error(`unknown command ${command}; run outline help`);
   }
+}
+
+async function detach(outline: Outline, args: string[]): Promise<string> {
+  const [item, hash] = args.length === 1 ? [undefined, args[0]] : args;
+  if (args.length > 2 || !/^[0-9a-f]{64}$/.test(hash ?? "")) throw new Error("detach needs [ITEM] HASH; HASH is the 64 letters after att: in a note");
+  if (item) await unlinkAttachment(outline, resolveLinking(outline.doc, item, hash), hash);
+  const { linkedFrom, unchecked } = otherUses(outline.doc, hash, item ? resolve(outline.doc, item) : undefined);
+  if (linkedFrom.length) return linkedFrom.map((id) => `kept ${hash}, still linked from ${id} ${describe(outline.doc, id)}`).join("\n");
+  const deleted = await deleteFile(outline.endpoint, hash);
+  if (!deleted && !item) throw new Error(`no file ${hash} on the server`);
+  const report = deleted ? `deleted ${hash}` : `no file ${hash} on the server`;
+  return unchecked ? `${report}\n${unchecked} private items were not checked for a link to it` : report;
+}
+
+function resolveLinking(doc: Doc, item: string, hash: string): ItemId {
+  const id = writable(doc, resolve(doc, item));
+  if (!linksAttachment(doc.items[id].note, hash)) throw new Error(`${describe(doc, id)} has no link to att:${hash}`);
+  return id;
+}
+
+async function unlinkAttachment(outline: Outline, id: ItemId, hash: string): Promise<void> {
+  await outline.save(setNote(outline.doc, id, withoutAttachment(outline.doc.items[id].note, hash)));
+}
+
+function otherUses(doc: Doc, hash: string, except: ItemId | undefined): { linkedFrom: ItemId[]; unchecked: number } {
+  const others = Object.keys(doc.items).filter((id) => id !== ROOT && id !== except);
+  return {
+    linkedFrom: others.filter((id) => linksAttachment(doc.items[id].note, hash)),
+    unchecked: others.filter((id) => isSealed(doc.items[id].note)).length,
+  };
 }
 
 interface Place {
