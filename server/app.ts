@@ -81,7 +81,7 @@ function allowOrigin(request: IncomingMessage, response: ServerResponse, origins
   if (!origin || !(origins.includes("*") || origins.includes(origin))) return;
   response.setHeader("Access-Control-Allow-Origin", origin);
   response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   response.setHeader("Access-Control-Max-Age", "86400");
   response.setHeader("Vary", "Origin");
 }

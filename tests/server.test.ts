@@ -81,6 +81,7 @@ describe("sync server", () => {
   it("allows PUT from the browser, for attachments", async () => {
     const allowed = await fetch(`${base}/files/x`, { method: "OPTIONS", headers: { Origin: "https://app.example" } });
     expect(allowed.headers.get("access-control-allow-methods")).toContain("PUT");
+    expect(allowed.headers.get("access-control-allow-methods")).toContain("DELETE");
   });
 
   it("keeps data across restarts of the store", async () => {

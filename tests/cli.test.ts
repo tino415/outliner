@@ -136,6 +136,11 @@ describe("outline CLI", () => {
       expect(await outline(`file ${hash} ${join(folder, "copy.png")}`)).toBe(join(folder, "copy.png"));
     });
 
+    it("keeps the file while another item links it in its text", async () => {
+      await outline(`add "![again](att:${hash})"`);
+      expect(await outline(`detach "Bug report" ${hash}`)).toMatch(new RegExp(`^kept ${hash}, still linked from `));
+    });
+
     it("deletes the file of a link already taken out by hand", async () => {
       await outline('note "Bug report" ""');
       expect(await outline(`detach ${hash}`)).toBe(`deleted ${hash}`);

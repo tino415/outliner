@@ -264,7 +264,7 @@ async function unlinkAttachment(outline: Outline, id: ItemId, hash: string): Pro
 function otherUses(doc: Doc, hash: string, except: ItemId | undefined): { linkedFrom: ItemId[]; unchecked: number } {
   const others = Object.keys(doc.items).filter((id) => id !== ROOT && id !== except);
   return {
-    linkedFrom: others.filter((id) => linksAttachment(doc.items[id].note, hash)),
+    linkedFrom: others.filter((id) => linksAttachment(doc.items[id].note, hash) || linksAttachment(doc.items[id].text, hash)),
     unchecked: others.filter((id) => isSealed(doc.items[id].note)).length,
   };
 }
