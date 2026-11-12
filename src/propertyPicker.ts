@@ -65,8 +65,8 @@ export function chooseValue(id: ItemId, key: string): void {
       const known = valuesOf(key).filter((value) => value.toLowerCase().includes(typed.toLowerCase()) && value !== typed);
       const open = current !== undefined && onlyUrl(current) ? [{ text: `Open ${current}`, path: [], value: OPEN }] : [];
       const choices: Choice[] = [
-        ...open,
         ...(typed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
+        ...open,
         ...known.slice(0, 12).map((value) => ({ text: value, path: [], value })),
       ];
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;

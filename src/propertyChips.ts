@@ -2,7 +2,7 @@ import { Item, SETTINGS } from "./model";
 import { escape, onlyUrl } from "./inline";
 import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
-import { dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
+import { DATE_PROPERTIES, dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
 
 /* An item's properties as chips under its text (doc/adr/0032); a click on one edits it. */
 
@@ -20,9 +20,13 @@ function chipHtml(key: string, value: string, result: Cell | undefined): string 
   const shown = result?.text ?? value;
   const title = result?.error ? `${key}: ${value} (${result.error})` : `${key}: ${value}`;
   const url = result ? undefined : onlyUrl(value);
-  if (url && key !== "private") return linkChipHtml(key, url, classes, title);
+  if (url && opensUrl(key)) return linkChipHtml(key, url, classes, title);
   const label = key === "private" ? `🔒 ${escape(value)}` : `<span class="prop-key">${escape(key)}</span> ${valueHtml(shown)}`;
   return `<button type="button" tabindex="-1" class="${classes}" data-key="${escape(key)}" title="${escape(title)}">${label}</button>`;
+}
+
+function opensUrl(key: string): boolean {
+  return key !== "private" && !SETTINGS.has(key) && !(DATE_PROPERTIES as readonly string[]).includes(key);
 }
 
 /** An <a> cannot sit inside a <button>, so the key is the button and the value the link. */

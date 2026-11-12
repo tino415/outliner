@@ -109,10 +109,25 @@ test.describe("a property whose value is one URL", () => {
     const opened = context.waitForEvent("page");
     await chip.locator(".prop-value").click();
     expect((await opened).url()).toBe(url);
+    expect(context.pages()).toHaveLength(2);
     await expect(page.locator("#palette")).toBeHidden();
     await chip.locator(".prop-key").click();
     await expect(page.locator("#palette input")).toHaveAttribute("placeholder", `pr: ${url}`);
     await expect(page.locator("#palette li").first()).toHaveText(`Open ${url}`);
     await expect(page.locator("#palette li").last()).toHaveText("Remove pr");
   });
+});
+
+test("typing a new value in a URL property's palette sets it instead of opening the old one", async ({ page }) => {
+  await freshOutline(page, "Card | :pr: https://github.com/tino415/outliner/pull/1");
+  await row(page, "Card").locator(".prop-key").click();
+  await page.keyboard.type("https://github.com/tino415/outliner/pull/2");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Card").locator(".prop-value")).toHaveText("https://github.com/tino415/outliner/pull/2");
+});
+
+test("a value with words around a URL stays one button", async ({ page }) => {
+  await freshOutline(page, "Card | :note: see https://example.com/a now");
+  await expect(row(page, "Card").locator("button.prop-chip")).toHaveCount(1);
+  await expect(row(page, "Card").locator(".link-chip")).toHaveCount(0);
 });

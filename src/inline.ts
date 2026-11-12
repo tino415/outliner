@@ -22,8 +22,10 @@ const URL_PATTERN = String.raw`https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"]`;
 
 /** The URL a value is made of, when it is nothing else. */
 export function onlyUrl(value: string): string | undefined {
-  return new RegExp(`^${URL_PATTERN}$`).test(value) ? value : undefined;
+  return WHOLE_URL.test(value) ? value : undefined;
 }
+
+const WHOLE_URL = new RegExp(`^${URL_PATTERN}$`);
 
 const TOKEN = new RegExp(
   [
