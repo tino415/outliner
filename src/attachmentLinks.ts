@@ -26,3 +26,19 @@ export function typeFromName(name: string): string {
   };
   return types[extension] ?? "application/octet-stream";
 }
+
+const linkTo = (hash: string) => new RegExp(String.raw`!?\[[^\]\n]*\]\(att:${hash}\)`, "g");
+
+export function linksAttachment(note: string, hash: string): boolean {
+  return linkTo(hash).test(note);
+}
+
+export function withoutAttachment(note: string, hash: string): string {
+  const link = linkTo(hash);
+  return note
+    .split("\n")
+    .map((line) => ({ line, left: line.replace(link, "") }))
+    .filter(({ line, left }) => left.trim() !== "" || line.trim() === "")
+    .map(({ left }) => left)
+    .join("\n");
+}

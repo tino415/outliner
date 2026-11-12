@@ -97,6 +97,84 @@ describe("outline CLI", () => {
     rmSync(folder, { recursive: true });
   });
 
+  describe("detach", () => {
+    let folder: string;
+    let hash: string;
+    beforeEach(async () => {
+      folder = mkdtempSync(join(tmpdir(), "outline-cli-"));
+      const shot = join(folder, "glitch.png");
+      writeFileSync(shot, "not really a png");
+      await outline('add "Bug report"');
+      hash = await outline(`attach "Bug report" ${shot}`);
+    });
+    afterEach(() => rmSync(folder, { recursive: true }));
+
+    it("unlinks the file from the note and deletes it", async () => {
+      expect(await outline(`detach "Bug report" ${hash}`)).toBe(`deleted ${hash}`);
+      expect(await outline('show "Bug report"')).toBe("- Bug report");
+      await expect(outline(`file ${hash} ${join(folder, "copy.png")}`)).rejects.toThrow(/no file/);
+    });
+
+    it("keeps the note's other lines", async () => {
+      await outline(`note "Bug report" "see below\n![glitch.png](att:${hash})\nthanks"`);
+      await outline(`detach "Bug report" ${hash}`);
+      expect(await outline('show "Bug report"')).toBe("- Bug report\n  see below\n  thanks");
+    });
+
+    it("takes out every link to the file, also inline in a line of text", async () => {
+      await outline(`note "Bug report" "see ![a](att:${hash}) here\n[b](att:${hash})"`);
+      await outline(`detach "Bug report" ${hash}`);
+      expect(await outline('show "Bug report"')).toBe("- Bug report\n  see  here");
+    });
+
+    it("keeps the file while another item links it", async () => {
+      await outline('add "Duplicate"');
+      await outline(`note Duplicate "[again](att:${hash})"`);
+      const kept = await outline(`detach "Bug report" ${hash}`);
+      expect(kept).toMatch(new RegExp(`^kept ${hash}, still linked from \\w+ "Duplicate"$`));
+      expect(await outline('show "Bug report"')).toBe("- Bug report");
+      expect(await outline(`file ${hash} ${join(folder, "copy.png")}`)).toBe(join(folder, "copy.png"));
+    });
+
+    it("keeps the file while another item links it in its text", async () => {
+      await outline(`add "![again](att:${hash})"`);
+      expect(await outline(`detach "Bug report" ${hash}`)).toMatch(new RegExp(`^kept ${hash}, still linked from `));
+    });
+
+    it("deletes the file of a link already taken out by hand", async () => {
+      await outline('note "Bug report" ""');
+      expect(await outline(`detach ${hash}`)).toBe(`deleted ${hash}`);
+      await expect(outline(`file ${hash} ${join(folder, "copy.png")}`)).rejects.toThrow(/no file/);
+    });
+
+    it("refuses a bare hash that a note still links", async () => {
+      expect(await outline(`detach ${hash}`)).toMatch(/^kept /);
+      expect(await outline(`file ${hash} ${join(folder, "copy.png")}`)).toBe(join(folder, "copy.png"));
+    });
+
+    it("says when the server has no such file", async () => {
+      await expect(outline(`detach ${"0".repeat(64)}`)).rejects.toThrow(`no file ${"0".repeat(64)} on the server`);
+    });
+
+    it("refuses an item that does not link the file, and a hash that is not one", async () => {
+      await outline('add "Other"');
+      await expect(outline(`detach Other ${hash}`)).rejects.toThrow(/has no link/);
+      await expect(outline("detach Other abc")).rejects.toThrow(/64 letters/);
+    });
+
+    it("deletes anyway and counts the private items it could not read", async () => {
+      await outline('add "Journal"');
+      await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);
+      expect(await outline(`detach "Bug report" ${hash}`)).toBe(`deleted ${hash}\n1 private items were not checked for a link to it`);
+    });
+
+    it("refuses a private item", async () => {
+      await outline('add "Journal"');
+      await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);
+      await expect(outline(`detach Journal ${hash}`)).rejects.toThrow(/Journal is private/);
+    });
+  });
+
   it("shows a private item as private and refuses to write into it", async () => {
     await outline('add "Journal"');
     await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);

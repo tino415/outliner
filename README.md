@@ -244,6 +244,7 @@ a shell:
 ```sh
 outline attach "Outliner/TODO/Some bug" screenshot.png
 outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
+outline detach "Outliner/TODO/Some bug" <sha256>   # unlink, then delete unless another item links it (doc/adr/0056)
 ```
 
 ## Private items

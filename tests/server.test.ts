@@ -81,6 +81,7 @@ describe("sync server", () => {
   it("allows PUT from the browser, for attachments", async () => {
     const allowed = await fetch(`${base}/files/x`, { method: "OPTIONS", headers: { Origin: "https://app.example" } });
     expect(allowed.headers.get("access-control-allow-methods")).toContain("PUT");
+    expect(allowed.headers.get("access-control-allow-methods")).toContain("DELETE");
   });
 
   it("keeps data across restarts of the store", async () => {
@@ -120,6 +121,21 @@ describe("attachments", () => {
     expect((await put(hash, bytes, {})).status).toBe(401);
     await put(hash, bytes);
     expect((await fetch(`${base}/files/${hash}`)).status).toBe(401);
+  });
+
+  it("deletes a file, and says so when there is none", async () => {
+    await put(hash, bytes);
+    expect((await fetch(`${base}/files/${hash}`, { method: "DELETE", headers: auth })).status).toBe(204);
+    expect((await fetch(`${base}/files/${hash}`, { headers: auth })).status).toBe(404);
+    const again = await fetch(`${base}/files/${hash}`, { method: "DELETE", headers: auth });
+    expect(again.status).toBe(404);
+    expect(await again.json()).toEqual({ error: "no such file" });
+  });
+
+  it("needs the token to delete a file", async () => {
+    await put(hash, bytes);
+    expect((await fetch(`${base}/files/${hash}`, { method: "DELETE" })).status).toBe(401);
+    expect((await fetch(`${base}/files/${hash}`, { headers: auth })).status).toBe(200);
   });
 
   it("refuses a file over the size limit", async () => {
