@@ -1113,6 +1113,28 @@ code {
   color: var(--muted);
 }
 
+.prop-chip button.prop-key {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.prop-chip.link-chip .prop-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prop-chip.link-chip:hover {
+  background: var(--surface-2);
+}
+
+.prop-chip.link-chip .prop-key:hover {
+  color: var(--text);
+}
+
 .prop-chip.computed .prop-value {
   color: var(--accent);
 }

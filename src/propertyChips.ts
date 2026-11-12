@@ -1,5 +1,5 @@
 import { Item, SETTINGS } from "./model";
-import { escape } from "./inline";
+import { escape, onlyUrl } from "./inline";
 import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
 import { dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
@@ -19,8 +19,17 @@ function chipHtml(key: string, value: string, result: Cell | undefined): string 
   const classes = ["prop-chip", SETTINGS.has(key) && "setting", result && "computed", result?.error && "error"].filter(Boolean).join(" ");
   const shown = result?.text ?? value;
   const title = result?.error ? `${key}: ${value} (${result.error})` : `${key}: ${value}`;
+  const url = result ? undefined : onlyUrl(value);
+  if (url && key !== "private") return linkChipHtml(key, url, classes, title);
   const label = key === "private" ? `🔒 ${escape(value)}` : `<span class="prop-key">${escape(key)}</span> ${valueHtml(shown)}`;
   return `<button type="button" tabindex="-1" class="${classes}" data-key="${escape(key)}" title="${escape(title)}">${label}</button>`;
+}
+
+/** An <a> cannot sit inside a <button>, so the key is the button and the value the link. */
+function linkChipHtml(key: string, url: string, classes: string, title: string): string {
+  const keyButton = `<button type="button" tabindex="-1" class="prop-key">${escape(key)}</button>`;
+  const link = `<a class="link prop-value" href="${escape(url)}" target="_blank" rel="noopener" tabindex="-1">${escape(url)}</a>`;
+  return `<span class="${classes} link-chip" data-key="${escape(key)}" title="${escape(title)}">${keyButton} ${link}</span>`;
 }
 
 /** A date shows as a date chip does, "tomorrow" or "Tue 14 Oct", red once past (doc/adr/0036). */

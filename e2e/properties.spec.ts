@@ -98,3 +98,21 @@ test("a formula with nothing to compute shows as computed and empty, not as its 
   await expect(price).toHaveClass(/computed/);
   await expect(price).toHaveText("price –");
 });
+
+test.describe("a property whose value is one URL", () => {
+  const url = "https://github.com/tino415/outliner/pull/1";
+
+  test("opens it from the value and edits it from the key", { tag: "@phone" }, async ({ page, context }) => {
+    await freshOutline(page, `Card | :pr: ${url}`);
+    const chip = row(page, "Card").locator(".prop-chip");
+    await context.route(url, (route) => route.fulfill({ body: "pull request" }));
+    const opened = context.waitForEvent("page");
+    await chip.locator(".prop-value").click();
+    expect((await opened).url()).toBe(url);
+    await expect(page.locator("#palette")).toBeHidden();
+    await chip.locator(".prop-key").click();
+    await expect(page.locator("#palette input")).toHaveAttribute("placeholder", `pr: ${url}`);
+    await expect(page.locator("#palette li").first()).toHaveText(`Open ${url}`);
+    await expect(page.locator("#palette li").last()).toHaveText("Remove pr");
+  });
+});

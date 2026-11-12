@@ -18,6 +18,13 @@ export function tagsWritten(text: string): string[] {
   return [...text.matchAll(new RegExp(TAG, "gu"))].map((match) => match[0].slice(1));
 }
 
+const URL_PATTERN = String.raw`https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"]`;
+
+/** The URL a value is made of, when it is nothing else. */
+export function onlyUrl(value: string): string | undefined {
+  return new RegExp(`^${URL_PATTERN}$`).test(value) ? value : undefined;
+}
+
 const TOKEN = new RegExp(
   [
     String.raw`(?<code>\x60[^\x60\n]+\x60)`,
@@ -26,7 +33,7 @@ const TOKEN = new RegExp(
     String.raw`(?<ref>\[\[[^\[\]\n]+\](?:\[[^\[\]\n]+\])?\])`,
     String.raw`(?<att>!?\[[^\]\n]*\]\(att:[0-9a-f]{64}\))`,
     String.raw`(?<mdlink>\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))`,
-    String.raw`(?<url>https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"])`,
+    `(?<url>${URL_PATTERN})`,
     `(?<date>${DATE_WRITTEN})`,
     String.raw`(?<escaped>\\(?=#))`,
     `(?<tag>${TAG})`,

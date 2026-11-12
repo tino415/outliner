@@ -64,7 +64,8 @@ as chips under its text (doc/adr/0032). The + at the right end of the
 item being edited or under the mouse, Ctrl-J P (⌘J P on a Mac), Set a
 property… in the item menu or the Property button in the phone's toolbar
 asks for a key, then a value, offering the ones in use; a click on a chip
-changes or removes it. Each property syncs on its own. Typing a line
+changes or removes it, except on a value that is one URL: that opens the URL,
+and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a line
 `:calories: 350 kcal` into a note still works: it becomes a property when
 the note is left. Exports write properties as such lines, as org mode does.
 ⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
