@@ -8,6 +8,7 @@ import { choosePrivacy } from "./privateItems";
 import { toast } from "./chrome";
 import { DATE_PROPERTIES } from "./dates";
 import { pickDate } from "./datePicker";
+import { onlyUrl } from "./inline";
 
 /*
  * Setting a property without typing it (doc/adr/0032): pick a key, then a
@@ -20,11 +21,14 @@ interface Choice extends PaletteOption {
   value: string;
 }
 
+const OPEN = "\0open";
+
 export function bindPropertyChips(): void {
   document.addEventListener("mousedown", (event) => {
     if ((event.target as Element).closest?.(".prop-chip, .prop-add")) event.preventDefault();
   });
   document.addEventListener("click", (event) => {
+    if ((event.target as Element).closest?.(".prop-chip a")) return;
     const button = (event.target as Element).closest?.<HTMLElement>(".prop-chip, .prop-add");
     const owner = button?.closest<HTMLElement>("[data-id]");
     if (!button || !owner) return;
@@ -59,13 +63,18 @@ export function chooseValue(id: ItemId, key: string): void {
     candidates: (query) => {
       const typed = query.trim();
       const known = valuesOf(key).filter((value) => value.toLowerCase().includes(typed.toLowerCase()) && value !== typed);
+      const open = current !== undefined && onlyUrl(current) ? [{ text: `Open ${current}`, path: [], value: OPEN }] : [];
       const choices: Choice[] = [
         ...(typed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
+        ...open,
         ...known.slice(0, 12).map((value) => ({ text: value, path: [], value })),
       ];
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;
     },
-    choose: ({ value }) => commitAndRender(setItemProperty(doc(), id, key, value), caretNow()),
+    choose: ({ value }) => {
+      if (value === OPEN) window.open(current, "_blank", "noopener");
+      else commitAndRender(setItemProperty(doc(), id, key, value), caretNow());
+    },
   });
 }
 

@@ -63,3 +63,4 @@ file that says so.
 54. [Collapse and expand everything inside an item](0054-collapse-and-expand-everything-inside-an-item.md)
 55. [The Nix package reads the lockfile, and CI builds it](0055-the-nix-package-reads-the-lockfile-and-ci-builds-it.md)
 56. [Detaching deletes an attachment no other item links](0056-detaching-deletes-an-attachment-no-other-item-links.md) (amends 28)
+57. [A property whose value is a URL opens it, its key edits it](0057-a-property-whose-value-is-a-url-opens-it.md) (amends 32)
