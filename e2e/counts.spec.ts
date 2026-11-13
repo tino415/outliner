@@ -47,3 +47,23 @@ test("the add-property + does not cover the count", { tag: "@phone" }, async ({ 
   const plus = (await row(page, "Page").locator(".prop-add").boundingBox())!;
   expect(plus.x).toBeGreaterThanOrEqual(count.x + count.width);
 });
+
+test("a folded row with a long title keeps the + off the title", { tag: "@phone" }, async ({ page }) => {
+  const long = "word ".repeat(60).trim();
+  await freshOutline(page, `${long}\n  a\n\n  b`);
+  await row(page, long).locator(".toggle").click();
+  await row(page, long).hover();
+  const title = (await editor(page, long).boundingBox())!;
+  const plus = (await row(page, long).locator(".prop-add").boundingBox())!;
+  expect(plus.x).toBeGreaterThanOrEqual(title.x + title.width);
+});
+
+test("an empty folded title is wide enough to click", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "x\n  a\n  b");
+  await editor(page, "x").click();
+  await page.keyboard.press("Control+a");
+  await page.keyboard.press("Backspace");
+  await page.locator(".row").first().locator(".toggle").click();
+  const width = (await page.locator(".row").first().locator(".text").boundingBox())!.width;
+  expect(width).toBeGreaterThan(20);
+});
