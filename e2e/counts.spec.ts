@@ -27,3 +27,14 @@ test("a board column counts its cards and how many are done", { tag: "@phone" },
   await page.keyboard.press("ControlOrMeta+Enter");
   await expect(count("To do")).toHaveText("1/2 done");
 });
+
+test("the count sits on the title's line, right after it", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Page\n  a\n  b");
+  await row(page, "Page").locator(".toggle").click();
+  const title = (await editor(page, "Page").boundingBox())!;
+  const count = (await row(page, "Page").locator(".fold-count").boundingBox())!;
+  expect(count.y).toBeLessThan(title.y + title.height);
+  expect(count.y + count.height).toBeGreaterThan(title.y);
+  expect(count.x).toBeGreaterThanOrEqual(title.x + title.width - 1);
+  expect(count.x - (title.x + title.width)).toBeLessThan(40);
+});

@@ -73,7 +73,7 @@ function columnHtml(id: ItemId): string {
   const cards = inResults(shownChildren(doc(), id, filter()));
   return (
     `<section class="item board-column${item.completed ? " completed" : ""}${state.results?.matches.has(id) ? " match" : ""}" data-id="${escape(id)}">` +
-    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}${propertyButton()}<span class="board-count">${countLabel(doc(), item.children)}</span>${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
+    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}<span class="board-count">${countLabel(doc(), item.children)}</span>${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
     `<ol class="board-cards">${cards.map(cardHtml).join("")}</ol>` +
     `<button type="button" class="board-new-card" data-board-new-card="${escape(id)}">+ Add a card</button></section>`
   );
