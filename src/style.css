@@ -1226,7 +1226,7 @@ code {
 }
 
 .board-column-head {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, max-content) auto auto 1fr;
   column-gap: 6px;
   padding: 2px 4px 2px 0;
   font-weight: 650;
@@ -1242,6 +1242,29 @@ code {
 .board-column-head .note {
   color: var(--muted);
   font-weight: 400;
+}
+
+.body:has(> .fold-count) {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto 1fr;
+  column-gap: 6px;
+}
+
+.body:has(> .fold-count) > :not(.text):not(.fold-count) {
+  grid-column: 1 / -1;
+}
+
+.body:has(> .fold-count) > .text {
+  min-width: 2em;
+  padding-right: 0;
+}
+
+.fold-count {
+  align-self: center;
+  padding-right: 22px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .board-count {
