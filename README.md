@@ -404,7 +404,9 @@ outline show "Projects/Garden" --ids
 outline find "#ideas" --json
 outline find "#feature is:open under:Projects/Outliner" --query
 outline add "Buy seeds" --under Projects --note "before March"
-printf '%s\n' "- Week" "  - Monday" | outline add - --under Plans
+printf '%s\n' "- Week" "  - Monday" | outline add - --under Plans   # prints each new item with its id
+outline note <id> - < note.txt        # a note or title from stdin; titles stay under 200 characters,
+                                      # notes hold no list lines or headings (doc/adr/0058)
 outline set "Week 41/Monday/Lunch/Soup" calories 250 kcal
 outline show "Week 41" --columns      # a table, parents summing their children
 outline done <id>

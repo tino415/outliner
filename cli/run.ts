@@ -29,6 +29,7 @@ import { isSealed, propertyKey, propertyLines, sealedKeyOf } from "../src/notes"
 import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
+import { noteProblem, titleProblem } from "../src/writingRules";
 import { watch } from "./watch";
 
 export const USAGE = `outline: read and change the synced outline
@@ -40,9 +41,18 @@ commands:
   find QUERY               items whose text contains every word of QUERY
                            (--query: QUERY in the language of query views, as
                            #tag is:open under:"A/B" has:KEY -word OR due:<+7d)
-  add TEXT                 a new item; TEXT "-" reads indented lines from stdin
-  edit ITEM TEXT           replace an item's text
-  note ITEM TEXT           replace an item's note ("" removes it)
+  add TEXT                 a new item; TEXT "-" reads a subtree of indented
+                           "- " lines from stdin and prints each new item
+                           with its id (--json: the tree)
+                           Writing rules: a title is one line of at most 200
+                           characters, best under 80; one idea per item. A
+                           list is children, never lines in a note: write a
+                           subtree with one add - --under ITEM. A note is a
+                           short paragraph with no list lines or headings;
+                           code fences and attachment links are fine.
+  edit ITEM TEXT           replace an item's text (TEXT "-" reads it from stdin)
+  note ITEM TEXT           replace an item's note ("" removes it, "-" reads
+                           it from stdin)
   done ITEM / undone ITEM  complete or reopen an item
   move ITEM --under ITEM   move an item and everything under it; --before
                            or --after ITEM put it beside ITEM instead
@@ -156,20 +166,30 @@ async function perform(command: string, args: string[], options: Options, outlin
       const { parent, at } = place(doc, options);
       const text = args.join(" ");
       if (text === "-") {
-        const result = graft(doc, parseIndentedText(stdin), parent, at);
+        const incoming = parseIndentedText(stdin);
+        requireWellFormed(incoming);
+        const result = graft(doc, incoming, parent, at);
         await outline.save(result.doc);
-        return options.json ? json(result.ids) : result.ids.join("\n");
+        return options.json ? json(result.ids.map((id) => tree(result.doc, id))) : createdLines(result.doc, result.ids);
       }
       if (!text) throw new Error("add needs some text");
+      requireTitle(text);
+      if (options.note) requireNote(options.note);
       const created = insertChild(doc, parent, at, text);
       await outline.save(options.note ? setNote(created.doc, created.id, options.note) : created.doc);
       return options.json ? json({ id: created.id }) : created.id;
     }
-    case "edit":
-      return changeItem(outline, args, (next, id) => setText(next, id, requireText(args, "edit")));
-    case "note":
+    case "edit": {
+      const title = textFrom(requireText(args, "edit"), stdin);
+      requireTitle(title);
+      return changeItem(outline, args, (next, id) => setText(next, id, title));
+    }
+    case "note": {
       if (args[0]) writable(doc, resolve(doc, args[0]));
-      return changeItem(outline, args, (next, id) => setNote(next, id, args.slice(1).join(" ")));
+      const note = textFrom(args.slice(1).join(" "), stdin);
+      requireNote(note);
+      return changeItem(outline, args, (next, id) => setNote(next, id, note));
+    }
     case "done":
       return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: true }));
     case "undone":
@@ -330,6 +350,38 @@ function propertiesFrom(assignments: string[]): Record<string, string> {
   );
 }
 
+function textFrom(argument: string, stdin: string): string {
+  return argument === "-" ? stdin.replace(/\n+$/, "") : argument;
+}
+
+function requireTitle(title: string): void {
+  const problem = titleProblem(title);
+  if (problem) throw new Error(problem);
+}
+
+function requireNote(note: string): void {
+  const problem = noteProblem(note);
+  if (problem) throw new Error(problem);
+}
+
+function requireWellFormed(incoming: Doc): void {
+  for (const [id, item] of Object.entries(incoming.items)) {
+    if (id === ROOT) continue;
+    requireTitle(item.text);
+    requireNote(item.note);
+  }
+}
+
+function createdLines(doc: Doc, ids: ItemId[]): string {
+  const lines: string[] = [];
+  const walk = (id: ItemId, depth: number) => {
+    lines.push(`${"  ".repeat(depth)}- ${doc.items[id].text}  [${id}]`);
+    for (const child of childrenInOrder(doc, id)) walk(child, depth + 1);
+  };
+  ids.forEach((id) => walk(id, 0));
+  return lines.join("\n");
+}
+
 function requireText(args: string[], command: string): string {
   const text = args.slice(1).join(" ");
   if (!text) throw new Error(`${command} needs the new text`);
@@ -396,6 +448,7 @@ function describe(doc: Doc, id: ItemId): string {
 interface Tree {
   id: ItemId;
   text: string;
+  path: string[];
   note?: string;
   completed?: boolean;
   properties?: Record<string, string>;
@@ -410,6 +463,7 @@ function tree(doc: Doc, id: ItemId, depth = Infinity, cells?: Map<ItemId, Map<st
   return {
     id,
     text: item.text,
+    path: pathOf(doc, id),
     ...(isSealed(item.note) ? { private: sealedKeyOf(item.note) } : item.note ? { note: item.note } : {}),
     ...(item.completed ? { completed: true } : {}),
     ...(properties.length > 0 ? { properties: Object.fromEntries(properties) } : {}),
