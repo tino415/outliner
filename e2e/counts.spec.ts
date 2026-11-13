@@ -38,3 +38,12 @@ test("the count sits on the title's line, right after it", { tag: "@phone" }, as
   expect(count.x).toBeGreaterThanOrEqual(title.x + title.width - 1);
   expect(count.x - (title.x + title.width)).toBeLessThan(40);
 });
+
+test("the add-property + does not cover the count", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Page\n  a\n  b");
+  await row(page, "Page").locator(".toggle").click();
+  await row(page, "Page").hover();
+  const count = (await row(page, "Page").locator(".fold-count").boundingBox())!;
+  const plus = (await row(page, "Page").locator(".prop-add").boundingBox())!;
+  expect(plus.x).toBeGreaterThanOrEqual(count.x + count.width);
+});
