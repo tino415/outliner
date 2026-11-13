@@ -3,6 +3,7 @@ import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, infe
 import { propertyChipsHtml } from "./propertyChips";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
+import { countLabel } from "./counts";
 import { pluginsMayHaveChanged } from "./pluginHost";
 import { boardShown, renderBoard } from "./board";
 import { select } from "./caret";
@@ -262,13 +263,14 @@ function renderItem(id: ItemId): HTMLLIElement {
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
   const mirror = isMirror(doc(), id) ? mirrorTextHtml(doc(), id) + mirroredChildrenHtml(doc(), id, filter()) : null;
-  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""}`;
+  const foldedCount = hasChildren && !expanded ? countLabel(doc(), item.children) : "";
+  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${foldedCount} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
+    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results, foldedCount) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
     rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
@@ -305,7 +307,7 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>, foldedCount: string): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
@@ -313,6 +315,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
+    (foldedCount === "" ? "" : `<span class="fold-count" title="Hidden children">${escape(foldedCount)}</span>`) +
     `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>` +
     propertyChipsHtml(item, keysShownAsColumns(), results) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +

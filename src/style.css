@@ -1244,6 +1244,14 @@ code {
   font-weight: 400;
 }
 
+.fold-count {
+  align-self: center;
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .board-count {
   align-self: center;
   color: var(--muted);
