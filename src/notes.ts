@@ -47,7 +47,7 @@ export function isInCode(noteBefore: string): boolean {
 }
 
 /** For each line, whether it is ordinary note text rather than a ``` fence or a line inside one. */
-function isOutsideCode(lines: string[]): boolean[] {
+export function isOutsideCode(lines: string[]): boolean[] {
   let inCode = false;
   return lines.map((line) => {
     const fence = /^\s*```/.test(line);

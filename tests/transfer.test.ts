@@ -104,6 +104,14 @@ describe("parseIndentedText", () => {
     expect(doc.items[doc.items[a.children[0]].children[0]].text).toBe("c");
     expect(doc.items[doc.items[ROOT].children[1]].text).toBe("d");
   });
+
+  it("keeps a code fence's lines in the note, even when they look like items", () => {
+    const doc = parseIndentedText("- Recipe\n  ```\n  - not an item\n    nested\n  ```\n- Next");
+    const [recipe, next] = doc.items[ROOT].children.map((id) => doc.items[id]);
+    expect(recipe.note).toBe("```\n- not an item\n  nested\n```");
+    expect(recipe.children).toEqual([]);
+    expect(next.text).toBe("Next");
+  });
 });
 
 describe("renderInline", () => {

@@ -1,7 +1,7 @@
 import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, setFlags, setNote } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
-import { mapLinesOutsideCode, propertyLines } from "./notes";
+import { isInCode, mapLinesOutsideCode, propertyLines } from "./notes";
 import { parseDoc } from "./storage";
 
 export function exportJson(doc: Doc): string {
@@ -112,6 +112,11 @@ export function parseIndentedText(text: string): Doc {
       const indent = line.length - line.trimStart().length;
       const bulleted = BULLET.test(line.trim());
       const last = stack[stack.length - 1];
+      if (isInCode(last.item.note) && last.bulleted && indent > last.indent) {
+        const inFence = /^\s*```/.test(line);
+        last.item.note += `\n${inFence ? line.trim() : line.slice(Math.min(indent, last.indent + 2))}`;
+        continue;
+      }
       if (!bulleted && last.bulleted && indent > last.indent) {
         last.item.note = last.item.note ? `${last.item.note}\n${line.trim()}` : line.trim();
         continue;

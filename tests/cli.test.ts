@@ -253,10 +253,62 @@ describe("outline CLI", () => {
     expect(await outline("show Food")).toBe("- Food\n  - Oats");
   });
 
-  it("reads indented lines from stdin", async () => {
-    const ids = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n  - Tuesday\n- Notes"));
-    expect(ids).toHaveLength(2);
-    expect(await outline("show")).toBe("- Week\n  - Monday\n  - Tuesday\n- Notes");
+  describe("writing a subtree", () => {
+    it("prints every created item, indented, with its id", async () => {
+      const printed = await outline("add -", "- Week\n  - Monday\n  - Tuesday\n- Notes");
+      expect(await outline("show --ids")).toBe(printed);
+      expect(printed.split("\n").map((line) => line.replace(/  \[\w+\]$/, ""))).toEqual(["- Week", "  - Monday", "  - Tuesday", "- Notes"]);
+    });
+
+    it("prints the tree with --json", async () => {
+      const trees = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n- Notes"));
+      expect(trees).toHaveLength(2);
+      expect(trees[0]).toMatchObject({ text: "Week", path: [], children: [{ text: "Monday", path: ["Week"], children: [] }] });
+    });
+
+    it("reads a note and a title from stdin", async () => {
+      const id = await outline("add Card");
+      await outline(`note ${id} -`, "Line one.\nLine two.\n");
+      await outline(`edit ${id} -`, "Renamed\n");
+      expect(await outline("show")).toBe("- Renamed\n  Line one.\n  Line two.");
+    });
+
+    it("refuses a title with a newline or over 200 characters, and points at children", async () => {
+      const id = await outline("add Card");
+      const message = /add - --under ITEM/;
+      await expect(outline(`add "${"x".repeat(201)}"`)).rejects.toThrow(message);
+      await expect(outline(`edit ${id} "${"x".repeat(201)}"`)).rejects.toThrow(message);
+      await expect(outline(`edit ${id} -`, "one\ntwo")).rejects.toThrow(message);
+      await expect(outline("add -", `- ${"x".repeat(201)}`)).rejects.toThrow(message);
+      await expect(run(["add", "a\nb"], env).then((result) => { if (result.code) throw new Error(result.output); })).rejects.toThrow(message);
+      await outline(`edit ${id} "${"x".repeat(200)}"`);
+    });
+
+    it("refuses list lines and headings in a note, with no way round it", async () => {
+      const id = await outline("add Card");
+      await expect(outline(`note ${id} -`, "Intro\n- one\n- two")).rejects.toThrow(/prose/);
+      await expect(outline(`note ${id} -`, "1. one")).rejects.toThrow(/prose/);
+      await expect(outline(`note ${id} -`, "# Title")).rejects.toThrow(/prose/);
+      await expect(outline(`note ${id} - --force`, "- one")).rejects.toThrow(/prose/);
+      await expect(outline(`add Other --note "- one"`)).rejects.toThrow(/prose/);
+      expect(await outline("show")).toBe("- Card");
+    });
+
+    it("lets a note hold code fences and attachment links", async () => {
+      const id = await outline("add Card");
+      const note = "Run it:\n```\n- not a list\n# not a heading\n```\n![shot.png](att:" + "a".repeat(64) + ")";
+      await outline(`note ${id} -`, note);
+      expect(JSON.parse(await outline(`show ${id} --json`)).note).toBe(note);
+    });
+
+    it("keeps a fence's lines in the note when add - reads them", async () => {
+      await outline("add -", "- Recipe\n  ```\n  - not an item\n  ```\n- Next");
+      expect(await outline("show")).toBe("- Recipe\n  ```\n  - not an item\n  ```\n- Next");
+    });
+
+    it("repeats the writing rules under add in the help", async () => {
+      expect(await outline("help")).toMatch(/Writing rules:[\s\S]*list is children[\s\S]*edit ITEM TEXT/);
+    });
   });
 
   it("prints the tree as JSON with ids", async () => {
