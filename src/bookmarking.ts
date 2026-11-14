@@ -1,4 +1,4 @@
-import { BOOKMARKS, BOOKMARKS_KEPT, ItemId, withBookmarksItem } from "./model";
+import { BOOKMARKS, ItemId, isKept, keptNotice, withBookmarksItem } from "./model";
 import { Bookmark, Destination, bookmarkForDigit, bookmarkPage } from "./bookmarks";
 import { commitAndRender, doc, state } from "./app";
 import { toast } from "./chrome";
@@ -39,7 +39,8 @@ export function bookmarkThisPage(): void {
 
 /** True, with a word to the user, when the change would touch the bookmarks item in a way it refuses. */
 export function refusedAsKept(ids: ItemId[]): boolean {
-  if (!ids.includes(BOOKMARKS)) return false;
-  toast(BOOKMARKS_KEPT);
+  const kept = ids.find(isKept);
+  if (!kept) return false;
+  toast(keptNotice(kept));
   return true;
 }

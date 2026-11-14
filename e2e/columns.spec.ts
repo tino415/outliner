@@ -68,7 +68,7 @@ test("the menu switches columns on for any page, inferring them from properties"
   await freshOutline(page, "Project\n  Design | :effort: 1h30m\n  Build | :effort: 2d\nPlain");
   await expect(page.locator("#columns-head")).toBeHidden();
   await page.locator("#menu-button").click();
-  await page.getByRole("button", { name: "Columns" }).click();
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
   await expect(page.locator("#columns-head .column-name")).toHaveText(["effort"]);
   await expect(cell(page, "Project", "effort")).toHaveText("49h 30m");
   await page.keyboard.press("Escape");

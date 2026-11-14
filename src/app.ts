@@ -1,6 +1,6 @@
 import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
-import { BOOKMARKS, Doc, ItemId, ROOT, ViewFilter, isDescendant, liftNoteProperties, withBookmarksItem, withPrivateIds } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant, isKept, liftNoteProperties, withBookmarksItem, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { loaded } from "./loaded";
 import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
@@ -71,7 +71,7 @@ export function start(): void {
     doc,
     zoomInto: (id: ItemId) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
     move: (next: Doc, id: ItemId) => {
-      if (id === BOOKMARKS && next === doc()) return void refusedAsKept([id]);
+      if (isKept(id) && next === doc()) return void refusedAsKept([id]);
       commitAndRender(next, null);
       flashRow(id);
     },

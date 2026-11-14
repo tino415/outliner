@@ -34,7 +34,17 @@ async function outline(command: string, stdin = "") {
 /** Every outline holds the Bookmarks system item; the tests that compare a whole outline leave its line out. */
 async function outlineWithoutBookmarks(command: string, stdin = "") {
   const lines = (await outline(command, stdin)).split("\n");
-  return lines.filter((line) => !/^\s*(- )?Bookmarks(\s+\[bookmarks\])?\s*(\d.*)?$/.test(line)).join("\n");
+  const indentOf = (line: string) => line.length - line.trimStart().length;
+  let skippingBelow = -1;
+  return lines
+    .filter((line) => {
+      if (skippingBelow >= 0 && indentOf(line) > skippingBelow) return false;
+      skippingBelow = -1;
+      if (!/^\s*(- )?Bookmarks(\s+\[bookmarks\])?\s*(\d.*)?$/.test(line)) return true;
+      skippingBelow = indentOf(line);
+      return false;
+    })
+    .join("\n");
 }
 
 function splitArgs(command: string): string[] {
@@ -345,14 +355,17 @@ describe("outline CLI", () => {
   it("makes the Bookmarks item on first run, once, and keeps it", async () => {
     await outline("show");
     await outline('add "Garden"');
-    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks$/);
+    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks\nbookmarks-about {2}Bookmarks \/ About Bookmarks$/);
     await outline('add "Plan" --under bookmarks');
     await expect(outline("rm bookmarks")).rejects.toThrow("Bookmarks stays; empty it instead");
+    await expect(outline("rm bookmarks-about")).rejects.toThrow("About Bookmarks stays");
+    await expect(outline("move bookmarks-about --under Garden")).rejects.toThrow("About Bookmarks stays");
+    await expect(outline("move bookmarks-about --under root")).rejects.toThrow("About Bookmarks stays");
     await expect(outline("move bookmarks --under Garden")).rejects.toThrow("Bookmarks stays; empty it instead");
     await outline("move Garden --before bookmarks");
     await outline("move bookmarks --before Garden");
     expect((await outline("show --json").then(JSON.parse)).children.map((child: { id: string }) => child.id)[0]).toBe("bookmarks");
-    expect(await outline("show bookmarks")).toBe("- Bookmarks\n  - Plan");
+    expect(await outline("show bookmarks")).toMatch(/^- Bookmarks\n {2}:columns: key\n {2}- About Bookmarks\n(.*\n)*? {2}- Plan$/);
   });
 
   it("prints the tree as JSON with ids", async () => {
@@ -389,7 +402,7 @@ describe("outline CLI", () => {
     await outline('set Monday/Breakfast/Oats calories 300 kcal');
     await outline('set Monday/Breakfast/Coffee calories 20 kcal');
     await outline('set Monday/Breakfast/Coffee effort 5m');
-    expect(await outlineWithoutBookmarks("show --columns")).toBe(
+    expect(await outline("show Monday --columns")).toBe(
       [
         "              calories   effort",
         "Monday        320 kcal       5m",

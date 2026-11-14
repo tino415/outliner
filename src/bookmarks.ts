@@ -1,4 +1,4 @@
-import { BOOKMARKS, Doc, ItemId, ROOT, appendChild, isPrivateItem, privateRootAbove, setText } from "./model";
+import { BOOKMARKS, BOOKMARKS_ABOUT, Doc, ItemId, ROOT, appendChild, isPrivateItem, privateRootAbove, setText } from "./model";
 import { onlyUrl } from "./inline";
 import { referenceTo, resolveReference } from "./references";
 
@@ -20,7 +20,7 @@ export interface Bookmark {
 const WHOLE_LINK = /^\[\[([^[\]\n]+)\](?:\[([^[\]\n]+)\])?\]$/;
 
 export function bookmarksIn(doc: Doc): Bookmark[] {
-  return (doc.items[BOOKMARKS]?.children ?? []).flatMap((child) => {
+  return (doc.items[BOOKMARKS]?.children ?? []).filter((child) => child !== BOOKMARKS_ABOUT).flatMap((child) => {
     const destination = destinationOf(doc, child);
     return destination ? [{ child, digit: digitOf(doc, child), destination }] : [];
   });

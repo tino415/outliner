@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOOKMARKS, Doc, ROOT, appendChild, buildDoc, indent, mergeInto, moveTo, remove, removeAll, removeCompleted, setItemProperty, setText, toggleCompleted, withBookmarksItem } from "../src/model";
+import { BOOKMARKS, BOOKMARKS_ABOUT, Doc, ROOT, appendChild, buildDoc, indent, mergeInto, moveTo, outdent, remove, removeAll, removeCompleted, setItemProperty, setText, toggleCompleted, withBookmarksItem } from "../src/model";
 import { bookmarkForDigit, bookmarkPage, bookmarksIn } from "../src/bookmarks";
 import { History } from "../src/store";
 
@@ -9,6 +9,11 @@ function outline() {
     for (const name of ["Garden", "Shed"]) ids[name] = append(root, name).id;
   });
   return { doc: withBookmarksItem(doc), ids };
+}
+
+function withoutAbout(doc: Doc): Doc {
+  const items = Object.fromEntries(Object.entries(doc.items).filter(([id]) => !id.startsWith(BOOKMARKS_ABOUT)));
+  return { items: { ...items, [BOOKMARKS]: { ...doc.items[BOOKMARKS], children: [] } } };
 }
 
 function withChild(doc: Doc, text: string): { doc: Doc; id: string } {
@@ -36,12 +41,83 @@ describe("the Bookmarks system item", () => {
   });
 });
 
+describe("the About Bookmarks item", () => {
+  it("is the collapsed first child of Bookmarks, with the explanation as its lines", () => {
+    const { doc } = outline();
+    const about = doc.items[BOOKMARKS_ABOUT];
+    expect(about).toMatchObject({ text: "About Bookmarks", parent: BOOKMARKS, collapsed: true });
+    expect(doc.items[BOOKMARKS].children[0]).toBe(BOOKMARKS_ABOUT);
+    const lines = (id: string, depth = 0): string[] =>
+      doc.items[id].children.flatMap((child) => ["  ".repeat(depth) + doc.items[child].text, ...lines(child, depth + 1)]);
+    expect(lines(BOOKMARKS_ABOUT)).toEqual([
+      "Add a bookmark",
+      "  Add an item here with a link to a page or a web address",
+      "  Open the page, tap ⋯ and tap Bookmark this page",
+      "Tap or click a bookmark's link to open its page; a web address opens in a new tab",
+      "To give a bookmark a shortcut, write a digit from 1 to 9 in its key column",
+    ]);
+  });
+
+  it("is not a bookmark", () => {
+    expect(bookmarksIn(outline().doc)).toEqual([]);
+  });
+
+  it("is made again when missing, and so is only made once per outline", () => {
+    const { doc } = outline();
+    const lacking = withBookmarksItem(withoutAbout(doc));
+    expect(lacking.items[BOOKMARKS_ABOUT]).toBeDefined();
+    expect(withBookmarksItem(lacking)).toBe(lacking);
+  });
+
+  it("is refused deletion, nesting, merging and leaving Bookmarks", () => {
+    const { doc, ids } = outline();
+    expect(remove(doc, BOOKMARKS_ABOUT)).toBe(doc);
+    expect(removeAll(doc, [ids.Garden, BOOKMARKS_ABOUT])).toBe(doc);
+    expect(moveTo(doc, BOOKMARKS_ABOUT, ROOT, 0)).toBe(doc);
+    expect(outdent(doc, BOOKMARKS_ABOUT, ROOT)).toBe(doc);
+    expect(moveTo(doc, ids.Garden, BOOKMARKS_ABOUT, 0)).toBe(doc);
+    expect(mergeInto(doc, BOOKMARKS_ABOUT, ids.Shed).doc).toBe(doc);
+    expect(mergeInto(doc, ids.Shed, BOOKMARKS_ABOUT).doc).toBe(doc);
+    expect(removeCompleted(toggleCompleted(doc, BOOKMARKS_ABOUT), ROOT).count).toBe(0);
+  });
+
+  it("is not a parent for the bookmark after it", () => {
+    const { doc, id } = withChild(outline().doc, "Plan");
+    expect(indent(doc, id, { showCompleted: true })).toBe(doc);
+  });
+});
+
+describe("the key column of Bookmarks", () => {
+  it("is set when the About item is made", () => {
+    expect(outline().doc.items[BOOKMARKS].properties.columns).toBe("key");
+  });
+
+  it("stays removed once the About item exists", () => {
+    const { doc } = outline();
+    const cleared = setItemProperty(doc, BOOKMARKS, "columns", "");
+    expect(withBookmarksItem(cleared).items[BOOKMARKS].properties.columns).toBeUndefined();
+  });
+
+  it("keeps columns the user already chose when the About item is made", () => {
+    const { doc } = outline();
+    const chosen = setItemProperty(withoutAbout(doc), BOOKMARKS, "columns", "key due");
+    expect(withBookmarksItem(chosen).items[BOOKMARKS].properties.columns).toBe("key due");
+  });
+
+  it("is added to an existing Bookmarks that has no About item", () => {
+    const { doc } = outline();
+    const old = setItemProperty(withoutAbout(doc), BOOKMARKS, "columns", "");
+    expect(old.items[BOOKMARKS].properties.columns).toBeUndefined();
+    expect(withBookmarksItem(old).items[BOOKMARKS].properties.columns).toBe("key");
+  });
+});
+
 describe("the bookmarks in the list", () => {
   it("adds a page as a link at the end, and says so when it is there already", () => {
     const { doc, ids } = outline();
     const first = bookmarkPage(doc, ids.Garden);
     expect(first.outcome).toBe("added");
-    expect(first.doc.items[first.doc.items[BOOKMARKS].children[0]].text).toBe(`[[id:${ids.Garden}][Garden]]`);
+    expect(first.doc.items[first.doc.items[BOOKMARKS].children.at(-1)!].text).toBe(`[[id:${ids.Garden}][Garden]]`);
     expect(bookmarkPage(first.doc, ids.Garden).outcome).toBe("already");
     expect(bookmarkPage(first.doc, BOOKMARKS).outcome).toBe("list");
     expect(bookmarkPage(first.doc, ROOT).outcome).toBe("home");
