@@ -16,6 +16,7 @@ import { bindColumnCells, toggleColumnView } from "./columns";
 import { goToTargetCommands, openCapture, openGoToTarget } from "./capturing";
 import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
+import { bookmarkThisPage, openBookmarkList } from "./bookmarking";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
@@ -92,7 +93,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editing), ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -264,6 +265,14 @@ const menuActions: Record<string, () => void> = {
   capture: () => {
     ui.menu.hidePopover();
     openCapture();
+  },
+  "bookmark-page": () => {
+    ui.menu.hidePopover();
+    bookmarkThisPage();
+  },
+  "open-bookmarks": () => {
+    ui.menu.hidePopover();
+    openBookmarkList();
   },
   "toggle-columns": () => toggleColumnView(),
   "toggle-board": () => toggleBoard(),

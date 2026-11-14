@@ -31,6 +31,12 @@ async function outline(command: string, stdin = "") {
   return result.output;
 }
 
+/** Every outline holds the Bookmarks system item; the tests that compare a whole outline leave its line out. */
+async function outlineWithoutBookmarks(command: string, stdin = "") {
+  const lines = (await outline(command, stdin)).split("\n");
+  return lines.filter((line) => !/^\s*(- )?Bookmarks(\s+\[bookmarks\])?\s*(\d.*)?$/.test(line)).join("\n");
+}
+
 function splitArgs(command: string): string[] {
   return [...command.matchAll(/"([^"]*)"|(\S+)/g)].map((match) => match[1] ?? match[2]);
 }
@@ -41,7 +47,7 @@ describe("outline CLI", () => {
     await outline('add "Garden" --under Projects');
     await outline('add "Plant tomatoes" --under "Projects/Garden"');
     await outline('add "Inbox" --first');
-    expect(await outline("show")).toBe("- Inbox\n- Projects\n  - Garden\n    - Plant tomatoes");
+    expect(await outlineWithoutBookmarks("show")).toBe("- Inbox\n- Projects\n  - Garden\n    - Plant tomatoes");
     expect(await outline("show Projects --depth 1")).toBe("- Projects\n  - Garden");
   });
 
@@ -54,7 +60,7 @@ describe("outline CLI", () => {
     await outline(`edit ${id} "Buy tomato seeds"`);
     await outline(`done ${id}`);
     await outline(`move ${id} --under Shopping`);
-    expect(await outline("show")).toBe("- Projects\n- Shopping\n  - ~~Buy tomato seeds~~");
+    expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n- Shopping\n  - ~~Buy tomato seeds~~");
   });
 
   it("finds items with the language of query views", async () => {
@@ -179,19 +185,19 @@ describe("outline CLI", () => {
     await outline('add "Journal"');
     await outline(`note Journal "🔒private:1:personal:${"A".repeat(40)}"`);
     await outline('add "Shopping"');
-    expect(await outline("show")).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping");
+    expect(await outlineWithoutBookmarks("show")).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping");
     await expect(outline('add "peek" --under Journal')).rejects.toThrow(/Journal is private/);
     await expect(outline("move Shopping --under Journal")).rejects.toThrow(/Journal is private/);
     await expect(outline('note Journal "plain"')).rejects.toThrow(/Journal is private/);
     await expect(outline("set Journal mood good")).rejects.toThrow(/Journal is private/);
     await outline('edit Journal "Diary"');
-    expect(await outline("show")).toContain("- Diary");
+    expect(await outlineWithoutBookmarks("show")).toContain("- Diary");
   });
 
   it("exports Markdown with links as their labels", async () => {
     const id = await outline('add "Garden"');
     await outline(`add "See [[id:${id}][the garden]]"`);
-    expect(await outline("export --md")).toBe("- Garden\n- See the garden");
+    expect(await outlineWithoutBookmarks("export --md")).toBe("- Garden\n- See the garden");
   });
 
   it("adds items before or after another, beside it", async () => {
@@ -202,7 +208,7 @@ describe("outline CLI", () => {
     await outline('add "Bike" --after Projects/House');
     await outline('add "Inbox" --before Projects');
     await outline("add - --after Projects/Garden", "- Shed\n  - Tools");
-    expect(await outline("show")).toBe(
+    expect(await outlineWithoutBookmarks("show")).toBe(
       "- Inbox\n- Projects\n  - Garden\n  - Shed\n    - Tools\n  - Car\n  - House\n  - Bike",
     );
   });
@@ -213,13 +219,13 @@ describe("outline CLI", () => {
     await outline('add "c"');
     await outline('add "x" --under b');
     await outline("move a --after c");
-    expect(await outline("show")).toBe("- b\n  - x\n- c\n- a");
+    expect(await outlineWithoutBookmarks("show")).toBe("- b\n  - x\n- c\n- a");
     await outline("move a --before b");
-    expect(await outline("show")).toBe("- a\n- b\n  - x\n- c");
+    expect(await outlineWithoutBookmarks("show")).toBe("- a\n- b\n  - x\n- c");
     await outline("move c --before b/x");
-    expect(await outline("show")).toBe("- a\n- b\n  - c\n  - x");
+    expect(await outlineWithoutBookmarks("show")).toBe("- a\n- b\n  - c\n  - x");
     await outline("move b/x --after a");
-    expect(await outline("show")).toBe("- a\n- x\n- b\n  - c");
+    expect(await outlineWithoutBookmarks("show")).toBe("- a\n- x\n- b\n  - c");
   });
 
   it("refuses places that contradict each other or the item itself", async () => {
@@ -233,7 +239,7 @@ describe("outline CLI", () => {
     await expect(outline("move a --before a")).rejects.toThrow(/beside itself/);
     await expect(outline("move a --after a/b")).rejects.toThrow(/under itself/);
     await expect(outline("move c")).rejects.toThrow(/needs --under, --before or --after/);
-    expect(await outline("show")).toBe("- a\n  - b\n- c");
+    expect(await outlineWithoutBookmarks("show")).toBe("- a\n  - b\n- c");
   });
 
   it("captures with a template from the outline, or into an Inbox", async () => {
@@ -241,7 +247,7 @@ describe("outline CLI", () => {
     await outline('add "Meal" --note ":capture: Food/Monday"');
     await outline('set Meal ask "kcal"');
     await outline('capture "Oats" --template meal --set "kcal=300 kcal"');
-    expect(await outline("show")).toBe("- Inbox\n  - call mum\n- Meal\n  :capture: Food/Monday\n  :ask: kcal\n- Food\n  - Monday\n    - Oats\n      :kcal: 300 kcal");
+    expect(await outlineWithoutBookmarks("show")).toBe("- Inbox\n  - call mum\n- Meal\n  :capture: Food/Monday\n  :ask: kcal\n- Food\n  - Monday\n    - Oats\n      :kcal: 300 kcal");
     await expect(outline('capture "x" --template nope')).rejects.toThrow(/no capture template named nope; there are Meal/);
   });
 
@@ -256,7 +262,7 @@ describe("outline CLI", () => {
   describe("writing a subtree", () => {
     it("prints every created item, indented, with its id", async () => {
       const printed = await outline("add -", "- Week\n  - Monday\n  - Tuesday\n- Notes");
-      expect(await outline("show --ids")).toBe(printed);
+      expect(await outlineWithoutBookmarks("show --ids")).toBe(printed);
       expect(printed.split("\n").map((line) => line.replace(/  \[\w+\]$/, ""))).toEqual(["- Week", "  - Monday", "  - Tuesday", "- Notes"]);
     });
 
@@ -270,7 +276,7 @@ describe("outline CLI", () => {
       const id = await outline("add Card");
       await outline(`note ${id} -`, "Line one.\nLine two.\n");
       await outline(`edit ${id} -`, "Renamed\n");
-      expect(await outline("show")).toBe("- Renamed\n  Line one.\n  Line two.");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Renamed\n  Line one.\n  Line two.");
     });
 
     it("refuses a title with a newline or over 200 characters, and points at children", async () => {
@@ -291,7 +297,7 @@ describe("outline CLI", () => {
       await expect(outline(`note ${id} -`, "# Title")).rejects.toThrow(/prose/);
       await expect(outline(`note ${id} - --force`, "- one")).rejects.toThrow(/prose/);
       await expect(outline(`add Other --note "- one"`)).rejects.toThrow(/prose/);
-      expect(await outline("show")).toBe("- Card");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Card");
     });
 
     it("lets a note hold code fences and attachment links", async () => {
@@ -303,7 +309,7 @@ describe("outline CLI", () => {
 
     it("keeps a fence's lines in the note when add - reads them", async () => {
       await outline("add -", "- Recipe\n  ```\n  - not an item\n  ```\n- Next");
-      expect(await outline("show")).toBe("- Recipe\n  ```\n  - not an item\n  ```\n- Next");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Recipe\n  ```\n  - not an item\n  ```\n- Next");
     });
 
     it("repeats the writing rules under add in the help", async () => {
@@ -311,18 +317,32 @@ describe("outline CLI", () => {
     });
   });
 
+  it("makes the Bookmarks item on first run, once, and keeps it", async () => {
+    await outline("show");
+    await outline('add "Garden"');
+    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks$/);
+    await outline('add "Plan" --under bookmarks');
+    await expect(outline("rm bookmarks")).rejects.toThrow("Bookmarks stays; empty it instead");
+    await expect(outline("move bookmarks --under Garden")).rejects.toThrow("Bookmarks stays; empty it instead");
+    await outline("move Garden --before bookmarks");
+    await outline("move bookmarks --before Garden");
+    expect((await outline("show --json").then(JSON.parse)).children.map((child: { id: string }) => child.id)[0]).toBe("bookmarks");
+    expect(await outline("show bookmarks")).toBe("- Bookmarks\n  - Plan");
+  });
+
   it("prints the tree as JSON with ids", async () => {
     await outline('add "a" --note "about a"');
     const tree = JSON.parse(await outline("show --json"));
-    expect(tree.children[0]).toMatchObject({ text: "a", note: "about a", children: [] });
-    expect(tree.children[0].id).toMatch(/\w+/);
+    expect(tree.children[0]).toMatchObject({ id: "bookmarks", text: "Bookmarks" });
+    expect(tree.children[1]).toMatchObject({ text: "a", note: "about a", children: [] });
+    expect(tree.children[1].id).toMatch(/\w+/);
   });
 
   it("deletes items and exports what is left", async () => {
     await outline('add "keep"');
     await outline('add "drop"');
     await outline("rm drop");
-    expect(await outline("export --md")).toBe("- keep");
+    expect(await outlineWithoutBookmarks("export --md")).toBe("- keep");
     expect(await outline("export --opml")).toContain('<outline text="keep"/>');
   });
 
@@ -344,7 +364,7 @@ describe("outline CLI", () => {
     await outline('set Monday/Breakfast/Oats calories 300 kcal');
     await outline('set Monday/Breakfast/Coffee calories 20 kcal');
     await outline('set Monday/Breakfast/Coffee effort 5m');
-    expect(await outline("show --columns")).toBe(
+    expect(await outlineWithoutBookmarks("show --columns")).toBe(
       [
         "              calories   effort",
         "Monday        320 kcal       5m",
@@ -366,7 +386,7 @@ describe("outline CLI", () => {
     await outline('add "plain"');
     await outline("set 日本語 n 1");
     await outline("set plain n 22");
-    const [, wide, plain] = (await outline("show --columns")).split("\n");
+    const [, wide, plain] = (await outlineWithoutBookmarks("show --columns")).split("\n");
     const width = (line: string) => [...line].reduce((sum, char) => sum + (/[　-鿿]/.test(char) ? 2 : 1), 0);
     expect(width(wide)).toBe(width(plain));
   });
@@ -375,7 +395,7 @@ describe("outline CLI", () => {
     const id = await outline('add "shared"');
     await outline(`note ${id} "from one client"`);
     await outline(`edit ${id} "renamed by another"`);
-    expect(await outline("show")).toBe("- renamed by another\n  from one client");
+    expect(await outlineWithoutBookmarks("show")).toBe("- renamed by another\n  from one client");
   });
 
   it("watches changes made by others from now on, one JSON line each in the shapes plugins get", async () => {

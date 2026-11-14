@@ -1,6 +1,6 @@
 import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
-import { Doc, ItemId, ROOT, ViewFilter, isDescendant, liftNoteProperties, withPrivateIds } from "./model";
+import { BOOKMARKS, Doc, ItemId, ROOT, ViewFilter, isDescendant, liftNoteProperties, withBookmarksItem, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { loaded } from "./loaded";
 import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
@@ -19,6 +19,7 @@ import { bindCapture, captureFromAddress } from "./capturing";
 import { today } from "./dates";
 import { liveMirrorTarget } from "./mirrors";
 import { boardDrops } from "./board";
+import { keepBookmarksItem, refusedAsKept } from "./bookmarking";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -70,6 +71,7 @@ export function start(): void {
     doc,
     zoomInto: (id: ItemId) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
     move: (next: Doc, id: ItemId) => {
+      if (id === BOOKMARKS && next === doc()) return void refusedAsKept([id]);
       commitAndRender(next, null);
       flashRow(id);
     },
@@ -94,6 +96,7 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
+  keepBookmarksItem();
   afterFirstSync(liftPropertiesWrittenInNotes);
   afterFirstSync(leaveLinkToMissingItem);
   bindAttachments(syncEndpoint);
@@ -193,6 +196,7 @@ export function redo(): void {
 
 function afterHistoryJump(before: Doc, caret: Caret | null | undefined): void {
   if (caret === undefined) return;
+  state.history.keep(withBookmarksItem(doc()));
   saveDocSoon(doc());
   changedHere(before, doc(), "history");
   if (caret && !doc().items[caret.id]) caret = null;

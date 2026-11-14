@@ -55,6 +55,17 @@ export const COMMAND_NAMES = [
   "capture",
   "go-to-target",
   "copy-link",
+  "bookmark-1",
+  "bookmark-2",
+  "bookmark-3",
+  "bookmark-4",
+  "bookmark-5",
+  "bookmark-6",
+  "bookmark-7",
+  "bookmark-8",
+  "bookmark-9",
+  "open-bookmarks",
+  "bookmark-page",
 ] as const;
 
 export type CommandName = (typeof COMMAND_NAMES)[number];

@@ -32,7 +32,7 @@ function median(values: number[]): number {
 
 test("structural edits render in well under a frame budget with 5,000 visible items", { tag: "@performance" }, async ({ page }) => {
   await freshOutline(page, bigOutline(50, 20, 4));
-  await expect(page.locator(".tree .text")).toHaveCount(50 * 20 * 5 + 50);
+  await expect(page.locator(".tree .text")).toHaveCount(50 * 20 * 5 + 50 + 1);
 
   await clickEnd(page, "item 25.10 with some **text** and a #tag");
   const timings = await timeStructuralEdits(page);

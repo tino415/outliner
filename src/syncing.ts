@@ -1,4 +1,4 @@
-import { Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf } from "./model";
+import { BOOKMARKS, Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf } from "./model";
 import { Clock, newDeviceId } from "./sync/clock";
 import { Endpoint, SyncError, exchange } from "./sync/client";
 import { MAX_TEXT, isPropertyField } from "./sync/protocol";
@@ -289,7 +289,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
   const newClock = clockFor(fresh);
   for (const change of response.changes) newClock.observe(change.clock);
   afterMerging(fresh, await mergeIncoming(fresh.replica, response.changes, keys()));
-  const serverHasOutline = materialize(fresh.replica).items[ROOT].children.length > 0;
+  const serverHasOutline = materialize(fresh.replica).items[ROOT].children.some((child) => child !== BOOKMARKS);
   const mine = doc();
   if (!serverHasOutline) {
     const upload = diff(emptyDoc(), mine, fresh.replica, () => newClock.tick());

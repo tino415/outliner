@@ -247,17 +247,17 @@ test.describe("selecting several items", { tag: "@keys" }, () => {
     await page.keyboard.press("ControlOrMeta+a");
     await expect(page.locator(".item.selected")).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+a");
-    await expect(page.locator(".item.selected")).toHaveCount(3);
+    await expect(page.locator(".item.selected")).toHaveCount(4);
     await page.keyboard.press("Backspace");
-    await expect(page.locator(".tree .item")).toHaveCount(0);
+    await expect(page.locator(".tree .item")).toHaveCount(1);
+    await expect(page.locator("#toast")).toContainText("Bookmarks stays");
   });
 
   test("the menu clears the page, and undo brings it back", async ({ page }) => {
     await freshOutline(page, "a\n  a1\nb");
     await page.locator("#menu-button").click();
     await page.getByRole("button", { name: "Clear this page" }).click();
-    await expect(page.locator(".tree .item")).toHaveCount(0);
-    await expect(page.locator("#add-item")).toHaveClass(/prominent/);
+    await expect(page.locator(".tree .item")).toHaveCount(1);
     await page.locator("#toast button").click();
     await expectOutline(page, "a\n  a1\nb");
   });

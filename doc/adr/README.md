@@ -66,3 +66,4 @@ file that says so.
 57. [A property whose value is a URL opens it, its key edits it](0057-a-property-whose-value-is-a-url-opens-it.md) (amends 32)
 58. [The CLI refuses long titles and structured notes](0058-the-cli-refuses-long-titles-and-structured-notes.md)
 59. [Go to a capture template's target](0059-go-to-a-capture-templates-target.md) (extends 23)
+60. [Bookmarks are the children of a system item](0060-bookmarks-are-the-children-of-a-system-item.md)
