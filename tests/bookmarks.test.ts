@@ -75,6 +75,7 @@ describe("the About Bookmarks item", () => {
     expect(removeAll(doc, [ids.Garden, BOOKMARKS_ABOUT])).toBe(doc);
     expect(moveTo(doc, BOOKMARKS_ABOUT, ROOT, 0)).toBe(doc);
     expect(outdent(doc, BOOKMARKS_ABOUT, ROOT)).toBe(doc);
+    expect(moveTo(doc, ids.Garden, BOOKMARKS_ABOUT, 0)).toBe(doc);
     expect(mergeInto(doc, BOOKMARKS_ABOUT, ids.Shed).doc).toBe(doc);
     expect(mergeInto(doc, ids.Shed, BOOKMARKS_ABOUT).doc).toBe(doc);
     expect(removeCompleted(toggleCompleted(doc, BOOKMARKS_ABOUT), ROOT).count).toBe(0);
@@ -95,6 +96,12 @@ describe("the key column of Bookmarks", () => {
     const { doc } = outline();
     const cleared = setItemProperty(doc, BOOKMARKS, "columns", "");
     expect(withBookmarksItem(cleared).items[BOOKMARKS].properties.columns).toBeUndefined();
+  });
+
+  it("keeps columns the user already chose when the About item is made", () => {
+    const { doc } = outline();
+    const chosen = setItemProperty(withoutAbout(doc), BOOKMARKS, "columns", "key due");
+    expect(withBookmarksItem(chosen).items[BOOKMARKS].properties.columns).toBe("key due");
   });
 
   it("is added to an existing Bookmarks that has no About item", () => {

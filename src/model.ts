@@ -48,7 +48,6 @@ function keptParentOf(id: ItemId): ItemId | null {
   return null;
 }
 
-/** True when `id` is kept and `parent` is not the only place it may live. */
 export function movesKeptOut(id: ItemId, parent: ItemId): boolean {
   const keptParent = keptParentOf(id);
   return keptParent !== null && keptParent !== parent;
@@ -87,7 +86,7 @@ function withBookmarksAbout(doc: Doc): Doc {
     };
     d.adopt({ ...blankItem(BOOKMARKS_ABOUT, BOOKMARKS, BOOKMARKS_ABOUT_TITLE), collapsed: true });
     d.write(BOOKMARKS).children.unshift(BOOKMARKS_ABOUT);
-    d.write(BOOKMARKS).properties = { ...d.read(BOOKMARKS).properties, columns: "key" };
+    d.write(BOOKMARKS).properties = { columns: "key", ...d.read(BOOKMARKS).properties };
     addLines(BOOKMARKS_ABOUT, BOOKMARKS_ABOUT_LINES, BOOKMARKS_ABOUT);
   });
 }
@@ -543,7 +542,7 @@ export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
 /** Move `id` so it sits at `index` among `parent`'s current children. */
 export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc {
   if (id === parent || isDescendant(doc, parent, id)) return doc;
-  if (movesKeptOut(id, parent)) return doc;
+  if (movesKeptOut(id, parent) || parent === BOOKMARKS_ABOUT) return doc;
   return edit(doc, (d) => {
     const oldParent = d.read(id).parent!;
     const oldIndex = d.read(oldParent).children.indexOf(id);
