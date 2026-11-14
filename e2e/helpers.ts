@@ -49,7 +49,9 @@ export async function outlineText(page: Page): Promise<string> {
     const lines: string[] = [];
     const walk = (list: Element, depth: number) => {
       for (const li of Array.from(list.children)) {
-        const text = li.querySelector(":scope > .row .text")!.textContent;
+        const field = li.querySelector(":scope > .row .text") as HTMLElement;
+        if (field.dataset.id === "bookmarks") continue;
+        const text = field.textContent;
         const done = li.classList.contains("completed") ? " [x]" : "";
         lines.push("  ".repeat(depth) + text + done);
         const children = li.querySelector(":scope > .children");

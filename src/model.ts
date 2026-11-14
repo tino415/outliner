@@ -21,6 +21,19 @@ export interface Doc {
 
 export const ROOT: ItemId = "root";
 
+/** The one system item (doc/adr/0060): the list of bookmarks, at the top level of every outline. */
+export const BOOKMARKS: ItemId = "bookmarks";
+export const BOOKMARKS_KEPT = "Bookmarks stays; empty it instead";
+const BOOKMARKS_TITLE = "Bookmarks";
+
+export function withBookmarksItem(doc: Doc): Doc {
+  if (doc.items[BOOKMARKS]) return doc;
+  return edit(doc, (d) => {
+    d.adopt(blankItem(BOOKMARKS, ROOT, BOOKMARKS_TITLE));
+    d.write(ROOT).children.push(BOOKMARKS);
+  });
+}
+
 export interface ViewFilter {
   showCompleted: boolean;
 }
@@ -75,6 +88,11 @@ class Draft {
       this.cloned.add(id);
     }
     return this.items[id];
+  }
+
+  adopt(item: Item): void {
+    this.items[item.id] = item;
+    this.cloned.add(item.id);
   }
 
   create(parent: ItemId, index: number, text = ""): Item {
@@ -433,7 +451,7 @@ export function split(
 
 export function indent(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const newParent = previousShownSibling(doc, id, filter);
-  if (!newParent) return doc;
+  if (!newParent || id === BOOKMARKS) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.write(newParent).collapsed = false;
@@ -466,6 +484,7 @@ export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
 /** Move `id` so it sits at `index` among `parent`'s current children. */
 export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc {
   if (id === parent || isDescendant(doc, parent, id)) return doc;
+  if (id === BOOKMARKS && parent !== ROOT) return doc;
   return edit(doc, (d) => {
     const oldParent = d.read(id).parent!;
     const oldIndex = d.read(oldParent).children.indexOf(id);
@@ -528,6 +547,7 @@ export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: numbe
 }
 
 export function remove(doc: Doc, id: ItemId): Doc {
+  if (id === BOOKMARKS) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.removeSubtree(id);
@@ -541,6 +561,7 @@ export function remove(doc: Doc, id: ItemId): Doc {
 export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offset: number } {
   const source = doc.items[id];
   const offset = doc.items[into].text.length;
+  if (id === BOOKMARKS) return { doc, offset };
   const next = edit(doc, (d) => {
     const target = d.write(into);
     target.text += source.text;
@@ -592,6 +613,7 @@ export function completeAll(doc: Doc, roots: ItemId[]): Doc {
 }
 
 export function removeAll(doc: Doc, roots: ItemId[]): Doc {
+  if (roots.includes(BOOKMARKS)) return doc;
   return edit(doc, (d) => {
     for (const id of roots) {
       d.detach(id);

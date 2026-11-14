@@ -6,6 +6,7 @@ import { Platform, isMac, platform } from "./platform";
 import { View, shownView, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
 import { copyLink, copyLinkToPage } from "./links";
+import { bookmarkThisPage, openBookmark, openBookmarkList } from "./bookmarking";
 import { Doc } from "./model";
 import { CommandName, LostKeys, PREFIX, Refusal, applyShortcuts, chooseShortcuts, shortcutSettingsIn } from "./shortcuts";
 
@@ -96,6 +97,8 @@ const global = (name: CommandName | undefined, keys: string[], label: string, re
 const inTree = <B extends Binding>(binding: B): B => ({ ...binding, where: "tree" });
 const onBoard = <B extends Binding>(binding: B): B => ({ ...binding, where: "board" });
 
+const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 const defaultBindings: Binding[] = [
   typing(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
   inTree(fixed(["Tab"], "Indent", (c) => actions.indent(c))),
@@ -183,6 +186,11 @@ const defaultBindings: Binding[] = [
   global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
   global("go-to-target", ["Mod+j w"], "Go to a capture target…", "anywhere", () => globalActions.goToTarget()),
   global("copy-link", ["Mod+j y"], "Copy link to this page", "outsideFields", () => copyLinkToPage()),
+  ...DIGITS.map((digit) =>
+    global(`bookmark-${digit}` as CommandName, [`Mod+j ${digit}`], `Open bookmark ${digit}`, "anywhere", () => openBookmark(digit)),
+  ),
+  global("open-bookmarks", ["Mod+j 0"], "Open Bookmarks", "anywhere", () => openBookmarkList()),
+  global("bookmark-page", [], "Bookmark this page", "anywhere", () => bookmarkThisPage()),
   global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),

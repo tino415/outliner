@@ -8,6 +8,7 @@ const view = vi.hoisted(() => ({ shown: "tree" }));
 vi.mock("../src/board", () => ({ shownView: () => view.shown, toggleBoard: () => {} }));
 vi.mock("../src/agenda", () => ({ openAgenda: () => {} }));
 vi.mock("../src/links", () => ({ copyLink: () => {}, copyLinkToPage: () => {} }));
+vi.mock("../src/bookmarking", () => ({ openBookmark: () => {}, openBookmarkList: () => {}, bookmarkThisPage: () => {} }));
 
 const { bindingFor, bindingForKeys, describeKeys, extendSequence, isPrefix, keyCommands, keyString, sequenceContinues } = await import("../src/keys");
 
@@ -89,6 +90,18 @@ describe("the Ctrl-J prefix", () => {
   it("copies a link to the item being edited, or to the page when no field has the caret", () => {
     expect(bindingForKeys("Mod+j y", "editor")?.name).toBe("copy-link");
     expect(bindingForKeys("Mod+j y", "global")?.name).toBe("copy-link");
+  });
+});
+
+describe("bookmark keys", () => {
+  it("opens bookmark 1..9 on the prefix and a digit, and the list on 0", () => {
+    expect(extendSequence("Mod+j", press({ key: "3" }))).toBe("Mod+j 3");
+    expect(bindingForKeys("Mod+j 3", "global")?.name).toBe("bookmark-3");
+    expect(bindingForKeys("Mod+j 0", "global")?.name).toBe("open-bookmarks");
+  });
+
+  it("offers Bookmark this page as a command with no key of its own", () => {
+    expect(keyCommands(null).find((command) => command.label === "Bookmark this page")?.shortcut).toBe("");
   });
 });
 

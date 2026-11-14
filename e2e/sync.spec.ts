@@ -101,7 +101,7 @@ test("the CLI and the app see each other's changes", async ({ browser }) => {
   await one.keyboard.press("ControlOrMeta+Enter");
   await synced(one);
   const shown = await run(["show"], env);
-  expect(shown.output).toBe("- Inbox\n  - ~~from the CLI~~");
+  expect(shown.output).toBe("- Inbox\n  - ~~from the CLI~~\n- Bookmarks");
 });
 
 test("a property set from the CLI shows as a chip, and one set in the app reaches the CLI", async ({ browser }) => {
@@ -301,7 +301,7 @@ test("a private item reaches the server sealed and opens only where its key is",
   expect(everything).not.toContain("secret one");
   expect(everything).toContain("🔒private:1:personal:");
   const env = { OUTLINE_SERVER: server.url, OUTLINE_TOKEN: server.token };
-  expect((await run(["show"], env)).output).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping");
+  expect((await run(["show"], env)).output).toBe("- Journal\n  🔒 private, sealed with the key personal\n- Shopping\n- Bookmarks");
 
   const two = await device(browser, "x");
   await connect(two);

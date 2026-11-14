@@ -47,6 +47,7 @@ import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
 import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
+import { refusedAsKept } from "./bookmarking";
 import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
@@ -434,6 +435,7 @@ export const actions = {
     if (c.inAgenda) return false;
     const previous = neighbourEditor(c.editor, -1);
     if (isBlank(doc().items[c.id])) {
+      if (refusedAsKept([c.id])) return;
       const target = previous ?? neighbourEditor(c.editor, 1);
       if (target) commitAndRender(remove(doc(), c.id), { id: target.dataset.id!, offset: previous ? END : 0 });
       return;
@@ -517,7 +519,7 @@ export const actions = {
 
   indent(c: EditorContext): void {
     if (inCodeBlock(c)) insertText("  ");
-    else if (!c.isTitle && !c.inAgenda) commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
+    else if (!c.isTitle && !c.inAgenda && !refusedAsKept([c.id])) commitAndRender(indent(doc(), c.id, filter()), keepCaret(c));
   },
 
   outdent(c: EditorContext): void {
@@ -560,6 +562,7 @@ export const actions = {
   }),
 
   deleteItem: onItem((c) => {
+    if (refusedAsKept([c.id])) return;
     const item = doc().items[c.id];
     const hidden = descendantCount(doc(), c.id);
     commitAndRender(remove(doc(), c.id), focusAfterRemoving([c.id]));
@@ -681,6 +684,7 @@ export const actions = {
 
   moveToPicker: onItem((c) => {
     const id = c.id;
+    if (refusedAsKept([id])) return;
     const { before, after } = rowsAround([id]);
     const home: Candidate = { id: ROOT, text: doc().items[ROOT].text || "Home", path: [] };
     openPalette({

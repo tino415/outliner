@@ -1,4 +1,5 @@
 import {
+  BOOKMARKS,
   ItemId,
   completeAll,
   indentAll,
@@ -12,6 +13,7 @@ import {
 import { subtreesAsText } from "./transfer";
 import { Focus, commitAndRender, doc, filter, state, ui } from "./app";
 import { editorOf } from "./editing";
+import { refusedAsKept } from "./bookmarking";
 import { END, focusCaret, itemElementFor, treeEditors } from "./render";
 import { itemCount, toast, toastWithUndo } from "./chrome";
 
@@ -37,6 +39,7 @@ export const selectionActions = {
   },
 
   indent(): void {
+    if (refusedAsKept(selectedRoots())) return;
     commitAndRender(indentAll(doc(), selectedRoots(), filter()), null);
   },
 
@@ -117,12 +120,14 @@ function selectedRoots(): ItemId[] {
 }
 
 /** Deletes whole subtrees, puts the caret on the nearest surviving row and offers undo. */
-export function deleteItems(roots: ItemId[]): void {
+export function deleteItems(everything: ItemId[]): void {
+  const roots = everything.filter((id) => id !== BOOKMARKS);
+  if (roots.length === 0) return void refusedAsKept(everything);
   const count = subtreeSize(doc(), roots);
   const focus = focusAfterRemoving(roots);
   state.selection = null;
   commitAndRender(removeAll(doc(), roots), focus);
-  toastWithUndo(`Deleted ${itemCount(count)}`);
+  toastWithUndo(`Deleted ${itemCount(count)}${roots.length < everything.length ? "; Bookmarks stays" : ""}`);
 }
 
 export function focusAfterRemoving(roots: ItemId[]): Focus[] {

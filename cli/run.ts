@@ -1,7 +1,10 @@
 import {
+  BOOKMARKS,
+  BOOKMARKS_KEPT,
   Doc,
   ItemId,
   ROOT,
+  withBookmarksItem,
   ancestors,
   childrenInOrder,
   indexInParent,
@@ -200,6 +203,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       return changeItem(outline, args, (next, id) => {
         if (id === beside) throw new Error("cannot move an item beside itself");
         if (id === parent || isDescendant(next, parent, id)) throw new Error("cannot move an item under itself");
+        if (id === BOOKMARKS && parent !== ROOT) throw new Error(BOOKMARKS_KEPT);
         return moveTo(next, id, parent, at);
       });
     }
@@ -221,7 +225,10 @@ async function perform(command: string, args: string[], options: Options, outlin
       return options.json ? json({ id: result.id, under: result.target }) : result.id;
     }
     case "rm":
-      return changeItem(outline, args, (next, id) => remove(next, id));
+      return changeItem(outline, args, (next, id) => {
+        if (id === BOOKMARKS) throw new Error(BOOKMARKS_KEPT);
+        return remove(next, id);
+      });
     case "attach": {
       const [item, path] = args;
       if (item) writable(outline.doc, resolve(outline.doc, item));
@@ -405,7 +412,12 @@ class Outline {
     merge(replica, changes);
     const clock = new Clock(`cli-${newDeviceId()}`);
     for (const change of changes) clock.observe(change.clock);
-    return new Outline(endpoint, replica, clock, materialize(replica));
+    const fetched = materialize(replica);
+    const outline = new Outline(endpoint, replica, clock, fetched);
+    const withList = withBookmarksItem(fetched);
+    if (withList === fetched) return outline;
+    await outline.save(withList);
+    return new Outline(endpoint, replica, clock, withList);
   }
 
   async save(next: Doc): Promise<void> {

@@ -58,7 +58,7 @@ describe("the node bundles", () => {
       expect((await run(["add", "-"], env, lines)).code).toBe(0);
       const output = await allOutput(spawn("node", ["dist-node/outline.mjs", "show", "--json"], { env: { PATH: process.env.PATH, ...env } }));
       expect(output.length).toBeGreaterThan(64 * 1024);
-      expect(JSON.parse(output).children).toHaveLength(1000);
+      expect(JSON.parse(output).children).toHaveLength(1001);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       store.close();

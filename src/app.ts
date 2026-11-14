@@ -19,6 +19,7 @@ import { bindCapture, captureFromAddress } from "./capturing";
 import { today } from "./dates";
 import { liveMirrorTarget } from "./mirrors";
 import { boardDrops } from "./board";
+import { keepBookmarksItem, refusedAsKept } from "./bookmarking";
 
 export const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -70,6 +71,7 @@ export function start(): void {
     doc,
     zoomInto: (id: ItemId) => zoomTo(liveMirrorTarget(doc(), id) ?? id),
     move: (next: Doc, id: ItemId) => {
+      if (next === doc() && refusedAsKept([id])) return;
       commitAndRender(next, null);
       flashRow(id);
     },
@@ -94,6 +96,7 @@ export function start(): void {
   saveDocSoon(doc());
   navigator.storage?.persist?.().catch(() => undefined);
   startSync();
+  keepBookmarksItem();
   afterFirstSync(liftPropertiesWrittenInNotes);
   afterFirstSync(leaveLinkToMissingItem);
   bindAttachments(syncEndpoint);
