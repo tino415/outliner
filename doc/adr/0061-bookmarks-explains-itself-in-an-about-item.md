@@ -27,7 +27,8 @@ by someone who knows it already.
 - When the About item is made, Bookmarks gets the property `columns: key`, so
   it opens in column view with an empty key column beside every bookmark. The
   item doubles as the mark that this happened: a device that finds it never
-  sets the property again, so removing the property sticks.
+  sets the property again, so removing the property sticks. A `columns` value
+  already on Bookmarks is kept.
 - Bookmarks stays at the top level. Settings and the template, plugin and
   shortcut headings are out of scope.
 
