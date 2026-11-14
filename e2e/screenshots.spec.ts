@@ -1,9 +1,17 @@
 import { test } from "@playwright/test";
 import { clickEnd, freshOutline, row } from "./helpers";
 
+test.use({ timezoneId: "UTC", locale: "en-US" });
+
 for (const theme of ["light", "dark"] as const) {
   test(`screenshots ${theme}`, { tag: "@phone" }, async ({ page }, info) => {
-    const shot = (name: string) => page.screenshot({ path: `screenshots/${info.project.name}-${theme}-${name}.png` });
+    const shot = (name: string) =>
+      page.screenshot({
+        path: `screenshots/${info.project.name}-${theme}-${name}.png`,
+        animations: "disabled",
+        caret: "hide",
+      });
+    await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
     await page.emulateMedia({ colorScheme: theme });
     await freshOutline(page);
     await shot("home");

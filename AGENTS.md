@@ -88,7 +88,11 @@ is gitignored.
   that only checks focus, which comes from pointerdown.
 - Running the suite rewrites `screenshots/`. Stage files by name after a suite
   run, never `git add -A`. Screenshots asked for on a PR go by `pr-images`;
-  `screenshots/` changes only when an existing image's UI changed.
+  `screenshots/` changes only when an existing image's UI changed. CI
+  fails when `desktop-light-home`, `phone-light-home` or
+  `desktop-light-menu` differ from the committed files, so commit those
+  three whenever git shows them changed, rendered in the `app` container,
+  not on the host.
 
 ## Conventions set so far
 

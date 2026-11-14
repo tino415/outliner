@@ -64,6 +64,25 @@ jobs:
       - run: npm ci
       - run: npm run check:docs
       - run: npm run check:ci
+      - name: Check the committed screens
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          stale=$(git status --porcelain -- screenshots/desktop-light-home.png screenshots/phone-light-home.png screenshots/desktop-light-menu.png)
+          if [ -n "$stale" ]; then
+            echo "These screens differ from the committed ones. Rerun the suite in the app container and commit them:"
+            echo "$stale"
+            exit 1
+          fi
+      - name: Upload the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: |
+            screenshots/desktop-light-home.png
+            screenshots/phone-light-home.png
+            screenshots/desktop-light-menu.png
+          if-no-files-found: ignore
       - name: Upload the Playwright traces
         if: failure()
         uses: actions/upload-artifact@v4
