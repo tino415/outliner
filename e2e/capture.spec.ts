@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { expectOutline, freshOutline, row } from "./helpers";
+import { Page, expect, test } from "@playwright/test";
+import { expectOutline, freshOutline, outlineText, row } from "./helpers";
 
 const TEMPLATES = `
 Templates
@@ -37,6 +37,70 @@ test("a template filing at the top, and Go there", async ({ page }) => {
   await page.locator("#toast button").click();
   await expect(page.locator("#title")).toHaveText("Ideas");
   await expectOutline(page, "new idea\nolder idea");
+});
+
+const PLAN = `
+Templates
+  Plan | :capture: Plan/{date}; :key: p
+  Idea | :capture: Ideas; :key: i
+Plan | :new: top
+  older day
+Ideas
+  older idea
+`;
+
+async function expectToday(page: Page) {
+  await expect(page.locator("#title")).toHaveText(new RegExp(String.raw`^\d{4}-\d{2}-\d{2}$`));
+  await expectOutline(page, "");
+}
+
+test("Ctrl-J W then a template's key goes to its target, creating today first and filing nothing", async ({ page }) => {
+  await freshOutline(page, PLAN);
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("w");
+  await expect(page.locator("#capture-dialog")).toBeVisible();
+  await expect(page.locator("#capture-text")).toBeHidden();
+  await page.keyboard.press("p");
+  await expect(page.locator("#capture-dialog")).toBeHidden();
+  await expectToday(page);
+});
+
+test("Go there in the Capture dialog opens the target without capturing", async ({ page }) => {
+  await freshOutline(page, PLAN);
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
+  await page.keyboard.press("i");
+  await page.keyboard.type("not filed");
+  await page.getByRole("button", { name: "Go there" }).click();
+  await expect(page.locator("#title")).toHaveText("Ideas");
+  await expectOutline(page, "older idea");
+});
+
+test("Ctrl-K offers Go to target for each template", async ({ page }) => {
+  await freshOutline(page, PLAN);
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.keyboard.type(">go to target: idea");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#title")).toHaveText("Ideas");
+});
+
+test("a click on the value of a :capture: chip goes to its target, the key still edits", async ({ page }) => {
+  await freshOutline(page, PLAN);
+  await row(page, "Idea").locator('.prop-chip[data-key="capture"] .prop-key').click();
+  await expect(page.locator("#palette")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await row(page, "Idea").locator('.prop-chip[data-key="capture"] .prop-value').click();
+  await expect(page.locator("#title")).toHaveText("Ideas");
+});
+
+test("?capture=Plan&go opens today's page under a parent keeping new pages on top", async ({ page }) => {
+  await freshOutline(page, PLAN);
+  await page.goto("./?capture=Plan&go");
+  await expectToday(page);
+  expect(new URL(page.url()).search).toBe("");
+  await page.keyboard.press("Control+[");
+  await expect(page.locator("#title")).toHaveText("Plan");
+  await expect.poll(() => outlineText(page)).toMatch(/^\d{4}-\d{2}-\d{2}\nolder day$/);
 });
 
 test("a share opens capture with the shared text, into an Inbox when there are no templates", async ({ page }) => {

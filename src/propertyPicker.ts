@@ -9,6 +9,7 @@ import { toast } from "./chrome";
 import { DATE_PROPERTIES } from "./dates";
 import { pickDate } from "./datePicker";
 import { onlyUrl } from "./inline";
+import { goToTargetOfItem } from "./capturing";
 
 /*
  * Setting a property without typing it (doc/adr/0032): pick a key, then a
@@ -33,6 +34,7 @@ export function bindPropertyChips(): void {
     const owner = button?.closest<HTMLElement>("[data-id]");
     if (!button || !owner) return;
     if (button.classList.contains("prop-add")) chooseProperty(owner.dataset.id!);
+    else if (button.dataset.key === "capture" && (event.target as Element).closest(".prop-value")) goToTargetOfItem(owner.dataset.id!);
     else chooseValue(owner.dataset.id!, button.dataset.key!);
   });
 }

@@ -13,7 +13,7 @@ import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
-import { openCapture } from "./capturing";
+import { goToTargetCommands, openCapture, openGoToTarget } from "./capturing";
 import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bindPropertyChips } from "./propertyPicker";
@@ -64,6 +64,7 @@ export const globalActions = {
   toggleCompleted: () => menuActions["toggle-completed"](),
   toggleColumns: () => toggleColumnView(),
   capture: () => openCapture(),
+  goToTarget: () => openGoToTarget(),
   undo: () => undo(),
   redo: () => redo(),
   clearSearch: (): boolean | void => {
@@ -88,7 +89,7 @@ function showHelp(): void {
 function paletteCommands(): Command[] {
   const editor = editorOf(document.activeElement);
   const editing = editor ? editorContext(editor) : null;
-  return [...keyCommands(editing), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
+  return [...keyCommands(editing), ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
 const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "help"]);

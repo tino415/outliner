@@ -196,13 +196,14 @@
     </dialog>
 
     <dialog class="help capture-dialog" id="capture-dialog">
-      <header><h2>Capture</h2><button class="icon-button" id="capture-close" type="button" aria-label="Close">✕</button></header>
+      <header><h2 id="capture-heading">Capture</h2><button class="icon-button" id="capture-close" type="button" aria-label="Close">✕</button></header>
       <form id="capture-form" class="sync-form">
         <div class="capture-templates" id="capture-templates" role="radiogroup" aria-label="Template"></div>
-        <label>Text<input id="capture-text" type="text" autocomplete="off" required /></label>
+        <label id="capture-text-label">Text<input id="capture-text" type="text" autocomplete="off" required /></label>
         <div id="capture-fields" class="capture-fields"></div>
         <p class="sync-state" id="capture-target"></p>
-        <div class="sync-actions">
+        <div class="sync-actions" id="capture-actions">
+          <button type="button" id="capture-go">Go there</button>
           <button type="submit" class="sync-connect">Capture</button>
         </div>
       </form>

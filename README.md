@@ -37,7 +37,7 @@ Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
 P property, K kind, L link, R mirror, ; date, A attach, X private, M move to,
-D duplicate, B board, G agenda, C columns, N capture, Y copy a link, and J again to jump
+D duplicate, B board, G agenda, C columns, N capture, W go to a capture target, Y copy a link, and J again to jump
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
@@ -340,7 +340,12 @@ the template, `:at: top` files at the top. Without templates, items go to
 Straight into capture: long-press the installed app's icon → Capture, or
 share a page or text to the app on Android. Any device can open
 `<app>/?capture`, `?capture=Meal` or `?capture&text=…` (an iOS Shortcut, a
-bookmark). From a shell: `outline capture "Oats" --template Meal --set
+bookmark). To visit a template's target without filing anything (doc/adr/0059),
+press Ctrl-J W and then the template's key, pick "Go to target: Meal" in
+Ctrl-K, press Go there in the Capture dialog, click the value of a template's
+`:capture:` chip, or open `<app>/?capture=Meal&go`. The target page is created
+when missing, under the `:new:` order of its parent, so a `Plan` page with
+`:new: top` keeps today first. From a shell: `outline capture "Oats" --template Meal --set
 kcal=300`.
 
 ## Sync server

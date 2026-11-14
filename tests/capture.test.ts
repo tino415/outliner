@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Doc, ItemId, ROOT } from "../src/model";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
-import { INBOX, capture, captureRequest, captureTemplates } from "../src/capture";
+import { INBOX, capture, captureRequest, captureTemplates, goToTarget } from "../src/capture";
 import { subtreesAsText } from "../src/transfer";
 
 function idOf(doc: Doc, text: string): ItemId {
@@ -76,8 +76,39 @@ describe("capturing", () => {
 
 describe("capture requests from the address", () => {
   it("read a share target's title, text and url, and a chosen template", () => {
-    expect(captureRequest("?title=Article&text=Article&url=https%3A%2F%2Fa.b")).toEqual({ template: "", text: "Article https://a.b" });
-    expect(captureRequest("?capture=Meal")).toEqual({ template: "Meal", text: "" });
+    expect(captureRequest("?title=Article&text=Article&url=https%3A%2F%2Fa.b")).toEqual({ template: "", text: "Article https://a.b", go: false });
+    expect(captureRequest("?capture=Meal")).toEqual({ template: "Meal", text: "", go: false });
     expect(captureRequest("?other=1")).toBeNull();
+  });
+
+  it("ask to go to the target with &go", () => {
+    expect(captureRequest("?capture=Meal&go")).toEqual({ template: "Meal", text: "", go: true });
+  });
+});
+
+describe("going to a target", () => {
+  it("finds the page and files nothing", () => {
+    const doc = withTemplates();
+    const [meal] = captureTemplates(doc);
+    const result = goToTarget(doc, meal, DAY);
+    expect(result.doc).toBe(doc);
+    expect(result.target).toBe(idOf(doc, "Monday"));
+  });
+
+  it("creates the day of {date} under a parent, after its siblings", () => {
+    const doc = withTemplates();
+    const idea = captureTemplates(doc)[1];
+    const result = goToTarget(doc, idea, DAY);
+    expect(result.doc.items[result.target].text).toBe("2026-10-09");
+    expect(result.doc.items[result.doc.items[result.target].parent!].text).toBe("Journal");
+  });
+
+  it("puts the day it creates first when its parent keeps new items on top", () => {
+    let doc = parseIndentedText("Plan\n  2026-10-08\nDay");
+    doc = setNote(doc, idOf(doc, "Plan"), ":new: top");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plan/{date}");
+    const [day] = captureTemplates(doc);
+    const result = goToTarget(doc, day, DAY);
+    expect(result.doc.items[idOf(doc, "Plan")].children[0]).toBe(result.target);
   });
 });

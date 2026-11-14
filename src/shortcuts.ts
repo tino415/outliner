@@ -53,6 +53,7 @@ export const COMMAND_NAMES = [
   "toggle-board",
   "agenda",
   "capture",
+  "go-to-target",
   "copy-link",
 ] as const;
 

@@ -24,22 +24,30 @@ export function captureTemplates(doc: Doc): Template[] {
   const templates: Template[] = [];
   const walk = (id: ItemId) => {
     for (const child of doc.items[id].children) {
-      const properties = doc.items[child].properties;
-      const target = properties.capture;
-      if (target) {
-        templates.push({
-          name: doc.items[child].text.trim() || target,
-          target,
-          ask: (properties.ask ?? "").split(/[\s,]+/).filter(Boolean),
-          at: placementOf(properties.at),
-          key: (properties.key ?? "").slice(0, 1).toLowerCase(),
-        });
-      }
+      const template = templateOf(doc, child);
+      if (template) templates.push(template);
       walk(child);
     }
   };
   walk(ROOT);
   return templates.length ? templates : [INBOX];
+}
+
+export function templateOf(doc: Doc, id: ItemId): Template | null {
+  const properties = doc.items[id].properties;
+  const target = properties.capture;
+  if (!target) return null;
+  return {
+    name: doc.items[id].text.trim() || target,
+    target,
+    ask: (properties.ask ?? "").split(/[\s,]+/).filter(Boolean),
+    at: placementOf(properties.at),
+    key: (properties.key ?? "").slice(0, 1).toLowerCase(),
+  };
+}
+
+export function goToTarget(doc: Doc, template: Template, today: Date): { doc: Doc; target: ItemId } {
+  return targetOf(doc, targetPath(template, today));
 }
 
 export interface Captured {
@@ -50,7 +58,7 @@ export interface Captured {
 
 /** Files `text` with `properties` where the template says, creating the target's missing pages. */
 export function capture(doc: Doc, template: Template, text: string, properties: Record<string, string>, today: Date): Captured {
-  const located = targetOf(doc, template.target.replaceAll("{date}", isoDate(today)));
+  const located = goToTarget(doc, template, today);
   const parent = located.target;
   const created = insertChild(located.doc, parent, indexFor(located.doc, parent, template), text);
   const filled = Object.entries(properties).reduce((written, [key, value]) => setItemProperty(written, created.id, key, value), created.doc);
@@ -62,6 +70,10 @@ function indexFor(doc: Doc, parent: ItemId, template: Template): number {
   if (template.at === "top") return 0;
   if (template.at === "bottom") return doc.items[parent].children.length;
   return newChildIndex(doc, parent);
+}
+
+function targetPath(template: Template, today: Date): string {
+  return template.target.replaceAll("{date}", isoDate(today));
 }
 
 function placementOf(written: string | undefined): Template["at"] {
@@ -79,7 +91,7 @@ function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
       at = found;
       continue;
     }
-    const created = insertChild(current, at, current.items[at].children.length, step);
+    const created = insertChild(current, at, newChildIndex(current, at), step);
     current = created.doc;
     at = created.id;
   }
@@ -97,10 +109,10 @@ function isoDate(day: Date): string {
   return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
 }
 
-/** What a share or a link asked to capture: `?capture[=template]&title=…&text=…&url=…`. */
-export function captureRequest(search: string): { template: string; text: string } | null {
+/** What a share or a link asked to capture: `?capture[=template]&title=…&text=…&url=…`; `&go` visits the target instead. */
+export function captureRequest(search: string): { template: string; text: string; go: boolean } | null {
   const params = new URLSearchParams(search);
   const shared = ["title", "text", "url"].map((name) => params.get(name)?.trim() ?? "").filter(Boolean);
   if (!params.has("capture") && shared.length === 0) return null;
-  return { template: params.get("capture") ?? "", text: [...new Set(shared)].join(" ") };
+  return { template: params.get("capture") ?? "", text: [...new Set(shared)].join(" "), go: params.has("go") };
 }
