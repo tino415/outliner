@@ -6,6 +6,7 @@ const LIST_LINE = /^\s*([-*+]|\d+[.)])\s/;
 const HEADING = /^\s*#{1,6}\s/;
 
 export function titleProblem(title: string): string | undefined {
+  if (!title.trim()) return "a title needs some text";
   if (title.includes("\n")) return "a title is one line: an item is a heading, so put the next lines in children with add - --under ITEM";
   if (title.length > MAX_TITLE_LENGTH) {
     return `a title is at most ${MAX_TITLE_LENGTH} characters, this one has ${title.length}: an item is a heading, so put the rest in children with add - --under ITEM, or in a short note`;
