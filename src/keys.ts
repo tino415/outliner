@@ -181,6 +181,7 @@ const defaultBindings: Binding[] = [
   global("toggle-board", ["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
   global("agenda", ["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
   global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
+  global("go-to-target", ["Mod+j w"], "Go to a capture target…", "anywhere", () => globalActions.goToTarget()),
   global("copy-link", ["Mod+j y"], "Copy link to this page", "outsideFields", () => copyLinkToPage()),
   global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),

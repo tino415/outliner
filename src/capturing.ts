@@ -1,19 +1,25 @@
-import { Template, capture, captureRequest, captureTemplates } from "./capture";
+import { INBOX, Template, capture, captureRequest, captureTemplates, goToTarget, templateOf } from "./capture";
 import { commitAndRender, doc } from "./app";
 import { escape, itemLabel } from "./inline";
 import { toast } from "./chrome";
 import { zoomTo } from "./navigation";
+import { Command } from "./keys";
+import { ItemId } from "./model";
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const dialog = element<HTMLDialogElement>("capture-dialog");
 const form = element<HTMLFormElement>("capture-form");
+const heading = element("capture-heading");
 const chooser = element("capture-templates");
+const textLabel = element("capture-text-label");
 const text = element<HTMLInputElement>("capture-text");
 const fields = element("capture-fields");
 const target = element("capture-target");
+const actions = element("capture-actions");
 
 let templates: Template[] = [];
 let chosen = 0;
+let going = false;
 
 export function bindCapture(): void {
   chooser.addEventListener("click", (event) => {
@@ -30,12 +36,14 @@ export function bindCapture(): void {
     event.preventDefault();
     file();
   });
+  element("capture-go").addEventListener("click", () => visit(templates[chosen]));
   element("capture-close").addEventListener("click", () => dialog.close());
 }
 
 export function openCapture(templateName = "", prefill = ""): void {
+  going = false;
   templates = captureTemplates(doc());
-  const named = templates.findIndex((template) => template.name.toLowerCase() === templateName.toLowerCase());
+  const named = indexNamed(templates, templateName);
   chosen = Math.max(named, 0);
   text.value = prefill;
   fields.innerHTML = "";
@@ -45,12 +53,45 @@ export function openCapture(templateName = "", prefill = ""): void {
   else text.focus();
 }
 
+export function openGoToTarget(): void {
+  if (dialog.open) return;
+  going = true;
+  templates = captureTemplates(doc());
+  chosen = 0;
+  paint();
+  dialog.showModal();
+  chooser.querySelector<HTMLElement>(".active")!.focus();
+}
+
+export function goToTargetCommands(): Command[] {
+  return captureTemplates(doc())
+    .filter((template) => template !== INBOX)
+    .map((template) => ({ label: `Go to target: ${template.name}`, shortcut: "", run: () => visit(template) }));
+}
+
+export function goToTargetOfItem(id: ItemId): void {
+  const template = templateOf(doc(), id);
+  if (template) visit(template);
+}
+
 /** A share, a home-screen shortcut or a link can open the app straight into capture. */
 export function captureFromAddress(): void {
   const request = captureRequest(location.search);
   if (request) history.replaceState(null, "", location.pathname + location.hash);
-  if (request && !dialog.open) openCapture(request.template, request.text);
+  if (request && !dialog.open) openFrom(request);
   captureFromLaunches();
+}
+
+function openFrom(request: { template: string; text: string; go: boolean }): void {
+  if (!request.go) return openCapture(request.template, request.text);
+  const all = captureTemplates(doc());
+  const named = all[indexNamed(all, request.template)];
+  if (named) visit(named);
+  else openGoToTarget();
+}
+
+function indexNamed(among: Template[], name: string): number {
+  return among.findIndex((template) => template.name.toLowerCase() === name.toLowerCase());
 }
 
 interface LaunchQueue {
@@ -66,19 +107,32 @@ function captureFromLaunches(): void {
   const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue;
   queue?.setConsumer(({ targetURL }) => {
     const request = targetURL ? captureRequest(new URL(targetURL).search) : null;
-    if (request && !dialog.open) openCapture(request.template, request.text);
+    if (request && !dialog.open) openFrom(request);
   });
 }
 
 function choose(index: number): void {
   chosen = index;
+  if (going) return visit(templates[index]);
   paint();
   text.focus();
 }
 
+function visit(template: Template): void {
+  const located = goToTarget(doc(), template, new Date());
+  dialog.close();
+  if (located.doc !== doc()) commitAndRender(located.doc, null);
+  zoomTo(located.target);
+}
+
 function paint(): void {
   const template = templates[chosen];
-  chooser.hidden = templates.length < 2;
+  heading.textContent = going ? "Go to target" : "Capture";
+  chooser.hidden = !going && templates.length < 2;
+  textLabel.hidden = going;
+  fields.hidden = going;
+  target.hidden = going;
+  actions.hidden = going;
   chooser.innerHTML = templates
     .map(
       (option, index) =>
