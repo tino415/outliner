@@ -532,7 +532,7 @@ export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: numbe
   const next = edit(doc, (d) => {
     const walk = (id: ItemId) => {
       for (const child of [...d.read(id).children]) {
-        if (d.read(child).completed) {
+        if (d.read(child).completed && child !== BOOKMARKS) {
           count += 1;
           d.detach(child);
           d.removeSubtree(child);

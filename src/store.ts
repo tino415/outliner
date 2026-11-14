@@ -63,6 +63,11 @@ export class History {
     this.become(next);
   }
 
+  /** Changes the document without an undo step of its own, for what no undo may take away. */
+  keep(next: Doc): void {
+    if (next !== this.doc) this.become(next);
+  }
+
   undo(caretNow: Caret | null): Caret | null | undefined {
     const previous = this.past.pop();
     if (!previous) return undefined;

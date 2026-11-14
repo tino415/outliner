@@ -441,6 +441,7 @@ export const actions = {
       return;
     }
     if (!previous || previous === ui.title || !joinStaysInColumn(c.id, previous.dataset.id!)) return;
+    if (refusedAsKept([c.id])) return;
     if (refusedAsPrivate(c.id, previous.dataset.id!)) return;
     const merged = mergeInto(doc(), c.id, previous.dataset.id!);
     const dropped = propertiesLeftBy(c.id);
@@ -452,6 +453,7 @@ export const actions = {
     if (c.inNote || c.isTitle || c.inAgenda || !c.atEnd) return false;
     const next = neighbourEditor(c.editor, 1);
     if (!next || !joinStaysInColumn(next.dataset.id!, c.id)) return;
+    if (refusedAsKept([next.dataset.id!])) return;
     if (refusedAsPrivate(next.dataset.id!, c.id)) return;
     const merged = mergeInto(doc(), next.dataset.id!, c.id);
     const dropped = propertiesLeftBy(next.dataset.id!);

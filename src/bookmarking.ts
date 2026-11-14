@@ -21,11 +21,12 @@ export function openBookmark(digit: number): void {
 }
 
 export function openBookmarkList(): void {
+  commitAndRender(withBookmarksItem(doc()), null);
   zoomTo(BOOKMARKS);
 }
 
 export function bookmarkThisPage(): void {
-  const result = bookmarkPage(doc(), state.zoom);
+  const result = bookmarkPage(withBookmarksItem(doc()), state.zoom);
   const said = {
     added: "Added to Bookmarks",
     already: "Already in Bookmarks",

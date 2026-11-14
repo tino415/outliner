@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BOOKMARKS, Doc, ROOT, appendChild, buildDoc, indent, mergeInto, moveTo, remove, removeAll, setItemProperty, setText, withBookmarksItem } from "../src/model";
+import { BOOKMARKS, Doc, ROOT, appendChild, buildDoc, indent, mergeInto, moveTo, remove, removeAll, removeCompleted, setItemProperty, setText, toggleCompleted, withBookmarksItem } from "../src/model";
 import { bookmarkForDigit, bookmarkPage, bookmarksIn } from "../src/bookmarks";
+import { History } from "../src/store";
 
 function outline() {
   const ids: Record<string, string> = {};
@@ -71,5 +72,23 @@ describe("the bookmarks in the list", () => {
     expect(bookmarkForDigit(keyed, 3)?.child).toBe(one.id);
     expect(bookmarksIn(keyed).map(({ digit }) => digit)).toEqual([3, null]);
     expect(bookmarkForDigit(keyed, 4)).toBeUndefined();
+  });
+});
+
+describe("what keeps the item", () => {
+  it("survives Remove completed", () => {
+    const { doc } = outline();
+    const { doc: next, count } = removeCompleted(toggleCompleted(doc, BOOKMARKS), ROOT);
+    expect(count).toBe(0);
+    expect(next.items[BOOKMARKS]).toBeDefined();
+  });
+
+  it("comes back after an undo that went before its creation", () => {
+    const bare = buildDoc(() => {});
+    const history = new History(bare);
+    history.commit(withBookmarksItem(bare), null);
+    history.undo(null);
+    history.keep(withBookmarksItem(history.doc));
+    expect(history.doc.items[BOOKMARKS]).toBeDefined();
   });
 });

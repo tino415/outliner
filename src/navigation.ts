@@ -113,23 +113,22 @@ export function searchEverything(commands: Command[], mode: SearchMode = "All"):
 function matchingItems(query: string): JumpOption[] {
   const asOption = (item: Candidate): JumpOption => ({ item, text: item.text, path: item.path });
   if (query.trim()) return findItems(doc(), query, 40).map(asOption);
-  const bookmarked = bookmarksIn(doc()).map(bookmarkOption);
-  const shownAsBookmark = new Set(bookmarksIn(doc()).flatMap((bookmark) => ("zoom" in bookmark.destination ? [bookmark.destination.zoom] : [])));
+  const bookmarks = bookmarksIn(doc());
+  const bookmarked = bookmarks.map(bookmarkOption);
+  const shownAsBookmark = new Set(bookmarks.flatMap((bookmark) => ("zoom" in bookmark.destination ? [bookmark.destination.zoom] : [])));
   const recentIds = state.recent.filter((id) => doc().items[id] && !shownAsBookmark.has(id));
   const recent = recentIds.map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
   const seen = new Set([...state.recent, ...shownAsBookmark]);
-  return [...bookmarked, ...[...recent, ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption)];
+  const firstOfEach = bookmarked.filter((option, i) => bookmarked.findIndex((other) => other.text === option.text && other.path.join() === option.path.join()) === i);
+  return [...firstOfEach, ...[...recent, ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption)];
 }
 
 function bookmarkOption(bookmark: Bookmark): JumpOption {
-  const label = doc().items[bookmark.child].text;
   const shortcut = bookmark.digit === null ? "" : prettySequence(`${PREFIX} ${bookmark.digit}`);
-  if ("url" in bookmark.destination) {
-    const url = bookmark.destination.url;
-    return { command: { label, shortcut, run: () => goTo({ url }) }, text: label, path: [], shortcut };
-  }
-  const id = bookmark.destination.zoom;
-  return { item: { id, text: doc().items[id].text, path: pathOf(doc(), id) }, text: doc().items[id].text, path: pathOf(doc(), id) };
+  const { destination } = bookmark;
+  const label = "zoom" in destination ? doc().items[destination.zoom].text : doc().items[bookmark.child].text;
+  const path = "zoom" in destination ? pathOf(doc(), destination.zoom) : [];
+  return { command: { label, shortcut, run: () => goTo(destination) }, text: label, path, shortcut };
 }
 
 function matchingCommands(commands: Command[], query: string): JumpOption[] {
