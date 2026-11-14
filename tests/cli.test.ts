@@ -279,6 +279,31 @@ describe("outline CLI", () => {
       expect(await outlineWithoutBookmarks("show")).toBe("- Renamed\n  Line one.\n  Line two.");
     });
 
+    it("refuses empty stdin and keeps the note, the title and the outline", async () => {
+      const id = await outline("add Card --note Keep");
+      for (const empty of ["", "\n", "  \n\n"]) {
+        await expect(outline(`note ${id} -`, empty)).rejects.toThrow(/read nothing from stdin/);
+        await expect(outline(`edit ${id} -`, empty)).rejects.toThrow(/read nothing from stdin/);
+        await expect(outline("add -", empty)).rejects.toThrow(/read nothing from stdin/);
+      }
+      expect(await outlineWithoutBookmarks("show")).toBe("- Card\n  Keep");
+    });
+
+    it("still reads stdin padded with blank lines and still removes a note with an empty argument", async () => {
+      const id = await outline("add Card --note Keep");
+      await outline(`note ${id} -`, "\nKept\n\n");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Card\n  \n  Kept");
+      await outline(`note ${id} ""`);
+      expect(await outlineWithoutBookmarks("show")).toBe("- Card");
+    });
+
+    it("refuses a blank title", async () => {
+      const id = await outline("add Card");
+      await expect(outline(`edit ${id} " "`)).rejects.toThrow(/needs some text/);
+      await expect(outline('add " "')).rejects.toThrow(/needs some text/);
+      expect(await outlineWithoutBookmarks("show")).toBe("- Card");
+    });
+
     it("refuses a title with a newline or over 200 characters, and points at children", async () => {
       const id = await outline("add Card");
       const message = /add - --under ITEM/;

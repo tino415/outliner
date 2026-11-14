@@ -53,9 +53,10 @@ commands:
                            subtree with one add - --under ITEM. A note is a
                            short paragraph with no list lines or headings;
                            code fences and attachment links are fine.
-  edit ITEM TEXT           replace an item's text (TEXT "-" reads it from stdin)
+  edit ITEM TEXT           replace an item's text (TEXT "-" reads it from
+                           stdin, which must not be empty)
   note ITEM TEXT           replace an item's note ("" removes it, "-" reads
-                           it from stdin)
+                           it from stdin, which must not be empty)
   done ITEM / undone ITEM  complete or reopen an item
   move ITEM --under ITEM   move an item and everything under it; --before
                            or --after ITEM put it beside ITEM instead
@@ -169,7 +170,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       const { parent, at } = place(doc, options);
       const text = args.join(" ");
       if (text === "-") {
-        const incoming = parseIndentedText(stdin);
+        const incoming = parseIndentedText(requireStdin(stdin, ""));
         requireWellFormed(incoming);
         const result = graft(doc, incoming, parent, at);
         await outline.save(result.doc);
@@ -183,13 +184,13 @@ async function perform(command: string, args: string[], options: Options, outlin
       return options.json ? json({ id: created.id }) : created.id;
     }
     case "edit": {
-      const title = textFrom(requireText(args, "edit"), stdin);
+      const title = textFrom(requireText(args, "edit"), stdin, "a title needs some text");
       requireTitle(title);
       return changeItem(outline, args, (next, id) => setText(next, id, title));
     }
     case "note": {
       if (args[0]) writable(doc, resolve(doc, args[0]));
-      const note = textFrom(args.slice(1).join(" "), stdin);
+      const note = textFrom(args.slice(1).join(" "), stdin, 'note ITEM "" removes a note');
       requireNote(note);
       return changeItem(outline, args, (next, id) => setNote(next, id, note));
     }
@@ -357,8 +358,13 @@ function propertiesFrom(assignments: string[]): Record<string, string> {
   );
 }
 
-function textFrom(argument: string, stdin: string): string {
-  return argument === "-" ? stdin.replace(/\n+$/, "") : argument;
+function textFrom(argument: string, stdin: string, whenEmpty: string): string {
+  return argument === "-" ? requireStdin(stdin, whenEmpty).replace(/\n+$/, "") : argument;
+}
+
+function requireStdin(stdin: string, whenEmpty: string): string {
+  if (!stdin.trim()) throw new Error(`read nothing from stdin${whenEmpty ? `; ${whenEmpty}` : ""}`);
+  return stdin;
 }
 
 function requireTitle(title: string): void {
