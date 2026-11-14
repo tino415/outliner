@@ -247,9 +247,9 @@ test.describe("selecting several items", { tag: "@keys" }, () => {
     await page.keyboard.press("ControlOrMeta+a");
     await expect(page.locator(".item.selected")).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+a");
-    await expect(page.locator(".item.selected")).toHaveCount(4);
+    await expect(page.locator(".item.selected")).toHaveCount(5);
     await page.keyboard.press("Backspace");
-    await expect(page.locator(".tree .item")).toHaveCount(1);
+    await expect(page.locator(".tree .item")).toHaveCount(2);
     await expect(page.locator("#toast")).toContainText("Bookmarks stays");
   });
 
@@ -257,7 +257,7 @@ test.describe("selecting several items", { tag: "@keys" }, () => {
     await freshOutline(page, "a\n  a1\nb");
     await page.locator("#menu-button").click();
     await page.getByRole("button", { name: "Clear this page" }).click();
-    await expect(page.locator(".tree .item")).toHaveCount(1);
+    await expect(page.locator(".tree .item")).toHaveCount(2);
     await page.locator("#toast button").click();
     await expectOutline(page, "a\n  a1\nb");
   });

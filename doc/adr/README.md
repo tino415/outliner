@@ -67,3 +67,4 @@ file that says so.
 58. [The CLI refuses long titles and structured notes](0058-the-cli-refuses-long-titles-and-structured-notes.md)
 59. [Go to a capture template's target](0059-go-to-a-capture-templates-target.md) (extends 23)
 60. [Bookmarks are the children of a system item](0060-bookmarks-are-the-children-of-a-system-item.md)
+61. [Bookmarks explains itself in an About item](0061-bookmarks-explains-itself-in-an-about-item.md) (extends 60)

@@ -1,6 +1,7 @@
 import {
-  BOOKMARKS,
   ItemId,
+  isKept,
+  keptStays,
   completeAll,
   indentAll,
   moveAllDown,
@@ -121,13 +122,13 @@ function selectedRoots(): ItemId[] {
 
 /** Deletes whole subtrees, puts the caret on the nearest surviving row and offers undo. */
 export function deleteItems(everything: ItemId[]): void {
-  const roots = everything.filter((id) => id !== BOOKMARKS);
+  const roots = everything.filter((id) => !isKept(id));
   if (roots.length === 0) return void refusedAsKept(everything);
   const count = subtreeSize(doc(), roots);
   const focus = focusAfterRemoving(roots);
   state.selection = null;
   commitAndRender(removeAll(doc(), roots), focus);
-  toastWithUndo(`Deleted ${itemCount(count)}${roots.length < everything.length ? "; Bookmarks stays" : ""}`);
+  toastWithUndo(`Deleted ${itemCount(count)}${roots.length < everything.length ? `; ${keptStays(everything)}` : ""}`);
 }
 
 export function focusAfterRemoving(roots: ItemId[]): Focus[] {

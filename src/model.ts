@@ -26,11 +26,69 @@ export const BOOKMARKS: ItemId = "bookmarks";
 export const BOOKMARKS_KEPT = "Bookmarks stays; empty it instead";
 const BOOKMARKS_TITLE = "Bookmarks";
 
+/** The first child of Bookmarks (doc/adr/0061): the explanation, kept like Bookmarks and not a bookmark itself. */
+export const BOOKMARKS_ABOUT: ItemId = "bookmarks-about";
+const BOOKMARKS_ABOUT_TITLE = "About Bookmarks";
+
+export function keptNotice(id: ItemId): string {
+  return id === BOOKMARKS_ABOUT ? `${BOOKMARKS_ABOUT_TITLE} stays` : BOOKMARKS_KEPT;
+}
+
+export function keptStays(ids: ItemId[]): string {
+  return ids.includes(BOOKMARKS) ? "Bookmarks stays" : `${BOOKMARKS_ABOUT_TITLE} stays`;
+}
+
+export function isKept(id: ItemId): boolean {
+  return id === BOOKMARKS || id === BOOKMARKS_ABOUT;
+}
+
+function keptParentOf(id: ItemId): ItemId | null {
+  if (id === BOOKMARKS) return ROOT;
+  if (id === BOOKMARKS_ABOUT) return BOOKMARKS;
+  return null;
+}
+
+/** True when `id` is kept and `parent` is not the only place it may live. */
+export function movesKeptOut(id: ItemId, parent: ItemId): boolean {
+  const keptParent = keptParentOf(id);
+  return keptParent !== null && keptParent !== parent;
+}
+
+interface Lines {
+  text: string;
+  children?: Lines[];
+}
+
+const BOOKMARKS_ABOUT_LINES: Lines[] = [
+  { text: "Add a bookmark", children: [{ text: "Add an item here with a link to a page or a web address" }, { text: "Open the page, tap ⋯ and tap Bookmark this page" }] },
+  { text: "Tap or click a bookmark's link to open its page; a web address opens in a new tab" },
+  { text: "To give a bookmark a shortcut, write a digit from 1 to 9 in its key column" },
+];
+
 export function withBookmarksItem(doc: Doc): Doc {
-  if (doc.items[BOOKMARKS]) return doc;
-  return edit(doc, (d) => {
+  const withList = doc.items[BOOKMARKS] ? doc : edit(doc, (d) => {
     d.adopt(blankItem(BOOKMARKS, ROOT, BOOKMARKS_TITLE));
     d.write(ROOT).children.push(BOOKMARKS);
+  });
+  return withBookmarksAbout(withList);
+}
+
+/** The About item doubles as the mark that Bookmarks got its key column, so removing the column sticks. */
+function withBookmarksAbout(doc: Doc): Doc {
+  if (doc.items[BOOKMARKS_ABOUT]) return doc;
+  return edit(doc, (d) => {
+    const addLines = (parent: ItemId, lines: Lines[], path: string) => {
+      lines.forEach((line, index) => {
+        const id = `${path}-${index + 1}`;
+        d.adopt(blankItem(id, parent, line.text));
+        d.write(parent).children.push(id);
+        addLines(id, line.children ?? [], id);
+      });
+    };
+    d.adopt({ ...blankItem(BOOKMARKS_ABOUT, BOOKMARKS, BOOKMARKS_ABOUT_TITLE), collapsed: true });
+    d.write(BOOKMARKS).children.unshift(BOOKMARKS_ABOUT);
+    d.write(BOOKMARKS).properties = { ...d.read(BOOKMARKS).properties, columns: "key" };
+    addLines(BOOKMARKS_ABOUT, BOOKMARKS_ABOUT_LINES, BOOKMARKS_ABOUT);
   });
 }
 
@@ -451,7 +509,7 @@ export function split(
 
 export function indent(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const newParent = previousShownSibling(doc, id, filter);
-  if (!newParent || id === BOOKMARKS) return doc;
+  if (!newParent || isKept(id) || newParent === BOOKMARKS_ABOUT) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.write(newParent).collapsed = false;
@@ -463,6 +521,7 @@ export function outdent(doc: Doc, id: ItemId, top: ItemId): Doc {
   const parent = doc.items[id].parent!;
   if (parent === top) return doc;
   const grandparent = doc.items[parent].parent!;
+  if (movesKeptOut(id, grandparent)) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.attach(id, grandparent, d.read(grandparent).children.indexOf(parent) + 1);
@@ -484,7 +543,7 @@ export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
 /** Move `id` so it sits at `index` among `parent`'s current children. */
 export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc {
   if (id === parent || isDescendant(doc, parent, id)) return doc;
-  if (id === BOOKMARKS && parent !== ROOT) return doc;
+  if (movesKeptOut(id, parent)) return doc;
   return edit(doc, (d) => {
     const oldParent = d.read(id).parent!;
     const oldIndex = d.read(oldParent).children.indexOf(id);
@@ -532,7 +591,7 @@ export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: numbe
   const next = edit(doc, (d) => {
     const walk = (id: ItemId) => {
       for (const child of [...d.read(id).children]) {
-        if (d.read(child).completed && child !== BOOKMARKS) {
+        if (d.read(child).completed && !isKept(child)) {
           count += 1;
           d.detach(child);
           d.removeSubtree(child);
@@ -547,7 +606,7 @@ export function removeCompleted(doc: Doc, top: ItemId): { doc: Doc; count: numbe
 }
 
 export function remove(doc: Doc, id: ItemId): Doc {
-  if (id === BOOKMARKS) return doc;
+  if (isKept(id)) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.removeSubtree(id);
@@ -561,7 +620,7 @@ export function remove(doc: Doc, id: ItemId): Doc {
 export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offset: number } {
   const source = doc.items[id];
   const offset = doc.items[into].text.length;
-  if (id === BOOKMARKS || into === BOOKMARKS) return { doc, offset };
+  if (isKept(id) || isKept(into)) return { doc, offset };
   const next = edit(doc, (d) => {
     const target = d.write(into);
     target.text += source.text;
@@ -613,7 +672,7 @@ export function completeAll(doc: Doc, roots: ItemId[]): Doc {
 }
 
 export function removeAll(doc: Doc, roots: ItemId[]): Doc {
-  if (roots.includes(BOOKMARKS)) return doc;
+  if (roots.some(isKept)) return doc;
   return edit(doc, (d) => {
     for (const id of roots) {
       d.detach(id);

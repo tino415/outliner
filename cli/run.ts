@@ -1,9 +1,10 @@
 import {
-  BOOKMARKS,
-  BOOKMARKS_KEPT,
   Doc,
   ItemId,
   ROOT,
+  isKept,
+  keptNotice,
+  movesKeptOut,
   withBookmarksItem,
   ancestors,
   childrenInOrder,
@@ -203,7 +204,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       return changeItem(outline, args, (next, id) => {
         if (id === beside) throw new Error("cannot move an item beside itself");
         if (id === parent || isDescendant(next, parent, id)) throw new Error("cannot move an item under itself");
-        if (id === BOOKMARKS && parent !== ROOT) throw new Error(BOOKMARKS_KEPT);
+        if (movesKeptOut(id, parent)) throw new Error(keptNotice(id));
         return moveTo(next, id, parent, at);
       });
     }
@@ -226,7 +227,7 @@ async function perform(command: string, args: string[], options: Options, outlin
     }
     case "rm":
       return changeItem(outline, args, (next, id) => {
-        if (id === BOOKMARKS) throw new Error(BOOKMARKS_KEPT);
+        if (isKept(id)) throw new Error(keptNotice(id));
         return remove(next, id);
       });
     case "attach": {
