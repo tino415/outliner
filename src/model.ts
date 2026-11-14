@@ -561,7 +561,7 @@ export function remove(doc: Doc, id: ItemId): Doc {
 export function mergeInto(doc: Doc, id: ItemId, into: ItemId): { doc: Doc; offset: number } {
   const source = doc.items[id];
   const offset = doc.items[into].text.length;
-  if (id === BOOKMARKS) return { doc, offset };
+  if (id === BOOKMARKS || into === BOOKMARKS) return { doc, offset };
   const next = edit(doc, (d) => {
     const target = d.write(into);
     target.text += source.text;

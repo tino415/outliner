@@ -31,6 +31,7 @@ describe("the Bookmarks system item", () => {
     expect(moveTo(doc, BOOKMARKS, ids.Garden, 0)).toBe(doc);
     expect(indent(doc, BOOKMARKS, { showCompleted: true })).toBe(doc);
     expect(mergeInto(doc, BOOKMARKS, ids.Shed).doc).toBe(doc);
+    expect(mergeInto(doc, ids.Shed, BOOKMARKS).doc).toBe(doc);
     expect(moveTo(doc, BOOKMARKS, ROOT, 0).items[ROOT].children[0]).toBe(BOOKMARKS);
   });
 });
