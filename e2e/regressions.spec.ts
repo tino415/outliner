@@ -657,6 +657,25 @@ test("a board card's property chip sits under its heading and leaves the heading
   expect(text!.x).toBeLessThan(handle!.x + handle!.width + 12);
 });
 
+test("a board searched for a tag keeps the distance between its columns", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Project\n  To do\n    write #web\n  Doing\n    read #web");
+  await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
+  const columnDistance = async () => {
+    const first = (await page.locator(".board-column").nth(0).boundingBox())!;
+    const second = (await page.locator(".board-column").nth(1).boundingBox())!;
+    return second.x - (first.x + first.width);
+  };
+  const unfiltered = await columnDistance();
+
+  await page.locator("#search").fill("#web");
+
+  await expect(page.locator(".board-card")).toHaveCount(2);
+  expect(await columnDistance()).toBe(unfiltered);
+  await expect(page.locator(".board-gap").first()).toBeHidden();
+});
+
 test("an outline too big for localStorage is saved and survives a reload", async ({ page }) => {
   test.setTimeout(150_000);
   await freshOutline(page, "first");
