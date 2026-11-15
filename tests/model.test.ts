@@ -337,6 +337,58 @@ describe("reading order and search", () => {
     expect(findItems(doc, "list", 10)[0].path).toEqual(["thread"]);
   });
 
+  describe("path queries", () => {
+    const paths = (doc: Doc, query: string) => findItems(doc, query, 10).map((candidate) => [...candidate.path, candidate.text].join("/"));
+
+    it("matches a parent ending and a child start across a slash", () => {
+      const doc = outline("Test\n  PayoutID\n    IEx\n  Other\n    IEx later");
+      expect(paths(doc, "ID/IEx")).toEqual(["Test/PayoutID/IEx"]);
+    });
+
+    it("lists every item starting with the part after a leading slash", () => {
+      const doc = outline("Test\n  PayoutID\n    IEx\nIEx notes\nUnrelated");
+      expect(paths(doc, "/IEx")).toEqual(["IEx notes", "Test/PayoutID/IEx"]);
+    });
+
+    it("lists the children after a trailing slash", () => {
+      const doc = outline("TODO:\n  Inbox:\n  Next:\n    card\nElsewhere\n  other");
+      expect(paths(doc, "TODO:/")).toEqual(["TODO:/Inbox:", "TODO:/Next:"]);
+    });
+
+    it("trims spaces around a slash", () => {
+      const doc = outline("TODO:\n  Inbox:\n  Next:");
+      expect(paths(doc, "TODO: / Next")).toEqual(["TODO:/Next:"]);
+    });
+
+    it("shows loose matches below the strict one", () => {
+      const doc = outline("Test\n  PayoutID\n    IEx\n  Pay\n    IEx");
+      expect(paths(doc, "Pay/IEx")).toEqual(["Test/Pay/IEx", "Test/PayoutID/IEx"]);
+      expect(paths(doc, "Test/IEx")).toEqual(["Test/PayoutID/IEx", "Test/Pay/IEx"]);
+    });
+
+    it("takes middle parts as whole titles and loose parts across skipped levels", () => {
+      const doc = outline("Test\n  PayoutID\n    IEx\n  PayoutIDs\n    IEx");
+      expect(paths(doc, "Test/PayoutID/IEx")).toEqual(["Test/PayoutID/IEx", "Test/PayoutIDs/IEx"]);
+      expect(paths(doc, "es/ID/IE")).toEqual(["Test/PayoutID/IEx", "Test/PayoutIDs/IEx"]);
+    });
+
+    it("leaves out excluded items and reads a lone slash as plain text", () => {
+      const doc = outline("Test\n  PayoutID\n    IEx\nnotes");
+      expect(findItems(doc, "ID/IEx", 10, (id) => doc.items[id].text === "IEx")).toEqual([]);
+      expect(paths(doc, "/")).toEqual([]);
+    });
+
+    it("ignores case", () => {
+      const doc = outline("TEST\n  Child");
+      expect(paths(doc, "test/CHILD")).toEqual(["TEST/Child"]);
+    });
+
+    it("keeps titles that literally contain the query after the path matches", () => {
+      const doc = outline("and/or\nand\n  or else");
+      expect(paths(doc, "and/or")).toEqual(["and/or else", "and/or"]);
+    });
+  });
+
   it("finds items containing every term and keeps their ancestors", () => {
     const doc = outline("projects\n  garden plan\n  kitchen\nshopping\n  plan b");
     const result = search(doc, ROOT, "PLAN garden", all);

@@ -1,5 +1,5 @@
 import { ItemId, ROOT, ancestors } from "./model";
-import { Candidate, SearchResult, findItems, pathOf, search } from "./search";
+import { Candidate, SearchResult, findItems, isPathQuery, pathOf, search } from "./search";
 import { openPalette } from "./palette";
 import { plainText } from "./inline";
 import { Command, prettySequence } from "./keys";
@@ -102,7 +102,7 @@ export function searchEverything(commands: Command[], mode: SearchMode = "All"):
       if (chosen === "Commands") return matchingCommands(commands, query);
       const items = matchingItems(query);
       const found = matchingCommands(commands, query);
-      if (!query.trim() || items.some((option) => startsWithQuery(option.text, query))) return [...items, ...found];
+      if (!query.trim() || isPathQuery(query) || items.some((option) => startsWithQuery(option.text, query))) return [...items, ...found];
       const strong = found.filter((option) => "command" in option && namesIt(option.command, query) && !DESTROYS.test(option.command.label)).slice(0, 3);
       return [...strong, ...items, ...found.filter((option) => !strong.includes(option))];
     },

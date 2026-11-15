@@ -8,24 +8,29 @@ export interface Candidate {
 }
 
 /**
- * Items anywhere in the outline whose text contains every term, best first:
- * text starting with the query, then shallower items, then reading order.
+ * Items anywhere in the outline matching the query, best first: text starting
+ * with the query, then shallower items, then reading order. Matching means
+ * containing every term, or for a path query (see `pathTier`) matching the
+ * item's ancestors too.
  */
 export function findItems(doc: Doc, query: string, limit: number, exclude: (id: ItemId) => boolean = () => false): Candidate[] {
   const terms = searchTerms(query);
-  const quality = matchQuality(query);
+  const path = isPathQuery(query) ? pathTier(query) : null;
+  const quality = matchQuality(path ? path.ownPart : query);
   const found: { id: ItemId; score: number }[] = [];
+  const above: string[] = [];
   let order = 0;
   const walk = (id: ItemId, depth: number) => {
     for (const child of doc.items[id].children) {
       order += 1;
       if (exclude(child)) continue;
       const text = doc.items[child].text;
-      const lower = text.toLowerCase();
-      if (text.trim() && terms.every((term) => lower.includes(term))) {
-        found.push({ id: child, score: quality(lower) + depth * 100 + order / 1e6 });
-      }
+      const lower = text.trim().toLowerCase();
+      const tier = lower ? path?.tierOf(lower, above) ?? literalTier(lower, terms) : null;
+      if (tier !== null) found.push({ id: child, score: tier * PATH_TIER + quality(lower) + depth * 100 + order / 1e6 });
+      above.push(lower);
       walk(child, depth + 1);
+      above.pop();
     }
   };
   walk(ROOT, 0);
@@ -33,6 +38,56 @@ export function findItems(doc: Doc, query: string, limit: number, exclude: (id: 
     .sort((a, b) => a.score - b.score)
     .slice(0, limit)
     .map(({ id }) => ({ id, text: doc.items[id].text, path: pathOf(doc, id) }));
+}
+
+const PATH_TIER = 1e6;
+const STRICT = 0;
+const LOOSE = 1;
+const LITERAL = 2;
+
+function literalTier(lower: string, terms: string[]): number | null {
+  return terms.every((term) => lower.includes(term)) ? LITERAL : null;
+}
+
+/**
+ * A slash separates levels. Strict: the parts are a substring of the path,
+ * so the first ends an ancestor's title, middle ones equal whole titles and
+ * the last starts the item's own. Loose: the parts appear in titles top to
+ * bottom, levels may be skipped. A leading or trailing slash is strict only.
+ */
+function pathTier(query: string): { ownPart: string; tierOf: (lower: string, above: string[]) => number | null } {
+  const parts = query.toLowerCase().split("/").map((part) => part.trim());
+  const anchored = parts[0] === "" || parts[parts.length - 1] === "";
+  const strictParts = parts.length > 1 && parts[0] === "" ? parts.slice(1) : parts;
+  const looseTerms = parts.map(searchTerms);
+  const tierOf = (lower: string, above: string[]) => {
+    if (isStrictPath(strictParts, lower, above)) return STRICT;
+    if (!anchored && isLoosePath(looseTerms, lower, above)) return LOOSE;
+    return null;
+  };
+  return { ownPart: parts[parts.length - 1], tierOf };
+}
+
+export function isPathQuery(query: string): boolean {
+  return query.includes("/") && query.split("/").some((part) => part.trim());
+}
+
+function isStrictPath(parts: string[], lower: string, above: string[]): boolean {
+  const last = parts[parts.length - 1];
+  const parents = parts.slice(0, -1);
+  if (!lower.startsWith(last) || above.length < parents.length) return false;
+  const nearest = above.slice(above.length - parents.length);
+  return parents.every((part, i) => (i === 0 ? nearest[i].endsWith(part) : nearest[i] === part));
+}
+
+function isLoosePath(parts: string[][], lower: string, above: string[]): boolean {
+  const containsAll = (terms: string[], title: string) => terms.every((term) => title.includes(term));
+  if (!containsAll(parts[parts.length - 1], lower)) return false;
+  let next = 0;
+  for (const title of above) {
+    if (next < parts.length - 1 && containsAll(parts[next], title)) next += 1;
+  }
+  return next === parts.length - 1;
 }
 
 /** Text starting with the query ranks first, then text where every term starts a word, then the rest. */
