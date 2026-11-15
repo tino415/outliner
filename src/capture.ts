@@ -59,7 +59,7 @@ export function goToTarget(doc: Doc, template: Template, today: Date): { doc: Do
   return { doc: fillPage(located.doc, template.id, located.target, today), target: located.target };
 }
 
-const OWN_PROPERTIES = ["capture", "key", "ask", "at"];
+const OWN_PROPERTIES = ["capture", "key", "ask", "at", "private", "plugin", "approved"];
 
 function fillPage(doc: Doc, templateId: ItemId, page: ItemId, today: Date): Doc {
   const withChildren = copyChildren(doc, templateId, page, (text) => withToday(text, today));

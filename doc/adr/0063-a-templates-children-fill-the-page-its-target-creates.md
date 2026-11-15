@@ -18,7 +18,7 @@ is awkward on a phone.
   children are copied into that page with their notes, properties, completed
   and collapsed state; a sealed child is left out.
 - The template's own properties go onto the page, except `capture`, `key`,
-  `ask` and `at`, so `:new:`, `:view: board` and `:columns:` on a template
+  `ask`, `at`, `private`, `plugin` and `approved`, so `:new:`, `:view: board` and `:columns:` on a template
   shape the page.
 - `{date}` is replaced by today in the copied text, notes and property values
   as in the target.

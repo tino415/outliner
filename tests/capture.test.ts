@@ -174,6 +174,13 @@ describe("a template's children fill the page its target creates", () => {
     expect(result.doc).toBe(doc);
   });
 
+  it("keeps private, plugin and approved off the page", () => {
+    let doc = withDayTemplate();
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plans/{date}\n:view: board\n:plugin: x\n:approved: y\n:private: personal");
+    const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
+    expect(Object.keys(result.doc.items[result.target].properties)).toEqual(["view"]);
+  });
+
   it("leaves the pages made on the way bare", () => {
     const doc = withDayTemplate();
     const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
