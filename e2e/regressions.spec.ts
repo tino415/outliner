@@ -228,6 +228,32 @@ test("Shift-click extends an existing selection", async ({ page }) => {
   await expect(page.locator(".item.selected")).toHaveCount(4);
 });
 
+test("Shift-click with no item focused selects the clicked item, a second Shift-click extends it", { tag: "@keys" }, async ({ page }) => {
+  await freshOutline(page, "a\nb\nc\nd");
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await editor(page, "b").click({ modifiers: ["Shift"] });
+  await expect(page.locator(".item.selected")).toHaveCount(1);
+  await editor(page, "d").click({ modifiers: ["Shift"] });
+  await expect(page.locator(".item.selected")).toHaveCount(3);
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+});
+
+test("on a board Shift-click selects the cards between two cards and no text", { tag: "@keys" }, async ({ page }) => {
+  await freshOutline(page, "Project\n  To do\n    write\n    test\n  Doing\n    draft\n    review\n  Done");
+  await page.locator(".row").filter({ hasText: "Project" }).first().locator(".bullet").click();
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("b");
+  await expect(page.locator("#board")).toBeVisible();
+  const text = (name: string) => page.locator("#board .board-card > .row > .text", { hasText: new RegExp(`^${name}$`) });
+  await text("write").click();
+  await text("draft").click({ modifiers: ["Shift"] });
+  await expect(page.locator("#board .item.selected")).toHaveCount(4);
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+  await page.keyboard.press("Backspace");
+  await expect(text("write")).toHaveCount(0);
+  await expect(text("draft")).toHaveCount(0);
+});
+
 test("copying a selection without the clipboard API keeps the selection", async ({ page }) => {
   await freshOutline(page, "a\nb\nc");
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: undefined }));

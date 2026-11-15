@@ -120,7 +120,8 @@ export function bindEditorEvents(): void {
   document.addEventListener("mousedown", (event) => {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
-    const clickedRow = editor && ui.tree.contains(editor) && !isNoteEditor(editor) ? editor : null;
+    const inSelectableRows = (element: HTMLElement) => ui.tree.contains(element) || ui.board.contains(element);
+    const clickedRow = editor && inSelectableRows(editor) && !isNoteEditor(editor) ? editor : null;
     if (event.shiftKey && clickedRow) {
       const focused = editorOf(document.activeElement);
       if (state.selection) {
@@ -129,7 +130,13 @@ export function bindEditorEvents(): void {
         paintSelection();
         return;
       }
-      if (focused && ui.tree.contains(focused) && focused !== clickedRow) {
+      if (!focused) {
+        event.preventDefault();
+        (document.activeElement as HTMLElement | null)?.blur();
+        startSelection(clickedRow.dataset.id!, clickedRow.dataset.id!);
+        return;
+      }
+      if (inSelectableRows(focused) && focused !== clickedRow) {
         event.preventDefault();
         startSelection(focused.dataset.id!, clickedRow.dataset.id!);
         return;
@@ -144,6 +151,7 @@ export function bindEditorEvents(): void {
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
     const editor = editorOf(target);
+    if (state.selection) return;
     if (editor && isMirrorText(editor)) return openMirrored(editor.dataset.id!);
     if (!editor || document.activeElement === editor) return;
     const link = target.closest<HTMLAnchorElement>("a.link");
