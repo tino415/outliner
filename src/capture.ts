@@ -1,5 +1,5 @@
 import { addDays } from "./dates";
-import { Doc, ItemId, ROOT, insertChild, newChildIndex, setItemProperty } from "./model";
+import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemProperty } from "./model";
 
 /*
  * Capture, as in org-capture (doc/adr/0023): a template is an item whose note
@@ -9,10 +9,14 @@ import { Doc, ItemId, ROOT, insertChild, newChildIndex, setItemProperty } from "
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
  * a page per day, and `{tomorrow}` is the day after (doc/adr/0062); missing
- * pages on the way are created.
+ * pages on the way are created. When the target page itself is created, the
+ * template's children are copied into it (`{date}` and `{tomorrow}` replaced
+ * as in the target) and the template's other properties go onto it
+ * (doc/adr/0063); a page that exists is left as it is.
  */
 
 export interface Template {
+  id?: ItemId;
   name: string;
   target: string;
   ask: string[];
@@ -40,6 +44,7 @@ export function templateOf(doc: Doc, id: ItemId): Template | null {
   const target = properties.capture;
   if (!target) return null;
   return {
+    id,
     name: doc.items[id].text.trim() || target,
     target,
     ask: (properties.ask ?? "").split(/[\s,]+/).filter(Boolean),
@@ -49,7 +54,17 @@ export function templateOf(doc: Doc, id: ItemId): Template | null {
 }
 
 export function goToTarget(doc: Doc, template: Template, today: Date): { doc: Doc; target: ItemId } {
-  return targetOf(doc, targetPath(template, today));
+  const located = targetOf(doc, withToday(template.target, today));
+  if (!located.created || !template.id) return { doc: located.doc, target: located.target };
+  return { doc: fillPage(located.doc, template.id, located.target, today), target: located.target };
+}
+
+const OWN_PROPERTIES = ["capture", "key", "ask", "at"];
+
+function fillPage(doc: Doc, templateId: ItemId, page: ItemId, today: Date): Doc {
+  const withChildren = copyChildren(doc, templateId, page, (text) => withToday(text, today));
+  const shaping = Object.entries(doc.items[templateId].properties).filter(([key]) => !OWN_PROPERTIES.includes(key));
+  return shaping.reduce((shaped, [key, value]) => setItemProperty(shaped, page, key, withToday(value, today)), withChildren);
 }
 
 export interface Captured {
@@ -74,9 +89,9 @@ function indexFor(doc: Doc, parent: ItemId, template: Template): number {
   return newChildIndex(doc, parent);
 }
 
-function targetPath(template: Template, today: Date): string {
+function withToday(text: string, today: Date): string {
   const date = isoDate(today);
-  return template.target.replaceAll("{date}", date).replaceAll("{tomorrow}", addDays(date, 1));
+  return text.replaceAll("{date}", date).replaceAll("{tomorrow}", addDays(date, 1));
 }
 
 function placementOf(written: string | undefined): Template["at"] {
@@ -84,21 +99,23 @@ function placementOf(written: string | undefined): Template["at"] {
   return placement === "top" || placement === "bottom" ? placement : undefined;
 }
 
-function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId } {
-  if (doc.items[path.trim()]) return { doc, target: path.trim() };
+function targetOf(doc: Doc, path: string): { doc: Doc; target: ItemId; created: boolean } {
+  if (doc.items[path.trim()]) return { doc, target: path.trim(), created: false };
   let current = doc;
   let at: ItemId = ROOT;
+  let created = false;
   for (const step of path.split("/").map((part) => part.trim()).filter(Boolean)) {
     const found = current.items[at].children.find((child) => isStep(current, child, step));
+    created = !found;
     if (found) {
       at = found;
       continue;
     }
-    const created = insertChild(current, at, newChildIndex(current, at), step);
-    current = created.doc;
-    at = created.id;
+    const added = insertChild(current, at, newChildIndex(current, at), step);
+    current = added.doc;
+    at = added.id;
   }
-  return { doc: current, target: at };
+  return { doc: current, target: at, created };
 }
 
 /** A template is never a place to file into, even when it bears its target's name. */

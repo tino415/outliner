@@ -170,3 +170,16 @@ test("Capture from the app's icon when the app was closed opens capture once", a
   await expect(page.locator("#capture-text")).toHaveValue("cold start");
   expect(errors).toEqual([]);
 });
+
+test("?capture=Day&go opens a new page holding the template's children, one undo removes it", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Day | :capture: Plans/Today\n  Stretch\n  Review\nPlans");
+  await page.goto("./?capture=Day&go");
+  await expect(page.locator("#title")).toHaveText("Today");
+  await expectOutline(page, "Stretch\nReview");
+  await page.keyboard.press("Control+[");
+  await expect(page.locator("#title")).toHaveText("Plans");
+  await page.keyboard.press("Control+[");
+  await expectOutline(page, "Day\n  Stretch\n  Review\nPlans\n  Today\n    Stretch\n    Review");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expectOutline(page, "Day\n  Stretch\n  Review\nPlans");
+});
