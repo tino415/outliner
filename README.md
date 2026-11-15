@@ -332,8 +332,8 @@ Meal
   :at: top
 ```
 
-`:capture:` is a path or an item id (`{date}` is today, missing pages are
-created), `:ask:` the properties to ask for, `:key:` the letter that picks
+`:capture:` is a path or an item id (`{date}` is today, `{tomorrow}` the day
+after, missing pages are created), `:ask:` the properties to ask for, `:key:` the letter that picks
 the template, `:at: top` files at the top. Without templates, items go to
 `Inbox`.
 

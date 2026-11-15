@@ -65,6 +65,20 @@ test("Ctrl-J W then a template's key goes to its target, creating today first an
   await expectToday(page);
 });
 
+test("Ctrl-J W on a {tomorrow} template opens the next day's page", async ({ page }) => {
+  await freshOutline(page, "Templates\n  Plan | :capture: Plan/{tomorrow}; :key: p\nPlan");
+  const expected = await page.evaluate(() => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+  });
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("w");
+  await page.keyboard.press("p");
+  await expect(page.locator("#title")).toHaveText(expected);
+});
+
 test("Go there in the Capture dialog opens the target without capturing", async ({ page }) => {
   await freshOutline(page, PLAN);
   await page.keyboard.press("ControlOrMeta+j");
