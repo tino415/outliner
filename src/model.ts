@@ -1,4 +1,4 @@
-import { privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
+import { isSealed, privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
 
 export type ItemId = string;
 
@@ -566,6 +566,25 @@ export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
     copyId = copy(id, original.parent!, d.read(original.parent!).children.indexOf(id) + 1);
   });
   return { doc: next, id: copyId };
+}
+
+/** Appends copies of `from`'s children, subtrees included, under `to`, passing every text, note and property value through `rewrite`; sealed items stay out. */
+export function copyChildren(doc: Doc, from: ItemId, to: ItemId, rewrite: (text: string) => string): Doc {
+  return edit(doc, (d) => {
+    const copy = (sourceId: ItemId, parent: ItemId) => {
+      const source = d.read(sourceId);
+      if (isSealed(source.note)) return;
+      const created = d.create(parent, d.read(parent).children.length, rewrite(source.text));
+      Object.assign(created, {
+        note: rewrite(source.note),
+        properties: Object.fromEntries(Object.entries(source.properties).map(([key, value]) => [key, rewrite(value)])),
+        completed: source.completed,
+        collapsed: source.collapsed,
+      });
+      source.children.forEach((child) => copy(child, created.id));
+    };
+    d.read(from).children.forEach((child) => copy(child, to));
+  });
 }
 
 /** Copies every top-level item of `source`, with its subtree, into a new item at the end of `doc`. */

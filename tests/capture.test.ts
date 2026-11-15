@@ -20,9 +20,10 @@ function withTemplates(): Doc {
 
 describe("capture templates", () => {
   it("are items with a :capture: property, anywhere in the outline", () => {
-    expect(captureTemplates(withTemplates())).toEqual([
-      { name: "Meal", target: "Food/Monday", ask: ["kcal", "protein"], key: "m" },
-      { name: "Idea", target: "Journal/{date}", ask: [], at: "top", key: "" },
+    const doc = withTemplates();
+    expect(captureTemplates(doc)).toEqual([
+      { id: idOf(doc, "Meal"), name: "Meal", target: "Food/Monday", ask: ["kcal", "protein"], key: "m" },
+      { id: idOf(doc, "Idea"), name: "Idea", target: "Journal/{date}", ask: [], at: "top", key: "" },
     ]);
   });
 
@@ -140,5 +141,64 @@ describe("going to a target", () => {
     const [day] = captureTemplates(doc);
     const result = goToTarget(doc, day, DAY);
     expect(result.doc.items[idOf(doc, "Plan")].children[0]).toBe(result.target);
+  });
+});
+
+describe("a template's children fill the page its target creates", () => {
+  function withDayTemplate(): Doc {
+    let doc = parseIndentedText("Day\n  Plan {date}\n  Review\n    Wins\nPlans");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plans/{date}\n:key: d\n:ask: mood\n:at: top\n:view: board");
+    doc = setNote(doc, idOf(doc, "Plan {date}"), "Written {date}\n:due: {date}");
+    return doc;
+  }
+
+  it("copies the children with their notes and properties, and {date} in them", () => {
+    const doc = withDayTemplate();
+    const [day] = captureTemplates(doc);
+    const result = goToTarget(doc, day, DAY);
+    expect(subtreesAsText(result.doc, [result.target])).toBe(
+      "- 2026-10-09\n  :view: board\n  - Plan 2026-10-09\n    :due: 2026-10-09\n    Written 2026-10-09\n  - Review\n    - Wins",
+    );
+  });
+
+  it("keeps capture, key, ask and at off the page", () => {
+    const doc = withDayTemplate();
+    const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
+    expect(Object.keys(result.doc.items[result.target].properties)).toEqual(["view"]);
+  });
+
+  it("leaves a page that already exists alone, even when it is empty", () => {
+    const bare = parseIndentedText("Day\n  Child\nPlans\n  2026-10-09");
+    const doc = setNote(bare, idOf(bare, "Day"), ":capture: Plans/{date}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
+    expect(result.doc).toBe(doc);
+  });
+
+  it("leaves the pages made on the way bare", () => {
+    const doc = withDayTemplate();
+    const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
+    expect(result.doc.items[idOf(doc, "Plans")].properties).toEqual({});
+    expect(result.doc.items[idOf(doc, "Plans")].children).toEqual([result.target]);
+  });
+
+  it("fills nothing for the Inbox fallback or an item id target", () => {
+    const inbox = goToTarget(parseIndentedText("a"), INBOX, DAY);
+    expect(inbox.doc.items[inbox.target].children).toEqual([]);
+    const doc = withDayTemplate();
+    const byId = { ...captureTemplates(doc)[0], target: idOf(doc, "Plans") };
+    expect(goToTarget(doc, byId, DAY).doc).toBe(doc);
+  });
+
+  it("leaves a sealed child out", () => {
+    let doc = withDayTemplate();
+    doc = setNote(doc, idOf(doc, "Review"), `🔒private:1:personal:${"A".repeat(40)}`);
+    const result = goToTarget(doc, captureTemplates(doc)[0], DAY);
+    expect(result.doc.items[result.target].children.map((id) => result.doc.items[id].text)).toEqual(["Plan 2026-10-09"]);
+  });
+
+  it("files a capture at the top of the filled page with :at: top", () => {
+    const doc = withDayTemplate();
+    const result = capture(doc, captureTemplates(doc)[0], "mood note", {}, DAY);
+    expect(subtreesAsText(result.doc, [result.target])).toMatch(/^- 2026-10-09\n {2}:view: board\n {2}- mood note\n {2}- Plan 2026-10-09/);
   });
 });

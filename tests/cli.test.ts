@@ -261,6 +261,14 @@ describe("outline CLI", () => {
     await expect(outline('capture "x" --template nope')).rejects.toThrow(/no capture template named nope; there are Meal/);
   });
 
+  it("fills the page a capture creates with the template's children, above the captured item", async () => {
+    await outline('add "Day" --note ":capture: Plans/Today\n:at: top"');
+    await outline('add "Stretch" --under Day');
+    await outline('capture "call mum" --template day');
+    await outline('capture "buy milk" --template day');
+    expect(await outline("show Plans")).toBe("- Plans\n  - Today\n    - buy milk\n    - call mum\n    - Stretch");
+  });
+
   it("picks a capture template by its key letter too", async () => {
     await outline('add "Meal" --note ":capture: Food"');
     await outline("set Meal key m");
