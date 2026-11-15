@@ -1,3 +1,4 @@
+import { addDays } from "./dates";
 import { Doc, ItemId, ROOT, insertChild, newChildIndex, setItemProperty } from "./model";
 
 /*
@@ -7,7 +8,8 @@ import { Doc, ItemId, ROOT, insertChild, newChildIndex, setItemProperty } from "
  * target page files new items (`:new: top`, or the bottom),
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
- * a page per day; missing pages on the way are created.
+ * a page per day, and `{tomorrow}` is the day after (doc/adr/0062); missing
+ * pages on the way are created.
  */
 
 export interface Template {
@@ -73,7 +75,8 @@ function indexFor(doc: Doc, parent: ItemId, template: Template): number {
 }
 
 function targetPath(template: Template, today: Date): string {
-  return template.target.replaceAll("{date}", isoDate(today));
+  const date = isoDate(today);
+  return template.target.replaceAll("{date}", date).replaceAll("{tomorrow}", addDays(date, 1));
 }
 
 function placementOf(written: string | undefined): Template["at"] {

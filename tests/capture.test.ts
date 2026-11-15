@@ -40,6 +40,14 @@ describe("capturing", () => {
     expect(result.doc.items[result.id]).toMatchObject({ text: "Oats", note: "", properties: { kcal: "300 kcal" }, parent: idOf(doc, "Monday") });
   });
 
+  it("files under the page of {tomorrow}", () => {
+    let doc = parseIndentedText("Plan\nDay");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plan/{tomorrow}");
+    const [day] = captureTemplates(doc);
+    const result = capture(doc, day, "call", {}, DAY);
+    expect(subtreesAsText(result.doc, [idOf(doc, "Plan")])).toBe("- Plan\n  - 2026-10-10\n    - call");
+  });
+
   it("creates dated pages on the way and files at the top when asked", () => {
     let doc = withTemplates();
     const idea = captureTemplates(doc)[1];
@@ -101,6 +109,28 @@ describe("going to a target", () => {
     const result = goToTarget(doc, idea, DAY);
     expect(result.doc.items[result.target].text).toBe("2026-10-09");
     expect(result.doc.items[result.doc.items[result.target].parent!].text).toBe("Journal");
+  });
+
+  it.each([
+    [new Date(2026, 9, 9), "2026-10-10"],
+    [new Date(2026, 9, 31), "2026-11-01"],
+    [new Date(2026, 11, 31), "2027-01-01"],
+    [new Date(2028, 1, 28), "2028-02-29"],
+  ])("creates the day after %s for {tomorrow}", (today, tomorrow) => {
+    let doc = parseIndentedText("Day");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Journal/{tomorrow}");
+    const [day] = captureTemplates(doc);
+    const result = goToTarget(doc, day, today);
+    expect(result.doc.items[result.target].text).toBe(tomorrow);
+    expect(result.doc.items[result.doc.items[result.target].parent!].text).toBe("Journal");
+  });
+
+  it("resolves {date} and {tomorrow} in one target", () => {
+    let doc = parseIndentedText("Day");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plan/{date}/before {tomorrow}");
+    const [day] = captureTemplates(doc);
+    const result = goToTarget(doc, day, DAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Plan")])).toBe("- Plan\n  - 2026-10-09\n    - before 2026-10-10");
   });
 
   it("puts the day it creates first when its parent keeps new items on top", () => {
