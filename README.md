@@ -39,6 +39,8 @@ it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
 P property, K kind, L link, R mirror, ; date, A attach, X private, M move to,
 D duplicate, B board, G agenda, C columns, N capture, W go to a capture target, Y copy a link, and J again to jump
 to an item. Pausing after it shows what can follow; ? lists every shortcut.
+Item pickers (jump, Move to, Mirror, Link to) match paths written with
+slashes, as `ID/IEx` for `PayoutID > IEx` (doc/adr/0064).
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
 Ctrl-. folds the item; Ctrl-Shift-. collapses everything inside it, or
