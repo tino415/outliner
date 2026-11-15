@@ -320,6 +320,28 @@ test.describe("zoom and search", { tag: "@keys" }, () => {
     await expectOutline(page, "projects\n  garden plan\n  kitchen\nshopping\n  milk");
   });
 
+  test("searching an item's id shows that item as the match, with its ancestors", async ({ page }) => {
+    await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
+    const id = await row(page, "tomatoes").locator(".text").getAttribute("data-id");
+    await page.keyboard.press("/");
+    await page.keyboard.type(id!);
+    await expectOutline(page, "projects\n  garden\n    tomatoes");
+    await expect(page.locator("#search-summary")).toContainText("1 match");
+  });
+
+  test("searching the id of an item elsewhere offers to open it", async ({ page }) => {
+    await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
+    const id = await row(page, "tomatoes").locator(".text").getAttribute("data-id");
+    await row(page, "other").locator(".bullet").click();
+    await expect(page.locator("#title")).toHaveText("other");
+    await page.keyboard.press("/");
+    await page.keyboard.type(id!);
+    await expect(page.locator("#search-summary")).toContainText("Not on this page: tomatoes");
+    await page.locator("#search-summary [data-action='open-named']").click();
+    await expect(page.locator("#title")).toHaveText("tomatoes");
+    await expect(page.locator("#search")).toHaveValue("");
+  });
+
   test("Ctrl-K jumps to any item by name", async ({ page }) => {
     await freshOutline(page, "projects\n  garden\n    tomatoes\nother");
     await page.keyboard.press("ControlOrMeta+k");

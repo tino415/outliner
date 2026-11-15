@@ -319,6 +319,10 @@ const menuActions: Record<string, () => void> = {
     formulaHelp().showModal();
   },
   "clear-search": () => setQuery(""),
+  "open-named": () => {
+    const id = state.results?.elsewhere;
+    if (id && doc().items[id]) zoomTo(id);
+  },
 };
 
 // ---- formula help -------------------------------------------------------------------

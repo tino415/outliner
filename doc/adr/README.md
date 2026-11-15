@@ -71,3 +71,4 @@ file that says so.
 62. [`{tomorrow}` in a capture target is the day after today](0062-tomorrow-in-a-capture-target-is-the-day-after-today.md) (extends 23, 59)
 63. [A template's children fill the page its target creates](0063-a-templates-children-fill-the-page-its-target-creates.md) (extends 23, 59)
 64. [About Bookmarks lives in code and Bookmarks is fixed](0064-about-bookmarks-lives-in-code-and-bookmarks-is-fixed.md) (supersedes part of 60 and 61)
+65. [A search for an item's id finds that item](0065-a-search-for-an-items-id-finds-that-item.md) (extends 50)
