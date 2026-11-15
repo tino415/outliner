@@ -360,7 +360,7 @@ function propertiesFrom(assignments: string[]): Record<string, string> {
 }
 
 function textFrom(argument: string, stdin: string, whenEmpty: string): string {
-  return argument === "-" ? requireStdin(stdin, whenEmpty).replace(/\n+$/, "") : argument;
+  return argument === "-" ? requireStdin(stdin, whenEmpty).replace(/[\r\n]+$/, "") : argument;
 }
 
 function requireStdin(stdin: string, whenEmpty: string): string {
