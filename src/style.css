@@ -2486,7 +2486,10 @@ body.dragging {
 }
 
 .with-searching .board-new-card,
-.with-searching .board-new-column,
-.with-searching .board-gap {
+.with-searching .board-new-column {
   display: none;
+}
+
+.with-searching .board-gap {
+  visibility: hidden;
 }
