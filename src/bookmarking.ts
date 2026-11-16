@@ -1,4 +1,4 @@
-import { BOOKMARKS, ItemId, isKept, keptNotice, withBookmarksItem } from "./model";
+import { BOOKMARKS, ItemId, Part, isKept, isReadOnly, keptNotice, readOnlyNotice, withBookmarksItem } from "./model";
 import { Bookmark, Destination, bookmarkForDigit, bookmarkPage } from "./bookmarks";
 import { commitAndRender, doc, state } from "./app";
 import { toast } from "./chrome";
@@ -42,5 +42,13 @@ export function refusedAsKept(ids: ItemId[]): boolean {
   const kept = ids.find(isKept);
   if (!kept) return false;
   toast(keptNotice(kept));
+  return true;
+}
+
+/** True, with a word to the user, when `part` of one of `ids` is read-only (doc/adr/0064). */
+export function refusedAsReadOnly(ids: ItemId[], part: Part): boolean {
+  const fixed = ids.find((id) => isReadOnly(id, part));
+  if (!fixed) return false;
+  toast(readOnlyNotice(fixed));
   return true;
 }

@@ -6,6 +6,7 @@ import { declaredColumns } from "./properties";
 import { caretNow } from "./editing";
 import { choosePrivacy } from "./privateItems";
 import { toast } from "./chrome";
+import { refusedAsReadOnly } from "./bookmarking";
 import { DATE_PROPERTIES } from "./dates";
 import { pickDate } from "./datePicker";
 import { onlyUrl } from "./inline";
@@ -40,7 +41,7 @@ export function bindPropertyChips(): void {
 }
 
 export function chooseProperty(id: ItemId): void {
-  if (sealedHere(id)) return;
+  if (sealedHere(id) || refusedAsReadOnly([id], "properties")) return;
   openPalette<Choice>({
     placeholder: "Property…",
     hint: "Pick a property or type a new name; its value comes next",
@@ -55,6 +56,7 @@ export function chooseProperty(id: ItemId): void {
 }
 
 export function chooseValue(id: ItemId, key: string): void {
+  if (refusedAsReadOnly([id], "properties")) return;
   if (key === "private") return choosePrivacy(id);
   if (sealedHere(id)) return;
   const current = doc().items[id]?.properties[key];

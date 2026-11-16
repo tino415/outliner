@@ -692,6 +692,20 @@ test("a warning shows when storage passes 80% of the quota", async ({ page }) =>
   await expect(page.locator("#toast")).toContainText("Export a backup");
 });
 
+for (const [what, title, at] of [
+  ["Bookmarks", "Bookmarks", "./"],
+  ["About Bookmarks", "About Bookmarks", "./#/bookmarks"],
+]) {
+  test(`typing in the ${what} title leaves it as it was`, { tag: "@phone" }, async ({ page }) => {
+    await freshOutline(page, "Garden");
+    await page.goto(at);
+    await clickEnd(page, title);
+    await page.keyboard.type("x");
+    await expect(page.locator("#toast")).toContainText("read-only");
+    await expect(editor(page, title)).toHaveText(title);
+  });
+}
+
 test("a save the browser refuses says so", async ({ page }) => {
   await freshOutline(page, "a");
   await page.evaluate(() => {

@@ -3,6 +3,7 @@ import { commitAndRender, doc, state, ui } from "./app";
 import { caretNow } from "./editing";
 import { columnViewShown, render } from "./render";
 import { savePrefs } from "./storage";
+import { refusedAsReadOnly } from "./bookmarking";
 
 /** Switches the column view of the current page, remembering the choice for that page. */
 export function toggleColumnView(): void {
@@ -22,6 +23,7 @@ export function bindColumnCells(): void {
 }
 
 function editCell(cell: HTMLElement, id: ItemId, key: string): void {
+  if (refusedAsReadOnly([id], "properties")) return;
   const shown = [...cell.childNodes];
   const input = Object.assign(document.createElement("input"), {
     className: "cell-input",

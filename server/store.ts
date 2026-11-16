@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { Change, Field } from "../src/sync/replica";
+import { contradictsBookmarks } from "../src/model";
 
 /**
  * The current value of every field, with the clock that wrote it and a
@@ -60,6 +61,7 @@ export class Store {
     this.db.exec("begin");
     try {
       for (const change of changes) {
+        if (contradictsBookmarks(change.item, change.field, change.value)) continue;
         const stored = current.get(change.item, change.field) as { clock: string } | undefined;
         if (stored && stored.clock >= change.clock) continue;
         seq += 1;

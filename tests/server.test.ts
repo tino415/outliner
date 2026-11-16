@@ -43,6 +43,16 @@ describe("sync server", () => {
     expect(nothingNew).toEqual({ seq: 3, changes: [] });
   });
 
+  it("answers 200 to a push that renames Bookmarks, drops that field and keeps the rest", async () => {
+    const pushed = await sync({ since: 0, changes: [change("bookmarks", "Pages", "1"), change("bookmarks", "Bookmarks", "2"), change("other", "kept", "1"), { item: "bookmarks", field: "completed", value: true, clock: "3" }] });
+    expect(pushed.status).toBe(200);
+    const stored = (await pushed.json()).changes as Change[];
+    expect(stored.map((c) => [c.item, c.field, c.value])).toEqual([
+      ["bookmarks", "text", "Bookmarks"],
+      ["other", "text", "kept"],
+    ]);
+  });
+
   it("keeps the change with the later clock whatever order they arrive in", async () => {
     await sync({ since: 0, changes: [change("a", "later", "5")] });
     const answer = await (await sync({ since: 0, changes: [change("a", "earlier", "3")] })).json();

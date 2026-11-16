@@ -363,17 +363,32 @@ describe("outline CLI", () => {
   it("makes the Bookmarks item on first run, once, and keeps it", async () => {
     await outline("show");
     await outline('add "Garden"');
-    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks\nbookmarks-about {2}Bookmarks \/ About Bookmarks$/);
+    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks\nabout-bookmarks {2}Bookmarks \/ About Bookmarks$/);
     await outline('add "Plan" --under bookmarks');
     await expect(outline("rm bookmarks")).rejects.toThrow("Bookmarks stays; empty it instead");
-    await expect(outline("rm bookmarks-about")).rejects.toThrow("About Bookmarks stays");
-    await expect(outline("move bookmarks-about --under Garden")).rejects.toThrow("About Bookmarks stays");
-    await expect(outline("move bookmarks-about --under root")).rejects.toThrow("About Bookmarks stays");
+    await expect(outline("rm about-bookmarks")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline("rm about-bookmarks-1")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline("move about-bookmarks --under Garden")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline("move about-bookmarks --under root")).rejects.toThrow("About Bookmarks is read-only");
     await expect(outline("move bookmarks --under Garden")).rejects.toThrow("Bookmarks stays; empty it instead");
     await outline("move Garden --before bookmarks");
     await outline("move bookmarks --before Garden");
     expect((await outline("show --json").then(JSON.parse)).children.map((child: { id: string }) => child.id)[0]).toBe("bookmarks");
     expect(await outline("show bookmarks")).toMatch(/^- Bookmarks\n {2}:columns: key\n {2}- About Bookmarks\n(.*\n)*? {2}- Plan$/);
+  });
+
+  it("refuses to change what Bookmarks and About Bookmarks fix, and keeps the rest editable", async () => {
+    await outline("show");
+    await expect(outline("edit bookmarks x")).rejects.toThrow("Bookmarks is read-only");
+    await expect(outline("note bookmarks x")).rejects.toThrow("Bookmarks is read-only");
+    await expect(outline("done bookmarks")).rejects.toThrow("Bookmarks is read-only");
+    await expect(outline("edit about-bookmarks x")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline("edit about-bookmarks-1-1 x")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline("set about-bookmarks-1 key 1")).rejects.toThrow("About Bookmarks is read-only");
+    await expect(outline('add "x" --under about-bookmarks-1')).rejects.toThrow("About Bookmarks is read-only");
+    await outline("set bookmarks columns");
+    await outline("show");
+    expect(await outline("show bookmarks")).not.toContain(":columns:");
   });
 
   it("prints the tree as JSON with ids", async () => {

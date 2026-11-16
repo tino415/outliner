@@ -10,6 +10,8 @@ import {
   liftNoteProperties,
   privateKeyOf,
   indexInParent,
+  isReadOnly,
+  readOnlyNotice,
   isBlank,
   isDescendant,
   isExpanded,
@@ -47,7 +49,7 @@ import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select
 import { graft, parseIndentedText } from "./transfer";
 import { bindingFor, bindingForKeys } from "./keys";
 import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
-import { refusedAsKept } from "./bookmarking";
+import { refusedAsKept, refusedAsReadOnly } from "./bookmarking";
 import { clearSelection, focusAfterRemoving, paintSelection, rowsAround, selectWholePage, startSelection } from "./selection";
 import { setQuery, zoomTo } from "./navigation";
 import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOpenedNote, textEditorFor, titleFor, treeEditors } from "./render";
@@ -63,6 +65,10 @@ export function bindEditorEvents(): void {
     if (!editor) return;
     caretBeforeInput = caretNow();
     if (handledAsKey(event, editor)) event.preventDefault();
+    else if (isReadOnlyEditor(editor) && !/^insert(Paragraph|LineBreak|CompositionText)/.test(event.inputType)) {
+      event.preventDefault();
+      toast(readOnlyNotice(editor.dataset.id!));
+    }
   });
 
   document.addEventListener("input", (event) => {
@@ -70,6 +76,7 @@ export function bindEditorEvents(): void {
     if (!editor) return;
     const id = editor.dataset.id!;
     const value = editor.textContent ?? "";
+    if (isReadOnlyEditor(editor)) return void putBackReadOnly(editor, caretBeforeInput);
     if (isNoteEditor(editor)) {
       commitShownEdit(setNote(doc(), id, value), id, caretBeforeInput, `${id}:note`);
     } else {
@@ -167,6 +174,11 @@ export function bindEditorEvents(): void {
 
   document.addEventListener("paste", (event) => {
     const editor = editorOf(event.target);
+    if (editor && isReadOnlyEditor(editor)) {
+      event.preventDefault();
+      toast(readOnlyNotice(editor.dataset.id!));
+      return;
+    }
     const files = [...(event.clipboardData?.files ?? [])];
     if (editor && files.length > 0) {
       event.preventDefault();
@@ -281,6 +293,17 @@ function isNoteEditor(editor: HTMLElement): boolean {
   return editor.classList.contains("note");
 }
 
+function isReadOnlyEditor(editor: HTMLElement): boolean {
+  return isReadOnly(editor.dataset.id!, isNoteEditor(editor) ? "note" : "title");
+}
+
+function putBackReadOnly(editor: HTMLElement, caret: Caret | null): void {
+  const item = doc().items[editor.dataset.id!];
+  editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
+  if (caret) focusCaret(caret);
+  toast(readOnlyNotice(item.id));
+}
+
 function isMirrorText(editor: HTMLElement): boolean {
   return editor.classList.contains("mirror-text");
 }
@@ -391,11 +414,13 @@ export const actions = {
     if (isMirrorText(c.editor)) return openMirrored(c.id);
     if (c.inAgenda || (c.isTitle && queryViewShown())) return actions.blur(c);
     if (c.isTitle || isColumn(c.id)) {
+      if (refusedAsReadOnly([c.id], "children")) return;
       const created = insertChild(doc(), c.id, 0);
       commitAndRender(created.doc, startOf(created.id));
       return;
     }
     let current = doc();
+    if (c.end > c.start && refusedAsReadOnly([c.id], "title")) return;
     if (c.end > c.start) {
       const text = current.items[c.id].text;
       current = setText(current, c.id, text.slice(0, c.start) + text.slice(c.end));
@@ -409,6 +434,7 @@ export const actions = {
       return;
     }
     const result = split(current, c.id, c.start, filter(), !onBoard && isExpanded(current, c.id, filter()));
+    if (result.doc === current && refusedAsReadOnly([c.id], "title")) return;
     commitAndRender(result.doc, startOf(result.focus));
   },
 
@@ -552,6 +578,7 @@ export const actions = {
   moveDown: inPlace((c) => commitAndRender(moveDown(doc(), c.id, filter()), keepCaret(c))),
 
   complete: onItem((c) => {
+    if (refusedAsReadOnly([c.id], "completed")) return;
     const next = toggleCompleted(doc(), c.id);
     const { before, after } = rowsAround([c.id]);
     commitAndRender(next, [keepCaret(c), ...startsOf(after, before)]);
@@ -858,6 +885,7 @@ function startsOf(...ids: (ItemId | null)[]): Focus[] {
 }
 
 function wrapSelection(c: EditorContext, marker: string): void {
+  if (refusedAsReadOnly([c.id], c.inNote ? "note" : "title")) return;
   const text = c.editor.textContent ?? "";
   const next = text.slice(0, c.start) + marker + text.slice(c.start, c.end) + marker + text.slice(c.end);
   commitShownEdit(c.inNote ? setNote(doc(), c.id, next) : setText(doc(), c.id, next), c.id, caretNow());

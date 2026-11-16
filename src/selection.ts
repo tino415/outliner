@@ -14,7 +14,7 @@ import {
 import { subtreesAsText } from "./transfer";
 import { Focus, commitAndRender, doc, filter, state, ui } from "./app";
 import { editorOf } from "./editing";
-import { refusedAsKept } from "./bookmarking";
+import { refusedAsKept, refusedAsReadOnly } from "./bookmarking";
 import { END, focusCaret, itemElementFor, treeEditors } from "./render";
 import { itemCount, toast, toastWithUndo } from "./chrome";
 
@@ -57,6 +57,7 @@ export const selectionActions = {
   },
 
   complete(): void {
+    if (refusedAsReadOnly(selectedRoots(), "completed")) return;
     commitAndRender(completeAll(doc(), selectedRoots()), null);
   },
 

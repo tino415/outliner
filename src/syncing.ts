@@ -1,4 +1,4 @@
-import { BOOKMARKS, Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf } from "./model";
+import { BOOKMARKS, Doc, ROOT, appendOutline, emptyDoc, makePublic, privateKeyOf, withoutBookmarksAbout } from "./model";
 import { Clock, newDeviceId } from "./sync/clock";
 import { Endpoint, SyncError, exchange } from "./sync/client";
 import { MAX_TEXT, isPropertyField } from "./sync/protocol";
@@ -69,7 +69,7 @@ export function isSyncing(): boolean {
 export function startSync(): void {
   onChangeHere((before, after) => {
     if (!saved || !clock) return;
-    const changes = diff(before, after, saved.replica, () => clock!.tick());
+    const changes = diff(withoutBookmarksAbout(before), withoutBookmarksAbout(after), saved.replica, () => clock!.tick());
     if (changes.length === 0) return;
     merge(saved.replica, changes);
     saved.pending = latestPerField([...saved.pending, ...changes]);
@@ -292,7 +292,7 @@ async function connect(endpoint: Endpoint): Promise<Connected> {
   const serverHasOutline = materialize(fresh.replica).items[ROOT].children.some((child) => child !== BOOKMARKS);
   const mine = doc();
   if (!serverHasOutline) {
-    const upload = diff(emptyDoc(), mine, fresh.replica, () => newClock.tick());
+    const upload = diff(emptyDoc(), withoutBookmarksAbout(mine), fresh.replica, () => newClock.tick());
     merge(fresh.replica, upload);
     fresh.pending = upload;
   }
