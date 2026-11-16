@@ -297,6 +297,12 @@ describe("outline CLI", () => {
       expect(await outlineWithoutBookmarks("show")).toBe("- Renamed\n  Line one.\n  Line two.");
     });
 
+    it("reads a title from stdin that ends in CRLF without the carriage return", async () => {
+      const id = await outline("add Card");
+      await outline(`edit ${id} -`, "Renamed\r\n");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Renamed");
+    });
+
     it("refuses empty stdin and keeps the note, the title and the outline", async () => {
       const id = await outline("add Card --note Keep");
       for (const empty of ["", "\n", "  \n\n"]) {
