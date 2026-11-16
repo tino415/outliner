@@ -166,6 +166,8 @@ describe("what is read-only in Bookmarks and About Bookmarks", () => {
     expect(moveTo(doc, id, firstLine, 0)).toBe(doc);
     expect(moveTo(doc, id, BOOKMARKS_ABOUT, 0)).toBe(doc);
     expect(duplicate(doc, nestedLine).doc).toBe(doc);
+    expect(duplicate(doc, BOOKMARKS_ABOUT).doc).toBe(doc);
+    expect(duplicate(doc, BOOKMARKS).doc).toBe(doc);
   });
 
   it("lets Enter at the end of About add a bookmark below it, even unfolded", () => {

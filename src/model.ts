@@ -618,7 +618,7 @@ export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc
 
 export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
   const parent = doc.items[id].parent;
-  if (parent && isReadOnly(parent, "children")) return { doc, id };
+  if (id === BOOKMARKS || isAboutItem(id) || (parent && isReadOnly(parent, "children"))) return { doc, id };
   let copyId = "";
   const next = edit(doc, (d) => {
     const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
