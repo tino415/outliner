@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT, setItemProperty } from "../src/model";
+import { Doc, ItemId, ROOT, setItemProperty, withBookmarksItem } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
-import { itemLink, linkBaseIn, mayShareTitle } from "../src/itemLink";
+import { search } from "../src/search";
+import { itemLink, itemNamedBy, linkBaseIn, mayShareTitle } from "../src/itemLink";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -63,5 +64,78 @@ describe("sharing the item's words", () => {
     const plain = parseIndentedText("secret");
     const doc = setItemProperty(plain, idOf(plain, "secret"), "private", "mine");
     expect(mayShareTitle(doc, idOf(doc, "secret"))).toBe(false);
+  });
+});
+
+describe("the item a search names", () => {
+  const doc = parseIndentedText("a\n  deep\nb");
+  const deep = idOf(doc, "deep");
+
+  it("is the item whose whole id was typed", () => {
+    expect(itemNamedBy(doc, deep)).toBe(deep);
+  });
+
+  it("is the item a pasted link points at, spaces around it ignored", () => {
+    expect(itemNamedBy(doc, `  https://example.test/app/#/${encodeURIComponent(deep)} `)).toBe(deep);
+  });
+
+  it("is the item a private id names", () => {
+    const privateId = "root~abc";
+    const withPrivate = { ...doc, items: { ...doc.items, [privateId]: { ...doc.items[deep], id: privateId } } };
+    expect(itemNamedBy(withPrivate, `#/${encodeURIComponent(privateId)}`)).toBe(privateId);
+  });
+
+  it("is none for the fixed word ids typed bare, and the item for a link to one", () => {
+    const withBookmarks = withBookmarksItem(doc);
+    expect(itemNamedBy(withBookmarks, "bookmarks")).toBeNull();
+    expect(itemNamedBy(withBookmarks, "#/bookmarks")).toBe("bookmarks");
+  });
+
+  it("is none for an id no item has", () => {
+    expect(itemNamedBy(doc, "nosuchitem")).toBeNull();
+    expect(itemNamedBy(doc, "https://example.test/#/nosuchitem")).toBeNull();
+  });
+
+  it("is none for a part of an id, which searches as text", () => {
+    expect(itemNamedBy(doc, deep.slice(0, -1))).toBeNull();
+  });
+
+  it("is none for an empty query or a link with a broken escape", () => {
+    expect(itemNamedBy(doc, "  ")).toBeNull();
+    expect(itemNamedBy(doc, "#/%E0%A4%A")).toBeNull();
+  });
+});
+
+describe("searching for an id", () => {
+  const doc = parseIndentedText("page\n  child\n    leaf\nother");
+  const [page, child, leaf, other] = ["page", "child", "leaf", "other"].map((text) => idOf(doc, text));
+  const open = { showCompleted: false };
+  const completed = (id: ItemId): Doc => ({ ...doc, items: { ...doc.items, [id]: { ...doc.items[id], completed: true } } });
+
+  it("matches an item under the page and shows its ancestors below the page", () => {
+    const result = search(doc, page, leaf, open);
+    expect([...result.matches]).toEqual([leaf]);
+    expect([...result.shown]).toEqual([child, leaf]);
+    expect(result.terms).toEqual([]);
+    expect(result.elsewhere).toBeNull();
+  });
+
+  it("names an item outside the page as elsewhere", () => {
+    const result = search(doc, page, other, open);
+    expect(result.matches.size).toBe(0);
+    expect(result.elsewhere).toBe(other);
+  });
+
+  it("does not call the page itself elsewhere", () => {
+    expect(search(doc, page, page, open).elsewhere).toBeNull();
+  });
+
+  it("names a completed item elsewhere while completed items are hidden", () => {
+    expect(search(completed(leaf), page, leaf, open).elsewhere).toBe(leaf);
+    expect([...search(completed(leaf), page, leaf, { showCompleted: true }).matches]).toEqual([leaf]);
+  });
+
+  it("matches under a completed page, which only hides what is above it", () => {
+    expect([...search(completed(page), child, leaf, open).matches]).toEqual([leaf]);
   });
 });

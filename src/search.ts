@@ -1,5 +1,6 @@
 import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown } from "./model";
 import { dateFilter } from "./dates";
+import { itemNamedBy } from "./itemLink";
 
 export interface Candidate {
   id: ItemId;
@@ -112,6 +113,8 @@ export interface SearchResult {
   matches: Set<ItemId>;
   shown: Set<ItemId>;
   terms: string[];
+  /** An item the query names by its id that this page does not show. */
+  elsewhere: ItemId | null;
 }
 
 export function searchTerms(query: string): string[] {
@@ -124,6 +127,8 @@ export function searchTerms(query: string): string[] {
  * match is seen in context.
  */
 export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter): SearchResult {
+  const named = itemNamedBy(doc, query);
+  if (named && named !== top) return searchForNamed(doc, top, named, filter);
   const { terms, passes } = readQuery(query);
   const matches = new Set<ItemId>();
   const shown = new Set<ItemId>();
@@ -144,7 +149,16 @@ export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter)
     return anyBelow;
   };
   walk(top);
-  return { matches, shown, terms };
+  return { matches, shown, terms, elsewhere: null };
+}
+
+function searchForNamed(doc: Doc, top: ItemId, named: ItemId, filter: ViewFilter): SearchResult {
+  const above = ancestors(doc, named);
+  const belowTop = above.slice(above.indexOf(top) + 1);
+  const onThisPage = above.includes(top) && [...belowTop, named].every((id) => isShown(doc, id, filter));
+  if (!onThisPage) return { matches: new Set(), shown: new Set(), terms: [], elsewhere: named };
+  const shown = new Set([...belowTop, named]);
+  return { matches: new Set([named]), shown, terms: [], elsewhere: null };
 }
 
 function readQuery(query: string): { terms: string[]; passes: (item: Item) => boolean } {

@@ -134,6 +134,16 @@ test.describe("Ctrl-K", { tag: "@phone" }, () => {
     expect((await caret(page)).text).toBe("b");
   });
 
+  test("pasting an item's id puts that item first and Enter zooms there", async ({ page }) => {
+    await freshOutline(page, "Collapse the garden\n  tomatoes\nother");
+    const id = await row(page, "tomatoes").locator(".text").getAttribute("data-id");
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type(`https://example.test/#/${id}`);
+    await expect(page.locator("#palette li").first()).toContainText("tomatoes");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#title")).toHaveText("tomatoes");
+  });
+
   test("lists menu commands after the items, so Enter still jumps", async ({ page }) => {
     await freshOutline(page, "Collapse the garden\n  x");
     await page.keyboard.press("ControlOrMeta+k");

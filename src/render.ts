@@ -351,6 +351,14 @@ function renderSearchSummary(): void {
   ui.searchSummary.hidden = !results;
   if (!results) return;
   const count = results.matches.size;
+  if (results.elsewhere) {
+    const title = doc().items[results.elsewhere].text || "Untitled";
+    ui.searchSummary.innerHTML =
+      `<span>Not on this page: <strong>${escape(title)}</strong></span>` +
+      `<button type="button" class="link-button" data-action="open-named">Open</button>` +
+      `<button type="button" class="link-button" data-action="clear-search">Clear</button>`;
+    return;
+  }
   ui.searchSummary.innerHTML =
     `<span>${count === 0 ? "No matches" : count === 1 ? "1 match" : `${count} matches`} for <strong>${escape(state.query.trim())}</strong></span>` +
     `<button type="button" class="link-button" data-action="clear-search">Clear</button>`;

@@ -1,4 +1,6 @@
-import { Doc, ItemId, ROOT, isPrivateItem, privateRootAbove } from "./model";
+import { BOOKMARKS, BOOKMARKS_ABOUT, Doc, ItemId, ROOT, isPrivateItem, privateRootAbove } from "./model";
+
+const WORD_IDS: ReadonlySet<ItemId> = new Set([BOOKMARKS, BOOKMARKS_ABOUT]);
 /*
  * A link to an item is `<base>#/<id>`, which opens it zoomed in
  * (doc/adr/0050). The base is the first `link-base` property in outline
@@ -24,6 +26,18 @@ export function itemLink(doc: Doc, id: ItemId, openedAt: string): string {
   const base = linkBaseIn(doc) ?? openedAt;
   const hash = id === ROOT ? "#/" : `#/${encodeURIComponent(id)}`;
   return base.replace(/#.*$/, "") + hash;
+}
+
+/** The item a typed or pasted id, or a link to an item, names; a part of an id names nothing. */
+export function itemNamedBy(doc: Doc, query: string): ItemId | null {
+  const written = query.trim().replace(/^\S*?#\//, "");
+  try {
+    const id = decodeURIComponent(written);
+    const isWordOfItsOwn = written === query.trim() && WORD_IDS.has(id);
+    return id !== ROOT && !isWordOfItsOwn && Object.hasOwn(doc.items, id) ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A private item shares its address only: its words stay out of the share sheet. */

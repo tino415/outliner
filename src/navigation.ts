@@ -1,6 +1,7 @@
 import { ItemId, ROOT, ancestors } from "./model";
 import { Candidate, SearchResult, findItems, isPathQuery, pathOf, search } from "./search";
 import { openPalette } from "./palette";
+import { itemNamedBy } from "./itemLink";
 import { plainText } from "./inline";
 import { Command, prettySequence } from "./keys";
 import { PREFIX } from "./shortcuts";
@@ -112,15 +113,21 @@ export function searchEverything(commands: Command[], mode: SearchMode = "All"):
 
 function matchingItems(query: string): JumpOption[] {
   const asOption = (item: Candidate): JumpOption => ({ item, text: item.text, path: item.path });
+  const named = itemNamedBy(doc(), query);
+  if (named) return [asOption(candidateOf(named)), ...findItems(doc(), query, 40, (id) => id === named).map(asOption)];
   if (query.trim()) return findItems(doc(), query, 40).map(asOption);
   const bookmarks = bookmarksIn(doc());
   const bookmarked = bookmarks.map(bookmarkOption);
   const shownAsBookmark = new Set(bookmarks.flatMap((bookmark) => ("zoom" in bookmark.destination ? [bookmark.destination.zoom] : [])));
   const recentIds = state.recent.filter((id) => doc().items[id] && !shownAsBookmark.has(id));
-  const recent = recentIds.map((id) => ({ id, text: doc().items[id].text, path: pathOf(doc(), id) }));
+  const recent = recentIds.map(candidateOf);
   const seen = new Set([...state.recent, ...shownAsBookmark]);
   const firstOfEach = bookmarked.filter((option, i) => bookmarked.findIndex((other) => other.text === option.text && other.path.join() === option.path.join()) === i);
   return [...firstOfEach, ...[...recent, ...findItems(doc(), "", 30, (id) => seen.has(id))].map(asOption)];
+}
+
+function candidateOf(id: ItemId): Candidate {
+  return { id, text: doc().items[id].text, path: pathOf(doc(), id) };
 }
 
 function bookmarkOption(bookmark: Bookmark): JumpOption {
