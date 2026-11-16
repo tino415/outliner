@@ -86,7 +86,7 @@ test.describe("bookmarks", { tag: "@keys" }, () => {
     await page.goto("./#/bookmarks");
     await row(page, "About Bookmarks").locator(".text").click();
     await page.keyboard.press("ControlOrMeta+Shift+Backspace");
-    await expect(toast(page)).toContainText("About Bookmarks stays");
+    await expect(toast(page)).toContainText("About Bookmarks is read-only");
     await expect(row(page, "About Bookmarks")).toBeVisible();
   });
 

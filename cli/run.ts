@@ -2,10 +2,15 @@ import {
   Doc,
   ItemId,
   ROOT,
+  Part,
+  isAboutItem,
   isKept,
+  isReadOnly,
   keptNotice,
   movesKeptOut,
+  readOnlyNotice,
   withBookmarksItem,
+  withoutBookmarksAbout,
   ancestors,
   childrenInOrder,
   indexInParent,
@@ -187,25 +192,25 @@ async function perform(command: string, args: string[], options: Options, outlin
     case "edit": {
       const title = textFrom(requireText(args, "edit"), stdin, "a title needs some text");
       requireTitle(title);
-      return changeItem(outline, args, (next, id) => setText(next, id, title));
+      return changeItem(outline, args, (next, id) => setText(next, id, title), "title");
     }
     case "note": {
       if (args[0]) writable(doc, resolve(doc, args[0]));
       const note = textFrom(args.slice(1).join(" "), stdin, 'note ITEM "" removes a note');
       requireNote(note);
-      return changeItem(outline, args, (next, id) => setNote(next, id, note));
+      return changeItem(outline, args, (next, id) => setNote(next, id, note), "note");
     }
     case "done":
-      return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: true }));
+      return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: true }), "completed");
     case "undone":
-      return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: false }));
+      return changeItem(outline, args, (next, id) => setFlags(next, id, { completed: false }), "completed");
     case "move": {
       if (!options.under && besideOf(options) === undefined) throw new Error("move needs --under, --before or --after ITEM");
       const { parent, at, beside } = place(doc, options);
       return changeItem(outline, args, (next, id) => {
         if (id === beside) throw new Error("cannot move an item beside itself");
         if (id === parent || isDescendant(next, parent, id)) throw new Error("cannot move an item under itself");
-        if (movesKeptOut(id, parent)) throw new Error(keptNotice(id));
+        if (movesKeptOut(id, parent) || isAboutItem(id)) throw new Error(keptNotice(id));
         return moveTo(next, id, parent, at);
       });
     }
@@ -213,7 +218,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       if (args[0]) writable(doc, resolve(doc, args[0]));
       const [, key, ...words] = args;
       if (!key || !propertyKey(key)) throw new Error("set needs ITEM KEY VALUE; KEY is up to 64 letters, digits, - or _");
-      return changeItem(outline, args, (next, id) => setItemProperty(next, id, key, words.join(" ")));
+      return changeItem(outline, args, (next, id) => setItemProperty(next, id, key, words.join(" ")), "properties");
     }
     case "capture": {
       const text = args.join(" ");
@@ -240,7 +245,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       const type = typeFromName(path);
       await uploadFile(outline.endpoint, hash, type, bytes);
       const link = attachmentLink(basename(path), hash, type);
-      await changeItem(outline, [item], (next, id) => setNote(next, id, [next.items[id].note, link].filter(Boolean).join("\n")));
+      await changeItem(outline, [item], (next, id) => setNote(next, id, [next.items[id].note, link].filter(Boolean).join("\n")), "note");
       return hash;
     }
     case "detach":
@@ -307,14 +312,14 @@ interface Place {
 function place(doc: Doc, options: Options): Place {
   const beside = besideOf(options);
   if (beside === undefined) {
-    const parent = writable(doc, resolve(doc, options.under ?? "/"));
+    const parent = editable(writable(doc, resolve(doc, options.under ?? "/")), "children");
     return { parent, at: options.first ? 0 : newChildIndex(doc, parent) };
   }
   if (options.under !== undefined || options.first) throw new Error("--before and --after cannot go with --under or --first");
   const sibling = resolve(doc, beside);
   if (sibling === ROOT) throw new Error("the top of the outline has no place beside it");
   const at = indexInParent(doc, sibling) + (options.after !== undefined ? 1 : 0);
-  return { parent: writable(doc, doc.items[sibling].parent!), at, beside: sibling };
+  return { parent: editable(writable(doc, doc.items[sibling].parent!), "children"), at, beside: sibling };
 }
 
 function besideOf(options: Options): string | undefined {
@@ -336,10 +341,16 @@ function readLocalFile(path: string): Uint8Array<ArrayBuffer> {
   }
 }
 
-async function changeItem(outline: Outline, args: string[], change: (doc: Doc, id: ItemId) => Doc): Promise<string> {
+function editable(id: ItemId, part: Part): ItemId {
+  if (isReadOnly(id, part)) throw new Error(readOnlyNotice(id));
+  return id;
+}
+
+async function changeItem(outline: Outline, args: string[], change: (doc: Doc, id: ItemId) => Doc, part?: Part): Promise<string> {
   if (!args[0]) throw new Error("which item? give an id or a path");
   const id = resolve(outline.doc, args[0]);
   if (id === ROOT) throw new Error("that is the top of the outline, not an item");
+  if (part) editable(id, part);
   await outline.save(change(outline.doc, id));
   return id;
 }
@@ -420,15 +431,13 @@ class Outline {
     const clock = new Clock(`cli-${newDeviceId()}`);
     for (const change of changes) clock.observe(change.clock);
     const fetched = materialize(replica);
-    const outline = new Outline(endpoint, replica, clock, fetched);
     const withList = withBookmarksItem(fetched);
-    if (withList === fetched) return outline;
-    await outline.save(withList);
+    await new Outline(endpoint, replica, clock, fetched).save(withList);
     return new Outline(endpoint, replica, clock, withList);
   }
 
   async save(next: Doc): Promise<void> {
-    const changes = diff(this.doc, liftNoteProperties(next), this.replica, () => this.clock.tick());
+    const changes = diff(withoutBookmarksAbout(this.doc), withoutBookmarksAbout(liftNoteProperties(next)), this.replica, () => this.clock.tick());
     if (changes.length > 0) await exchange(this.endpoint, { since: Number.MAX_SAFE_INTEGER, changes });
   }
 }

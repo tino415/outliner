@@ -5,6 +5,7 @@ import { addKey, keys } from "./keyring";
 import { keyFromText, keyText, newKey } from "./sync/privacy";
 import { forgetPrivate, openWithNewKeys } from "./syncing";
 import { toast } from "./chrome";
+import { refusedAsReadOnly } from "./bookmarking";
 import { escape } from "./inline";
 
 /* Making items private and handling this device's keys (doc/adr/0029). */
@@ -64,6 +65,7 @@ interface KeyChoice extends PaletteOption {
 
 /** Asks which key to seal the item with, or makes it public again. */
 export function choosePrivacy(id: ItemId): void {
+  if (refusedAsReadOnly([id], "properties")) return;
   const current = privateKeyOf(doc().items[id]);
   openPalette<KeyChoice>({
     placeholder: "Make private with the key…",

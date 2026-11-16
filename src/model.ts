@@ -26,20 +26,35 @@ export const BOOKMARKS: ItemId = "bookmarks";
 export const BOOKMARKS_KEPT = "Bookmarks stays; empty it instead";
 const BOOKMARKS_TITLE = "Bookmarks";
 
-/** The first child of Bookmarks (doc/adr/0061): the explanation, kept like Bookmarks and not a bookmark itself. */
-export const BOOKMARKS_ABOUT: ItemId = "bookmarks-about";
+/** The first child of Bookmarks (doc/adr/0064): the explanation, defined in code and read-only, never saved or synced. */
+export const BOOKMARKS_ABOUT: ItemId = "about-bookmarks";
 const BOOKMARKS_ABOUT_TITLE = "About Bookmarks";
 
+export type Part = "title" | "note" | "completed" | "properties" | "children";
+
+export function isAboutItem(id: ItemId): boolean {
+  return id === BOOKMARKS_ABOUT || id.startsWith(`${BOOKMARKS_ABOUT}-`);
+}
+
+export function isReadOnly(id: ItemId, part: Part): boolean {
+  if (isAboutItem(id)) return true;
+  return id === BOOKMARKS && (part === "title" || part === "note" || part === "completed");
+}
+
+export function readOnlyNotice(id: ItemId): string {
+  return `${isAboutItem(id) ? BOOKMARKS_ABOUT_TITLE : BOOKMARKS_TITLE} is read-only`;
+}
+
 export function keptNotice(id: ItemId): string {
-  return id === BOOKMARKS_ABOUT ? `${BOOKMARKS_ABOUT_TITLE} stays` : BOOKMARKS_KEPT;
+  return isAboutItem(id) ? readOnlyNotice(id) : BOOKMARKS_KEPT;
 }
 
 export function keptStays(ids: ItemId[]): string {
-  return ids.includes(BOOKMARKS) ? "Bookmarks stays" : `${BOOKMARKS_ABOUT_TITLE} stays`;
+  return ids.includes(BOOKMARKS) ? "Bookmarks stays" : `${BOOKMARKS_ABOUT_TITLE} is read-only`;
 }
 
 export function isKept(id: ItemId): boolean {
-  return id === BOOKMARKS || id === BOOKMARKS_ABOUT;
+  return id === BOOKMARKS || isAboutItem(id);
 }
 
 function keptParentOf(id: ItemId): ItemId | null {
@@ -64,31 +79,71 @@ const BOOKMARKS_ABOUT_LINES: Lines[] = [
   { text: "To give a bookmark a shortcut, write a digit from 1 to 9 in its key column" },
 ];
 
+/** Bookmarks made when missing, with its key column the one time it is made. */
 export function withBookmarksItem(doc: Doc): Doc {
-  const withList = doc.items[BOOKMARKS] ? doc : edit(doc, (d) => {
-    d.adopt(blankItem(BOOKMARKS, ROOT, BOOKMARKS_TITLE));
+  if (doc.items[BOOKMARKS]) return withBookmarksParts(doc);
+  return withBookmarksParts(edit(doc, (d) => {
+    d.adopt({ ...blankItem(BOOKMARKS, ROOT, BOOKMARKS_TITLE), properties: { columns: "key" } });
     d.write(ROOT).children.push(BOOKMARKS);
-  });
-  return withBookmarksAbout(withList);
+  }));
 }
 
-/** The About item doubles as the mark that Bookmarks got its key column, so removing the column sticks. */
-function withBookmarksAbout(doc: Doc): Doc {
-  if (doc.items[BOOKMARKS_ABOUT]) return doc;
-  return edit(doc, (d) => {
-    const addLines = (parent: ItemId, lines: Lines[], path: string) => {
-      lines.forEach((line, index) => {
-        const id = `${path}-${index + 1}`;
-        d.adopt(blankItem(id, parent, line.text));
-        d.write(parent).children.push(id);
-        addLines(id, line.children ?? [], id);
-      });
-    };
-    d.adopt({ ...blankItem(BOOKMARKS_ABOUT, BOOKMARKS, BOOKMARKS_ABOUT_TITLE), collapsed: true });
-    d.write(BOOKMARKS).children.unshift(BOOKMARKS_ABOUT);
-    d.write(BOOKMARKS).properties = { columns: "key", ...d.read(BOOKMARKS).properties };
-    addLines(BOOKMARKS_ABOUT, BOOKMARKS_ABOUT_LINES, BOOKMARKS_ABOUT);
+const aboutItems: Item[] = (() => {
+  const items: Item[] = [];
+  const add = (id: ItemId, parent: ItemId, text: string, lines: Lines[]): void => {
+    const children = lines.map((_, index) => `${id}-${index + 1}`);
+    items.push({ ...blankItem(id, parent, text), children, collapsed: id === BOOKMARKS_ABOUT, updated: 0 });
+    lines.forEach((line, index) => add(children[index], id, line.text, line.children ?? []));
+  };
+  add(BOOKMARKS_ABOUT, BOOKMARKS, BOOKMARKS_ABOUT_TITLE, BOOKMARKS_ABOUT_LINES);
+  return items;
+})();
+
+/**
+ * What lives in code and not in the outline: Bookmarks' title, note and
+ * completion, and About with its lines, first under Bookmarks. Put back
+ * whenever a document differs; About's folding is the one thing it keeps.
+ */
+export function withBookmarksParts(doc: Doc): Doc {
+  const list = doc.items[BOOKMARKS];
+  if (!list) return doc;
+  const aboutIntact = aboutItems.every((fixed) => {
+    const item = doc.items[fixed.id];
+    return item && item.text === fixed.text && item.note === "" && item.parent === fixed.parent && !item.completed && Object.keys(item.properties).length === 0 && sameIds(item.children, fixed.children);
   });
+  const note = isSealed(list.note) ? list.note : "";
+  const listIntact = list.text === BOOKMARKS_TITLE && list.note === note && !list.completed && list.children[0] === BOOKMARKS_ABOUT;
+  if (aboutIntact && listIntact) return doc;
+  const items = { ...doc.items };
+  for (const fixed of aboutItems) items[fixed.id] = { ...fixed, collapsed: doc.items[fixed.id]?.collapsed ?? fixed.collapsed };
+  items[BOOKMARKS] = { ...list, text: BOOKMARKS_TITLE, note, completed: false, children: [BOOKMARKS_ABOUT, ...list.children.filter((child) => child !== BOOKMARKS_ABOUT)] };
+  return { items };
+}
+
+/** A write to Bookmarks' title, note or completion that code does not hold; a sealed note is how a private Bookmarks syncs. */
+export function contradictsBookmarks(id: ItemId, field: string, value: unknown): boolean {
+  if (id !== BOOKMARKS) return false;
+  if (field === "text") return value !== BOOKMARKS_TITLE;
+  if (field === "note") return value !== "" && !(typeof value === "string" && isSealed(value));
+  if (field === "completed") return value !== false;
+  return false;
+}
+
+function sameIds(a: ItemId[], b: ItemId[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+const listsWithoutAbout = new WeakMap<Item, Item>();
+
+/** The document as saved and synced: without the parts that live in code. */
+export function withoutBookmarksAbout(doc: Doc): Doc {
+  const list = doc.items[BOOKMARKS];
+  if (!list || !doc.items[BOOKMARKS_ABOUT]) return doc;
+  const items = { ...doc.items };
+  for (const fixed of aboutItems) delete items[fixed.id];
+  if (!listsWithoutAbout.has(list)) listsWithoutAbout.set(list, { ...list, children: list.children.filter((child) => child !== BOOKMARKS_ABOUT) });
+  items[BOOKMARKS] = listsWithoutAbout.get(list)!;
+  return { items };
 }
 
 export interface ViewFilter {
@@ -230,6 +285,7 @@ export function withPrivateIds(doc: Doc): { doc: Doc; renamed: Map<ItemId, ItemI
   const visit = (id: ItemId, root: ItemId | null) => {
     const rootHere = isPrivateRoot(doc.items, id) ? id : root;
     for (const child of doc.items[id].children) {
+      if (isAboutItem(child)) continue;
       if (rootHere && !child.startsWith(`${rootHere}~`)) renamed.set(child, `${rootHere}~${child}`);
       else if (!rootHere && child.includes("~")) renamed.set(child, publicIdFor(doc, child));
       visit(child, rootHere);
@@ -360,14 +416,14 @@ export function visibleOrder(doc: Doc, top: ItemId, filter: ViewFilter): ItemId[
 }
 
 export function setText(doc: Doc, id: ItemId, text: string): Doc {
-  if (doc.items[id].text === text) return doc;
+  if (doc.items[id].text === text || isReadOnly(id, "title")) return doc;
   return edit(doc, (d) => {
     d.write(id).text = text;
   });
 }
 
 export function setNote(doc: Doc, id: ItemId, note: string): Doc {
-  if (doc.items[id].note === note) return doc;
+  if (doc.items[id].note === note || isReadOnly(id, "note")) return doc;
   return edit(doc, (d) => {
     d.write(id).note = note;
   });
@@ -383,7 +439,7 @@ export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string
   const name = propertyKey(key);
   const written = value.trim();
   const current = doc.items[id].properties;
-  if (!name || (current[name] ?? "") === written) return doc;
+  if (!name || (current[name] ?? "") === written || isReadOnly(id, "properties")) return doc;
   const { [name]: _, ...others } = current;
   return edit(doc, (d) => {
     d.write(id).properties = written ? { ...others, [name]: written } : others;
@@ -444,6 +500,7 @@ export function foldableInside(doc: Doc, top: ItemId): ItemId[] {
 }
 
 export function toggleCompleted(doc: Doc, id: ItemId): Doc {
+  if (isReadOnly(id, "completed")) return doc;
   return edit(doc, (d) => {
     const item = d.write(id);
     item.completed = !item.completed;
@@ -455,12 +512,16 @@ export function appendChild(doc: Doc, parent: ItemId, text = ""): { doc: Doc; id
 }
 
 export function setFlags(doc: Doc, id: ItemId, flags: Partial<Pick<Item, "collapsed" | "completed" | "note" | "properties">>): Doc {
+  const changes: [keyof typeof flags, Part][] = [["completed", "completed"], ["note", "note"], ["properties", "properties"]];
+  if (changes.some(([flag, part]) => flag in flags && isReadOnly(id, part))) return doc;
   return edit(doc, (d) => {
     Object.assign(d.write(id), flags);
   });
 }
 
+/** Refused, it answers with the parent's own id, which every further change to it refuses too. */
 export function insertChild(doc: Doc, parent: ItemId, index: number, text = ""): { doc: Doc; id: ItemId } {
+  if (isReadOnly(parent, "children")) return { doc, id: parent };
   let id = "";
   const next = edit(doc, (d) => {
     d.write(parent).collapsed = false;
@@ -485,6 +546,9 @@ export function split(
   const item = doc.items[id];
   const parent = item.parent!;
   const index = indexInParent(doc, id);
+  const cutsFixedText = isReadOnly(id, "title") && offset < item.text.length && !(offset === 0 && id === BOOKMARKS);
+  if (cutsFixedText || (isAboutItem(id) && id !== BOOKMARKS_ABOUT)) return { doc, id, focus: id };
+  childrenShown = childrenShown && !isReadOnly(id, "children");
 
   if (offset === 0 && item.text.length > 0) {
     let created = "";
@@ -508,7 +572,7 @@ export function split(
 
 export function indent(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const newParent = previousShownSibling(doc, id, filter);
-  if (!newParent || isKept(id) || newParent === BOOKMARKS_ABOUT) return doc;
+  if (!newParent || isKept(id) || isReadOnly(newParent, "children")) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.write(newParent).collapsed = false;
@@ -520,7 +584,7 @@ export function outdent(doc: Doc, id: ItemId, top: ItemId): Doc {
   const parent = doc.items[id].parent!;
   if (parent === top) return doc;
   const grandparent = doc.items[parent].parent!;
-  if (movesKeptOut(id, grandparent)) return doc;
+  if (movesKeptOut(id, grandparent) || isAboutItem(id)) return doc;
   return edit(doc, (d) => {
     d.detach(id);
     d.attach(id, grandparent, d.read(grandparent).children.indexOf(parent) + 1);
@@ -529,7 +593,7 @@ export function outdent(doc: Doc, id: ItemId, top: ItemId): Doc {
 
 export function moveUp(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const target = previousShownSibling(doc, id, filter);
-  if (!target) return doc;
+  if (!target || isAboutItem(target)) return doc;
   return moveTo(doc, id, doc.items[id].parent!, indexInParent(doc, target));
 }
 
@@ -542,7 +606,7 @@ export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
 /** Move `id` so it sits at `index` among `parent`'s current children. */
 export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc {
   if (id === parent || isDescendant(doc, parent, id)) return doc;
-  if (movesKeptOut(id, parent) || parent === BOOKMARKS_ABOUT) return doc;
+  if (movesKeptOut(id, parent) || isAboutItem(id) || isReadOnly(parent, "children")) return doc;
   return edit(doc, (d) => {
     const oldParent = d.read(id).parent!;
     const oldIndex = d.read(oldParent).children.indexOf(id);
@@ -553,6 +617,8 @@ export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc
 }
 
 export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
+  const parent = doc.items[id].parent;
+  if (parent && isReadOnly(parent, "children")) return { doc, id };
   let copyId = "";
   const next = edit(doc, (d) => {
     const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
@@ -683,6 +749,7 @@ function areSiblings(doc: Doc, ids: ItemId[]): boolean {
 }
 
 export function completeAll(doc: Doc, roots: ItemId[]): Doc {
+  if (roots.some((id) => isReadOnly(id, "completed"))) return doc;
   const completed = !roots.every((id) => doc.items[id].completed);
   return edit(doc, (d) => {
     for (const id of roots) d.write(id).completed = completed;

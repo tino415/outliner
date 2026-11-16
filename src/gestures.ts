@@ -3,6 +3,7 @@ import { commitAndRender, doc, filter, state } from "./app";
 import { openItemMenu, toastWithUndo } from "./chrome";
 import { flashRow } from "./render";
 import { swallowNextClick } from "./clicks";
+import { refusedAsReadOnly } from "./bookmarking";
 
 /*
  * Swipes on rows for touch screens (doc/adr/0016, 0048): right completes, left opens the item menu.
@@ -103,6 +104,7 @@ function perform(action: SwipeAction, id: ItemId, row: HTMLElement): void {
     openItemMenu(id, row.querySelector<HTMLElement>(".bullet")!, true);
     return;
   }
+  if (refusedAsReadOnly([id], "completed")) return;
   const next = toggleCompleted(doc(), id);
   commitAndRender(next, null);
   if (isShown(next, id, filter())) flashRow(id);

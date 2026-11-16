@@ -1,4 +1,4 @@
-import { Doc, ROOT } from "./model";
+import { Doc, ROOT, withoutBookmarksAbout } from "./model";
 import { propertyKey } from "./notes";
 import { announceStored, onStoredElsewhere, readStored, reportSaveFailure, writeStored } from "./stateStore";
 
@@ -66,7 +66,7 @@ async function saveDoc(doc: Doc): Promise<void> {
   writingDoc = doc;
   let saved = false;
   try {
-    await writeStored("doc", doc);
+    await writeStored("doc", withoutBookmarksAbout(doc));
     saved = true;
     if (unsavedDoc === doc) unsavedDoc = null;
     announceStored("doc");
