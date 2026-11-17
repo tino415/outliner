@@ -26,7 +26,7 @@ export const BOOKMARKS: ItemId = "bookmarks";
 export const BOOKMARKS_KEPT = "Bookmarks stays; empty it instead";
 const BOOKMARKS_TITLE = "Bookmarks";
 
-/** The first child of Bookmarks (doc/adr/0064): the explanation, defined in code and read-only, never saved or synced. */
+/** The first child of Bookmarks (doc/adr/0066): the explanation, defined in code and read-only, never saved or synced. */
 export const BOOKMARKS_ABOUT: ItemId = "about-bookmarks";
 const BOOKMARKS_ABOUT_TITLE = "About Bookmarks";
 

@@ -1,4 +1,4 @@
-# 64. About Bookmarks lives in code and Bookmarks is fixed
+# 66. About Bookmarks lives in code and Bookmarks is fixed
 
 - **Status:** accepted, 2026-11-15
 - **Supersedes:** in [0060](0060-bookmarks-are-the-children-of-a-system-item.md),

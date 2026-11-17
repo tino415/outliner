@@ -45,7 +45,7 @@ export function refusedAsKept(ids: ItemId[]): boolean {
   return true;
 }
 
-/** True, with a word to the user, when `part` of one of `ids` is read-only (doc/adr/0064). */
+/** True, with a word to the user, when `part` of one of `ids` is read-only (doc/adr/0066). */
 export function refusedAsReadOnly(ids: ItemId[], part: Part): boolean {
   const fixed = ids.find((id) => isReadOnly(id, part));
   if (!fixed) return false;
