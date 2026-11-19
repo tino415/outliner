@@ -488,6 +488,16 @@ test.describe("order of new and completed items", { tag: "@keys" }, () => {
     await expectOutline(page, "parent\n  first\n  child");
   });
 
+  test("Alt-Shift-Enter on a folded item unfolds it and goes to the new child", async ({ page }) => {
+    await freshOutline(page, "parent\n  child");
+    await clickEnd(page, "parent");
+    await page.keyboard.press("Control+.");
+    await expect(row(page, "child")).toHaveCount(0);
+    await page.keyboard.press("Alt+Shift+Enter");
+    await page.keyboard.type("first");
+    await expectOutline(page, "parent\n  first\n  child");
+  });
+
   test("the add button files at the top of a page with :new: top", async ({ page }) => {
     await freshOutline(page, "Inbox | :new: top\n  older");
     await editor(page, "Inbox").click();

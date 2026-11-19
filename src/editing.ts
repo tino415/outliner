@@ -6,7 +6,7 @@ import {
   duplicate,
   foldableInside,
   indent,
-  insertChild,
+  insertShownChild,
   liftNoteProperties,
   liftTags,
   privateKeyOf,
@@ -447,7 +447,7 @@ export const actions = {
     if (c.inAgenda || (c.isTitle && queryViewShown())) return actions.blur(c);
     if (c.isTitle || isColumn(c.id)) {
       if (refusedAsReadOnly([c.id], "children")) return;
-      const created = insertChild(doc(), c.id, 0);
+      const created = insertShownChild(doc(), c.id, 0);
       commitAndRender(created.doc, startOf(created.id));
       return;
     }
@@ -650,7 +650,7 @@ export const actions = {
   toggleInside: inPlace((c) => foldEverythingInside(c, collapsesInsideNext(c.id))),
 
   newFirstChild: inPlace((c) => {
-    const created = insertChild(doc(), c.id, 0);
+    const created = insertShownChild(doc(), c.id, 0);
     commitAndRender(created.doc, startOf(created.id));
   }),
 
