@@ -222,10 +222,9 @@ export function bindEditorEvents(): void {
   }
 }
 
-/** Each file becomes a last child of the item, titled with its link (doc/adr/0069). */
 export async function attachFilesTo(id: ItemId, files: File[]): Promise<ItemId[]> {
   const links = await keepFiles(files);
-  if (!doc().items[id]) return [];
+  if (!doc().items[id] || isReadOnly(id, "children")) return [];
   let next = setCollapsed(doc(), id, false);
   const children: ItemId[] = [];
   for (const link of links) {

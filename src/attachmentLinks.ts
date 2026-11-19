@@ -1,5 +1,5 @@
 import { Doc, ItemId, ROOT, insertChild, isReadOnly, remove, setNote } from "./model";
-import { isSealed, mapLinesOutsideCode } from "./notes";
+import { isOutsideCode, isSealed, propertyLine } from "./notes";
 import { referenceTo } from "./references";
 
 /*
@@ -48,13 +48,18 @@ export function withoutAttachment(note: string, hash: string): string {
     .join("\n");
 }
 
-/** The children of an item that are an attachment link to the hash (doc/adr/0069). */
 export function attachmentChildren(doc: Doc, id: ItemId, hash: string): ItemId[] {
-  return doc.items[id].children.filter((child) => linksAttachment(doc.items[child].text, hash));
+  return doc.items[id].children.filter((child) => new RegExp(`^\\s*${linkTo(hash).source}\\s*$`).test(doc.items[child].text));
 }
 
 export function withoutAttachmentChildren(doc: Doc, id: ItemId, hash: string): Doc {
-  return attachmentChildren(doc, id, hash).reduce(remove, doc);
+  const children = attachmentChildren(doc, id, hash);
+  const unreferenced = setNote(doc, id, withoutReferencesTo(doc.items[id].note, children));
+  return children.reduce(remove, unreferenced);
+}
+
+function withoutReferencesTo(note: string, children: ItemId[]): string {
+  return children.reduce((left, child) => left.replace(new RegExp(String.raw`\[\[id:${child}\](?:\[[^[\]\n]+\])?\]`, "g"), ""), note);
 }
 
 export interface Lifted {
@@ -62,7 +67,6 @@ export interface Lifted {
   lifted: ItemId[];
 }
 
-/** Moves the links in notes into children: a link alone on its line leaves the note, one inside a sentence becomes a reference. */
 export function attachmentsToChildren(doc: Doc): Lifted {
   const lifted: ItemId[] = [];
   let next = doc;
@@ -85,15 +89,15 @@ function liftFrom(doc: Doc, id: ItemId): Doc {
     return added.id;
   };
   const alone = (line: string) => new RegExp(`^\\s*${ATTACHMENT.source}\\s*$`).test(line);
-  const note = mapLinesOutsideCode(doc.items[id].note, (line) => {
-    if (alone(line)) {
-      childFor(line.trim());
-      return "\0";
-    }
-    return line.replace(new RegExp(ATTACHMENT.source, "g"), (link, _bang, label: string) => referenceTo(childFor(link), label || "file"));
-  })
-    .split("\n")
-    .filter((line) => line !== "\0")
-    .join("\n");
+  const lifting = (line: string) => propertyLine(line) === null;
+  const kept: string[] = [];
+  const lines = doc.items[id].note.split("\n");
+  const outside = isOutsideCode(lines);
+  lines.forEach((line, index) => {
+    if (!outside[index] || !lifting(line)) return void kept.push(line);
+    if (alone(line)) return void childFor(line.trim());
+    kept.push(line.replace(new RegExp(ATTACHMENT.source, "g"), (link, _bang, label: string) => referenceTo(childFor(link), label || "file")));
+  });
+  const note = kept.join("\n");
   return note === doc.items[id].note ? next : setNote(next, id, note);
 }
