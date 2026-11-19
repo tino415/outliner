@@ -1,6 +1,6 @@
 import { caretNow } from "./editing";
 import { Focus, commitAndRender, doc, filter, state, ui } from "./app";
-import { ItemId, ROOT, indexInParent, insertChild, isBoard, moveTo, newChildIndex, setItemProperty, shownChildren } from "./model";
+import { ItemId, ROOT, indexInParent, insertShownChild, isBoard, moveTo, newChildIndex, setItemProperty, shownChildren } from "./model";
 import { isSealed } from "./notes";
 import { countLabel } from "./counts";
 import { escape, renderItemText, renderNote } from "./inline";
@@ -166,7 +166,7 @@ export function bindBoard(): void {
 }
 
 function addChild(parent: ItemId, index = doc().items[parent].children.length): void {
-  const created = insertChild(doc(), parent, index);
+  const created = insertShownChild(doc(), parent, index);
   commitAndRender(created.doc, { id: created.id, offset: 0 });
 }
 

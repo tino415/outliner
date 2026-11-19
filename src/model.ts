@@ -524,10 +524,15 @@ export function insertChild(doc: Doc, parent: ItemId, index: number, text = ""):
   if (isReadOnly(parent, "children")) return { doc, id: parent };
   let id = "";
   const next = edit(doc, (d) => {
-    d.write(parent).collapsed = false;
     id = d.create(parent, index, text).id;
   });
   return { doc: next, id };
+}
+
+export function insertShownChild(doc: Doc, parent: ItemId, index: number): { doc: Doc; id: ItemId } {
+  const created = insertChild(doc, parent, index);
+  if (created.id === parent) return created;
+  return { doc: setCollapsed(created.doc, parent, false), id: created.id };
 }
 
 /**

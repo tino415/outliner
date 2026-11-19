@@ -101,6 +101,16 @@ describe("order of children", () => {
   });
 });
 
+describe("inserting a child", () => {
+  it("leaves a folded parent folded", () => {
+    let doc = outline("parent\n  child");
+    doc = setFlags(doc, idOf(doc, "parent"), { collapsed: true });
+    const created = insertChild(doc, idOf(doc, "parent"), 1, "added");
+    expect(created.doc.items[idOf(doc, "parent")].collapsed).toBe(true);
+    expect(render(created.doc)).toBe("parent\n  child\n  added");
+  });
+});
+
 describe("ids inside a private item", () => {
   it("are made under the private item", () => {
     let doc = outline("Journal\n  day one");
