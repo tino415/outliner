@@ -257,15 +257,17 @@ here".
 ## Attachments
 
 Paste an image into an item, drop files on it, or press Ctrl-J A (also
-in the item menu) to attach files (doc/adr/0028). Each becomes a line in
-the note, `![glitch.png](att:<sha256>)`; images show as pictures. Files are
-kept in the browser and uploaded to the sync server on the next sync. From
-a shell:
+in the item menu) to attach files (doc/adr/0028). Each becomes a last child
+of the item, titled `![glitch.png](att:<sha256>)`; images show as pictures
+(doc/adr/0069). Pasting in a note also puts a reference to the child at the
+caret. Files are kept in the browser and uploaded to the sync server on the
+next sync. From a shell:
 
 ```sh
-outline attach "Outliner/TODO/Some bug" screenshot.png
-outline file <sha256> /tmp/screenshot.png   # the hash after att: in a note
-outline detach "Outliner/TODO/Some bug" <sha256>   # unlink, then delete unless another item links it (doc/adr/0056)
+outline attach "Outliner/TODO/Some bug" screenshot.png   # prints the hash, then the child's id
+outline file <sha256> /tmp/screenshot.png   # the hash after att: in a title or note
+outline detach "Outliner/TODO/Some bug" <sha256>   # remove the child, then delete unless another item links it (doc/adr/0056)
+outline lift-attachments   # once: move links still in notes into children
 ```
 
 ## Private items
