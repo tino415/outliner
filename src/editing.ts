@@ -88,11 +88,10 @@ export function bindEditorEvents(): void {
     if (!editor) return;
     caretBeforeInput = caretNow();
     if (handledAsKey(event, editor)) event.preventDefault();
-    else if (!isNoteEditor(editor) && keepTitleWithinLimit(event as InputEvent, editor)) event.preventDefault();
     else if (isReadOnlyEditor(editor) && !/^insert(Paragraph|LineBreak|CompositionText)/.test(event.inputType)) {
       event.preventDefault();
       toast(readOnlyNotice(editor.dataset.id!));
-    }
+    } else if (!isNoteEditor(editor) && keepTitleWithinLimit(event as InputEvent, editor)) event.preventDefault();
   });
 
   document.addEventListener("input", (event) => {
@@ -126,8 +125,8 @@ export function bindEditorEvents(): void {
     if (editor && isNoteEditor(editor)) {
       dropTrailingBlankLines(editor.dataset.id!);
       liftTypedProperties(editor.dataset.id!);
-      liftTypedLists(editor.dataset.id!);
     }
+    if (editor) liftTypedLists(editor.dataset.id!);
     if (editor) liftTypedTags(editor.dataset.id!);
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item || isMirrorText(editor)) return;
@@ -275,8 +274,10 @@ function liftTypedProperties(id: ItemId): void {
 
 /** List lines and headings typed into a note become child items once the note is left; a note only opened is left as it was. */
 function liftTypedLists(id: ItemId): void {
-  if (!notesEdited.delete(id)) return;
+  if (!notesEdited.has(id)) return;
   setTimeout(() => {
+    if (editorOf(document.activeElement)?.dataset.id === id) return;
+    notesEdited.delete(id);
     const lifted = noteListsToChildren(doc(), id);
     if (lifted === doc()) return;
     if (lifted.items[id].note === "") state.openNotes.delete(id);

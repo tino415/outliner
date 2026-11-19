@@ -173,7 +173,7 @@ export function noteListsToChildren(doc: Doc, id: ItemId): Doc {
   const listed: string[] = [];
   let headingDepth = 0;
   lines.forEach((line, index) => {
-    if (!outside[index] || !isListLine(line)) return void prose.push(line);
+    if (!outside[index] || !isListLine(line) || /^\s*([-*+]|\d+[.)]|#{1,6})\s*$/.test(line)) return void prose.push(line);
     const heading = /^\s*#{1,6}\s+(.*)$/.exec(line);
     if (heading) {
       listed.push(`- ${heading[1]}`);
@@ -182,6 +182,7 @@ export function noteListsToChildren(doc: Doc, id: ItemId): Doc {
       listed.push(`${"  ".repeat(headingDepth)}${line}`);
     }
   });
+  if (listed.length === 0) return doc;
   const incoming = parseIndentedText(listed.join("\n"));
   const kept = setNote(doc, id, prose.join("\n").replace(/^\n+|\n+$/g, ""));
   return graft(kept, incoming, id, kept.items[id].children.length).doc;
