@@ -63,9 +63,10 @@ Keys that type, that the browser keeps (Mod-N, T, W), copy and paste, or
 An item's properties are `key: value` pairs such as `calories: 350 kcal`,
 `effort: 1h30m`, `start: 9:00` (a time of day) or `protein: 12 g`, shown
 as chips under its text (doc/adr/0032). The + at the right end of the
-item being edited or under the mouse, Ctrl-J P (⌘J P on a Mac), Set a
-property… in the item menu or the Property button in the phone's toolbar
-asks for a key, then a value, offering the ones in use; a click on a chip
+item being edited or under the mouse opens an Add menu (doc/adr/0068) with
+Child item, Attachment…, Tag… and Property…. Property…, Ctrl-J P (⌘J P on a
+Mac), Set a property… in the item menu or the Property button in the phone's
+toolbar ask for a key, then a value, offering the ones in use; a click on a chip
 changes or removes it, except on a value that is one URL: that opens the URL,
 and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a line
 `:calories: 350 kcal` into a note still works: it becomes a property when

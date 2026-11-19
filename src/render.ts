@@ -316,7 +316,7 @@ function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: stri
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
     (foldedCount === "" ? "" : `<span class="fold-count" title="Direct children">${escape(foldedCount)}</span>`) +
-    `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>` +
+    `<button class="prop-add" type="button" tabindex="-1" aria-label="Add…" title="Add…">+</button>` +
     propertyChipsHtml(item, keysShownAsColumns(), results) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +

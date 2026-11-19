@@ -1,5 +1,6 @@
 import { commitAndRender, doc, state } from "./app";
-import { ItemId, SETTINGS, setItemProperty } from "./model";
+import { ItemId, SETTINGS, setItemProperty, tagsOf, tagsProperty } from "./model";
+import { tagsIn } from "./completion";
 import { isSealed, propertyKey, sealedKeyOf } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { declaredColumns } from "./properties";
@@ -28,15 +29,14 @@ const OPEN = "\0open";
 
 export function bindPropertyChips(): void {
   document.addEventListener("mousedown", (event) => {
-    if ((event.target as Element).closest?.(".prop-chip, .prop-add")) event.preventDefault();
+    if ((event.target as Element).closest?.(".prop-chip")) event.preventDefault();
   });
   document.addEventListener("click", (event) => {
     if ((event.target as Element).closest?.(".prop-chip a")) return;
-    const button = (event.target as Element).closest?.<HTMLElement>(".prop-chip, .prop-add");
+    const button = (event.target as Element).closest?.<HTMLElement>(".prop-chip");
     const owner = button?.closest<HTMLElement>("[data-id]");
     if (!button || !owner) return;
     if (button.dataset.tag) setQuery(button.dataset.tag);
-    else if (button.classList.contains("prop-add")) chooseProperty(owner.dataset.id!);
     else if (button.dataset.key === "capture" && (event.target as Element).closest(".prop-value")) goToTargetOfItem(owner.dataset.id!);
     else chooseValue(owner.dataset.id!, button.dataset.key!);
   });
@@ -55,6 +55,28 @@ export function chooseProperty(id: ItemId): void {
     },
     choose: ({ value }) => chooseValue(id, value),
   });
+}
+
+export function chooseTag(id: ItemId): void {
+  if (sealedHere(id) || refusedAsReadOnly([id], "properties")) return;
+  openPalette<Choice>({
+    placeholder: "Tag…",
+    hint: "Pick a tag or type a new one",
+    candidates: (query) => {
+      const typed = query.trim().replace(/^#+/, "");
+      const known = tagsIn(doc()).filter((tag) => tag.toLowerCase().includes(typed.toLowerCase()));
+      const isNew = /^\S+$/.test(typed) && !known.some((tag) => tag.toLowerCase() === typed.toLowerCase());
+      return [...(isNew ? [typed] : []), ...known].slice(0, 30).map((tag) => ({ text: `#${tag}`, path: [], value: tag }));
+    },
+    choose: ({ value }) => addTag(id, value),
+  });
+}
+
+function addTag(id: ItemId, tag: string): void {
+  const item = doc().items[id];
+  if (tagsOf(item).some((present) => present.toLowerCase() === tag.toLowerCase())) return toast(`Already tagged #${tag}`);
+  const tags = [...tagsProperty(item).filter(Boolean), tag].join(" ");
+  commitAndRender(setItemProperty(doc(), id, "tags", tags), caretNow());
 }
 
 export function chooseValue(id: ItemId, key: string): void {

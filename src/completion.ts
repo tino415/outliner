@@ -86,7 +86,7 @@ function keysIn(doc: Doc): string[] {
   return byUse(Object.values(doc.items).flatMap((item) => Object.keys(item.properties)));
 }
 
-function tagsIn(doc: Doc): string[] {
+export function tagsIn(doc: Doc): string[] {
   return byUse(Object.values(doc.items).flatMap(tagsOf));
 }
 

@@ -18,6 +18,7 @@ import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, other
 import { bindAgenda, openAgenda } from "./agenda";
 import { bookmarkThisPage, openBookmarkList } from "./bookmarking";
 import { bindPropertyChips } from "./propertyPicker";
+import { bindAddMenu } from "./addMenu";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
@@ -32,6 +33,7 @@ export function bindChrome(): void {
   bindBoard();
   bindAgenda();
   bindPropertyChips();
+  bindAddMenu();
 
   window.addEventListener("hashchange", showZoomOfNewHash);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
