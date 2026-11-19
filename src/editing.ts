@@ -48,7 +48,8 @@ import { privateHolderOf, referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
 import { liveMirrorTarget, mirrorHere } from "./mirrors";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
-import { graft, parseIndentedText } from "./transfer";
+import { graft, noteListsToChildren, parseIndentedText } from "./transfer";
+import { MAX_TITLE_LENGTH, TITLE_COUNTER_FROM } from "./writingRules";
 import { bindingFor, bindingForKeys } from "./keys";
 import { Focus, commitAndRender, commitShownEdit, doc, filter, state, ui } from "./app";
 import { refusedAsKept, refusedAsReadOnly } from "./bookmarking";
@@ -59,6 +60,26 @@ import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
 import { boardShown, foldShows, isColumn, isCard, joinStaysInColumn, moveSideways, otherColumns, pageAbove } from "./board";
 
+const notesEdited = new Set<ItemId>();
+
+/** True when it took over the input: text past the limit is cut to what fits, or refused when nothing fits. */
+function keepTitleWithinLimit(event: InputEvent, editor: HTMLElement): boolean {
+  if (!event.inputType.startsWith("insert") || event.inputType === "insertCompositionText") return false;
+  const inserted = (event.data ?? event.dataTransfer?.getData("text/plain") ?? "").replace(/\s*\n\s*/g, " ");
+  const length = (editor.textContent ?? "").length;
+  const replaced = window.getSelection()?.toString().length ?? 0;
+  const room = Math.max(MAX_TITLE_LENGTH, length) - (length - replaced);
+  if (inserted.length <= room) return false;
+  toast(`A title stops at ${MAX_TITLE_LENGTH} characters: ${length - replaced + room} of ${MAX_TITLE_LENGTH} used`);
+  if (room > 0) document.execCommand("insertText", false, inserted.slice(0, room));
+  return true;
+}
+
+function showTitleCounter(editor: HTMLElement, length: number): void {
+  if (length < TITLE_COUNTER_FROM) delete editor.dataset.count;
+  else editor.dataset.count = `${length}/${MAX_TITLE_LENGTH}`;
+}
+
 export function bindEditorEvents(): void {
   let caretBeforeInput: Caret | null = null;
 
@@ -67,6 +88,7 @@ export function bindEditorEvents(): void {
     if (!editor) return;
     caretBeforeInput = caretNow();
     if (handledAsKey(event, editor)) event.preventDefault();
+    else if (!isNoteEditor(editor) && keepTitleWithinLimit(event as InputEvent, editor)) event.preventDefault();
     else if (isReadOnlyEditor(editor) && !/^insert(Paragraph|LineBreak|CompositionText)/.test(event.inputType)) {
       event.preventDefault();
       toast(readOnlyNotice(editor.dataset.id!));
@@ -80,11 +102,13 @@ export function bindEditorEvents(): void {
     const value = editor.textContent ?? "";
     if (isReadOnlyEditor(editor)) return void putBackReadOnly(editor, caretBeforeInput);
     if (isNoteEditor(editor)) {
+      notesEdited.add(id);
       commitShownEdit(setNote(doc(), id, value), id, caretBeforeInput, `${id}:note`);
     } else {
       commitShownEdit(setText(doc(), id, value), id, caretBeforeInput, id);
       if (id === state.zoom) document.title = titleFor(id);
       editor.classList.toggle("empty", value === "");
+      showTitleCounter(editor, value.length);
     }
     const context = editorContext(editor);
     const before = value.slice(0, context.start);
@@ -102,6 +126,7 @@ export function bindEditorEvents(): void {
     if (editor && isNoteEditor(editor)) {
       dropTrailingBlankLines(editor.dataset.id!);
       liftTypedProperties(editor.dataset.id!);
+      liftTypedLists(editor.dataset.id!);
     }
     if (editor) liftTypedTags(editor.dataset.id!);
     const item = editor && doc().items[editor.dataset.id!];
@@ -245,6 +270,17 @@ function liftTypedProperties(id: ItemId): void {
   setTimeout(() => {
     const lifted = liftNoteProperties(doc(), [id]);
     if (lifted !== doc()) commitAndRender(lifted, caretNow());
+  });
+}
+
+/** List lines and headings typed into a note become child items once the note is left; a note only opened is left as it was. */
+function liftTypedLists(id: ItemId): void {
+  if (!notesEdited.delete(id)) return;
+  setTimeout(() => {
+    const lifted = noteListsToChildren(doc(), id);
+    if (lifted === doc()) return;
+    if (lifted.items[id].note === "") state.openNotes.delete(id);
+    commitAndRender(lifted, caretNow());
   });
 }
 

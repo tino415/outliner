@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROOT, setFlags } from "../src/model";
-import { exportMarkdown, exportOpml, graft, parseIndentedText, subtreesAsText } from "../src/transfer";
+import { exportMarkdown, exportOpml, graft, noteListsToChildren, parseIndentedText, subtreesAsText } from "../src/transfer";
 import { renderInline, renderItemText, renderNote, tagsWritten } from "../src/inline";
 
 describe("export", () => {
@@ -205,4 +205,41 @@ describe("parsing a large outline", () => {
     expect(doc.items[ROOT].children).toHaveLength(6000);
     expect(doc.items[doc.items[ROOT].children[5999]].properties).toEqual({ effort: "10m" });
   }, 60_000);
+});
+
+describe("noteListsToChildren", () => {
+  const withNote = (note: string) => {
+    const base = parseIndentedText("Card");
+    const id = base.items[ROOT].children[0];
+    return { doc: setFlags(base, id, { note }), id };
+  };
+  const titles = (doc: ReturnType<typeof parseIndentedText>, id: string): string[] => doc.items[id].children.map((child) => doc.items[child].text);
+
+  it("turns list lines into children and keeps prose", () => {
+    const { doc, id } = withNote("intro\n- one\n- two\noutro");
+    const lifted = noteListsToChildren(doc, id);
+    expect(titles(lifted, id)).toEqual(["one", "two"]);
+    expect(lifted.items[id].note).toBe("intro\noutro");
+  });
+
+  it("nests indented lines", () => {
+    const { doc, id } = withNote("- a\n  - b\n- c");
+    const lifted = noteListsToChildren(doc, id);
+    expect(titles(lifted, id)).toEqual(["a", "c"]);
+    expect(titles(lifted, lifted.items[id].children[0])).toEqual(["b"]);
+  });
+
+  it("makes a heading a child with the lines under it as its children", () => {
+    const { doc, id } = withNote("## Fruit\n- apple\n- pear");
+    const lifted = noteListsToChildren(doc, id);
+    expect(titles(lifted, id)).toEqual(["Fruit"]);
+    expect(titles(lifted, lifted.items[id].children[0])).toEqual(["apple", "pear"]);
+    expect(lifted.items[id].note).toBe("");
+  });
+
+  it("leaves a fenced code block alone", () => {
+    const note = "```\n- not a child\n# nor this\n```";
+    const { doc, id } = withNote(note);
+    expect(noteListsToChildren(doc, id)).toBe(doc);
+  });
 });

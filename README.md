@@ -76,6 +76,9 @@ changes or removes it, except on a value that is one URL: that opens the URL,
 and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a line
 `:calories: 350 kcal` into a note still works: it becomes a property when
 the note is left. Exports write properties as such lines, as org mode does.
+A note is prose: list lines and headings typed in it become child items when
+the note is left, and a title stops at 200 characters, with a counter from 180
+(doc/adr/0069).
 ⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
 roll up, put a `columns` property on the page, as in org mode:

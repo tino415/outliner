@@ -502,6 +502,16 @@ kbd {
   min-height: calc(var(--line) * 1em);
 }
 
+.text[data-count]::after {
+  content: attr(data-count);
+  float: right;
+  margin-left: 8px;
+  font-size: 0.75em;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+}
+
 .note {
   font-size: 0.875em;
   line-height: 1.5;

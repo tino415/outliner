@@ -1,8 +1,9 @@
 import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, liftTags, setFlags, setNote, titleWithTags } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
-import { isInCode, mapLinesOutsideCode, propertyLines } from "./notes";
+import { isInCode, isOutsideCode, mapLinesOutsideCode, propertyLines } from "./notes";
 import { parseDoc } from "./storage";
+import { isListLine, listLinesOf } from "./writingRules";
 
 export function exportJson(doc: Doc): string {
   return JSON.stringify({ format: "outliner-lab", version: 1, doc }, null, 2);
@@ -160,4 +161,28 @@ export function download(filename: string, mime: string, content: string): void 
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** List lines and headings in an item's note become its last children; prose and code stay in the note. */
+export function noteListsToChildren(doc: Doc, id: ItemId): Doc {
+  const item = doc.items[id];
+  if (!item || listLinesOf(item.note).length === 0) return doc;
+  const lines = item.note.split("\n");
+  const outside = isOutsideCode(lines);
+  const prose: string[] = [];
+  const listed: string[] = [];
+  let headingDepth = 0;
+  lines.forEach((line, index) => {
+    if (!outside[index] || !isListLine(line)) return void prose.push(line);
+    const heading = /^\s*#{1,6}\s+(.*)$/.exec(line);
+    if (heading) {
+      listed.push(`- ${heading[1]}`);
+      headingDepth = 1;
+    } else {
+      listed.push(`${"  ".repeat(headingDepth)}${line}`);
+    }
+  });
+  const incoming = parseIndentedText(listed.join("\n"));
+  const kept = setNote(doc, id, prose.join("\n").replace(/^\n+|\n+$/g, ""));
+  return graft(kept, incoming, id, kept.items[id].children.length).doc;
 }
