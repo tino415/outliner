@@ -229,7 +229,7 @@ export async function attachFilesTo(id: ItemId, files: File[]): Promise<void> {
   toast(files.length === 1 ? `Attached ${files[0].name || "a file"}` : `Attached ${files.length} files`);
 }
 
-function pickFiles(): Promise<File[]> {
+export function pickFiles(): Promise<File[]> {
   return new Promise((resolve) => {
     const input = Object.assign(document.createElement("input"), { type: "file", multiple: true });
     input.addEventListener("change", () => resolve([...(input.files ?? [])]));

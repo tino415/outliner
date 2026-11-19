@@ -125,7 +125,7 @@ function bullet(id: ItemId): string {
 }
 
 function propertyButton(): string {
-  return `<button class="prop-add" type="button" tabindex="-1" aria-label="Add a property" title="Add a property">+</button>`;
+  return `<button class="prop-add" type="button" tabindex="-1" aria-label="Add…" title="Add…">+</button>`;
 }
 
 function textEditor(id: ItemId): string {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { caret, clickEnd, editor, freshOutline, row, storedValue } from "./helpers";
+import { caret, clickEnd, editor, expectOutline, freshOutline, row, storedValue } from "./helpers";
 
 test("Ctrl-; sets a property by key and value, and the caret stays where it was", async ({ page }, info) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
@@ -32,12 +32,13 @@ test("a new key is offered as typed", async ({ page }) => {
 
 test("a + button on the row under the mouse adds a property, without moving the rows", async ({ page }) => {
   await freshOutline(page, "Oats\nSoup");
-  const add = row(page, "Soup").getByRole("button", { name: "Add a property" });
+  const add = row(page, "Soup").getByRole("button", { name: "Add…" });
   await expect(add).toBeHidden();
   const before = await row(page, "Soup").boundingBox();
   await row(page, "Soup").hover();
   expect(await row(page, "Soup").boundingBox()).toEqual(before);
   await add.click();
+  await page.getByRole("button", { name: "Property…" }).click();
   await page.keyboard.type("effort");
   await page.keyboard.press("Enter");
   await page.keyboard.type("1h");
@@ -130,4 +131,65 @@ test("a value with words around a URL stays one button", async ({ page }) => {
   await freshOutline(page, "Card | :note: see https://example.com/a now");
   await expect(row(page, "Card").locator("button.prop-chip")).toHaveCount(1);
   await expect(row(page, "Card").locator(".link-chip")).toHaveCount(0);
+});
+
+test("+ then Child item adds a focused last child under an unfolded item", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Soup\n  salt\n  pepper\nOats");
+  await row(page, "Soup").hover();
+  await editor(page, "Soup").click();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).click();
+  await page.getByRole("button", { name: "Child item" }).click();
+  await page.keyboard.type("bay leaf");
+  await expectOutline(page, "Soup\n  salt\n  pepper\n  bay leaf\nOats");
+});
+
+test("+ then Child item unfolds a folded item", async ({ page }) => {
+  await freshOutline(page, "Soup\n  salt\nOats");
+  await row(page, "Soup").locator(".toggle").click();
+  await expect(editor(page, "salt")).toBeHidden();
+  await editor(page, "Soup").click();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).click();
+  await page.getByRole("button", { name: "Child item" }).click();
+  await page.keyboard.type("x");
+  await expect(editor(page, "salt")).toBeVisible();
+  await expect(editor(page, "x")).toBeFocused();
+});
+
+test("+ then Tag… puts a tag chip on the item", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "Oats #grain\nSoup");
+  await editor(page, "Soup").click();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).click();
+  await page.getByRole("button", { name: "Tag…" }).click();
+  await expect(page.locator("#palette li").first()).toHaveText("#grain");
+  await page.keyboard.type("hot");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("#hot");
+});
+
+test("+ then Property… opens the property palette", async ({ page }) => {
+  await freshOutline(page, "Soup");
+  await editor(page, "Soup").click();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).click();
+  await page.getByRole("button", { name: "Property…" }).click();
+  await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Property…");
+});
+
+test("the Add menu moves with the arrow keys and closes with Escape", async ({ page }) => {
+  await freshOutline(page, "Soup");
+  await editor(page, "Soup").click();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).click();
+  await expect(page.getByRole("button", { name: "Child item" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("button", { name: "Attachment…" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#add-menu")).toBeHidden();
+});
+
+test("+ then Child item files first under an item with :new: top", async ({ page }) => {
+  await freshOutline(page, "Inbox | :new: top\n  older");
+  await editor(page, "Inbox").click();
+  await row(page, "Inbox").getByRole("button", { name: "Add…" }).click();
+  await page.getByRole("button", { name: "Child item" }).click();
+  await page.keyboard.type("newer");
+  await expectOutline(page, "Inbox\n  newer\n  older");
 });

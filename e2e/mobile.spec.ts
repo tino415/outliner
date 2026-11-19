@@ -68,11 +68,12 @@ test("the phone opens the agenda from the menu, and its toolbar does not move it
   await expectOutline(page, "Pay rent 2026-10-15\nWater plants 2026-10-21 [x]");
 });
 
-test("the item being edited shows a button that adds a property", { tag: "@touch" }, async ({ page }) => {
+test("the item being edited shows a button that adds a property through the Add menu", { tag: "@touch" }, async ({ page }) => {
   await freshOutline(page, "Oats | :kcal: 300 kcal\nSoup");
-  await expect(row(page, "Soup").getByRole("button", { name: "Add a property" })).toBeHidden();
+  await expect(row(page, "Soup").getByRole("button", { name: "Add…" })).toBeHidden();
   await editor(page, "Soup").tap();
-  await row(page, "Soup").getByRole("button", { name: "Add a property" }).tap();
+  await row(page, "Soup").getByRole("button", { name: "Add…" }).tap();
+  await page.getByRole("button", { name: "Property…" }).tap();
   await page.locator("#palette li", { hasText: "kcal" }).tap();
   await page.locator("#palette li", { hasText: "300 kcal" }).tap();
   await expect(row(page, "Soup").locator(".prop-chip")).toHaveText("kcal 300 kcal");

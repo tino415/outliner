@@ -365,6 +365,7 @@ test("+ property on a card and on a column title sets a property shown as a chip
   await openBoard(page, twoColumns);
   await card(page, "draft").locator(":scope > .row > .text").click();
   await card(page, "draft").locator(".prop-add").click();
+  await page.getByRole("button", { name: "Property…" }).click();
   await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "Property…");
   await page.keyboard.type("effort");
   await page.keyboard.press("Enter");
@@ -375,6 +376,7 @@ test("+ property on a card and on a column title sets a property shown as a chip
   const head = page.locator(".board-column-head").nth(1);
   await head.locator(".text").click();
   await head.locator(".prop-add").click();
+  await head.page().getByRole("button", { name: "Property…" }).click();
   await page.keyboard.type("limit");
   await page.keyboard.press("Enter");
   await page.keyboard.type("3");
