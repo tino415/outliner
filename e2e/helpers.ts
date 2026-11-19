@@ -1,4 +1,4 @@
-import { Page, expect } from "@playwright/test";
+import { Locator, Page, expect } from "@playwright/test";
 
 /** The row whose text is `text`; tags written after the title are the row's tag chips. */
 export function row(page: Page, text: string) {
@@ -171,4 +171,10 @@ export async function removeStored(page: Page, key: StoredKey): Promise<void> {
       }),
     key,
   );
+}
+
+/** A tap on a touch device, a click elsewhere. */
+export async function choose(option: Locator, isMobile: boolean) {
+  if (isMobile) await option.tap();
+  else await option.click();
 }

@@ -1,16 +1,12 @@
-import { Locator, expect, test } from "@playwright/test";
-import { caret, clickEnd, freshOutline } from "./helpers";
+import { Page, expect, test } from "@playwright/test";
+import { caret, choose, clickEnd, freshOutline } from "./helpers";
 
-async function inEmptyItem(page: import("@playwright/test").Page) {
+async function inEmptyItem(page: Page) {
   await freshOutline(page, "First");
   await clickEnd(page, "First");
   await page.keyboard.press("Enter");
 }
 
-async function choose(option: Locator, isMobile: boolean) {
-  if (isMobile) await option.tap();
-  else await option.click();
-}
 
 test("/ in an empty item lists its commands and a tapped one runs in place of the /", { tag: "@phone" }, async ({ page, isMobile }) => {
   await inEmptyItem(page);
@@ -48,5 +44,11 @@ test("a / in a note opens nothing", async ({ page }) => {
   await clickEnd(page, "First");
   await page.keyboard.press("Shift+Enter");
   await page.keyboard.type("/");
+  await expect(page.locator("#palette")).toBeHidden();
+});
+
+test("a / inside an inline code span opens nothing", async ({ page }) => {
+  await inEmptyItem(page);
+  await page.keyboard.type("`cd /");
   await expect(page.locator("#palette")).toBeHidden();
 });

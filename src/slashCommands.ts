@@ -25,6 +25,7 @@ function matching(commands: Command[], query: string): SlashOption[] {
 }
 
 function runInPlaceOfSlash(c: EditorContext, command: Command): void {
+  if (!c.editor.isConnected || c.editor.textContent?.[c.start - 1] !== "/") return;
   c.editor.focus();
   select(c.editor, c.start - 1, c.start);
   document.execCommand("delete");
