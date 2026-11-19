@@ -75,3 +75,4 @@ file that says so.
 66. [About Bookmarks lives in code and Bookmarks is fixed](0066-about-bookmarks-lives-in-code-and-bookmarks-is-fixed.md) (supersedes part of 60 and 61)
 67. [Tags are a property shown after the title](0067-tags-are-a-property-shown-after-the-title.md) (extends 32)
 68. [The + button opens an Add menu](0068-the-plus-button-opens-an-add-menu.md) (extends 32)
+69. [An attached file is a child item, not a line in the note](0069-an-attached-file-is-a-child-item.md) (supersedes part of 28; amends 56)
