@@ -43,6 +43,11 @@ Item pickers (jump, Move to, Mirror, Link to) match paths written with
 slashes, as `ID/IEx` for `PayoutID > IEx` (doc/adr/0064).
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
+Typing `/` at the start of a title, or after a space in it, lists the item's
+commands, the way in on a phone (doc/adr/0068). Choosing one deletes the `/`
+and runs it; Escape keeps the `/`. In a note, or inside a word or a URL, a
+`/` is just a slash.
+
 Ctrl-. folds the item; Ctrl-Shift-. collapses everything inside it, or
 expands it all once nothing inside is open, as the item menu's Collapse
 everything inside and Expand everything inside do (doc/adr/0054). On a

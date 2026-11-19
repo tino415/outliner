@@ -361,6 +361,22 @@ export function keyCommands(editing: EditorContext | null): Command[] {
   return [...commands.values()];
 }
 
+const SLASH_ORDER: CommandName[] = ["date", "tag", "property", "kind", "link", "mirror", "attach", "bold", "italic", "code", "code-block"];
+
+/** The commands of the item being edited, the ones typed with a slash first. `context` is read when one runs, as the caret has moved by then. */
+export function editorCommands(context: () => EditorContext): Command[] {
+  const bindings = bindingsHere().filter((binding): binding is BindingIn<"editor"> => binding.context === "editor" && binding.isCommand && !binding.hidden && Boolean(binding.label));
+  const rank = (binding: BindingIn<"editor">) => {
+    const place = SLASH_ORDER.indexOf(binding.name as CommandName);
+    return place === -1 ? SLASH_ORDER.length : place;
+  };
+  const labels = new Set<string>();
+  return bindings
+    .filter((binding) => !labels.has(binding.label) && labels.add(binding.label))
+    .sort((a, b) => rank(a) - rank(b))
+    .map((binding) => ({ label: binding.label, shortcut: shortcutFor(binding.label), run: () => binding.run(context()) }));
+}
+
 function shortcutFor(label: string): string {
   const keys = bindingsHere().filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
   return keys.length ? pretty(keys[0]) : "";

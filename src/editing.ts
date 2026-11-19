@@ -41,6 +41,7 @@ import { keepFiles } from "./attachments";
 import { choosePrivacy } from "./privateItems";
 import { chooseProperty } from "./propertyPicker";
 import { pickDate } from "./datePicker";
+import { openSlashCommands } from "./slashCommands";
 import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds";
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { privateHolderOf, referenceTo, resolveReference } from "./references";
@@ -89,6 +90,7 @@ export function bindEditorEvents(): void {
     const before = value.slice(0, context.start);
     if ((event as InputEvent).data === "[" && before.endsWith("[[") && !(context.inNote && isInCode(before))) pickReference(context, 2);
     if ((event as InputEvent).data === "!" && before.endsWith("!!") && !(context.inNote && isInCode(before))) pickDateAt(context, 2);
+    if ((event as InputEvent).data === "/" && !context.inNote && startsAWord(before.slice(0, -1))) openSlashCommands(context);
   });
 
   document.addEventListener("focusout", (event) => {
@@ -810,6 +812,10 @@ function pickReference(c: EditorContext, typed: number): void {
       insertText(referenceTo(target.id, plainText(target.text)));
     },
   });
+}
+
+function startsAWord(before: string): boolean {
+  return before === "" || /\s$/.test(before);
 }
 
 /** Picks a date and writes it at the caret, over the `typed` characters before it (the "!!" that asked), apart from the words around it. */
