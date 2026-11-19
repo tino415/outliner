@@ -25,6 +25,7 @@ import {
   newChildIndex,
   shownChildren,
   insertChild,
+  insertShownChild,
   withPrivateIds,
   setItemProperty,
 } from "../src/model";
@@ -108,6 +109,14 @@ describe("inserting a child", () => {
     const created = insertChild(doc, idOf(doc, "parent"), 1, "added");
     expect(created.doc.items[idOf(doc, "parent")].collapsed).toBe(true);
     expect(render(created.doc)).toBe("parent\n  child\n  added");
+  });
+
+  it("unfolds the parent when the child is to be shown", () => {
+    let doc = outline("parent\n  child");
+    doc = setFlags(doc, idOf(doc, "parent"), { collapsed: true });
+    const created = insertShownChild(doc, idOf(doc, "parent"), 0);
+    expect(created.doc.items[idOf(doc, "parent")].collapsed).toBe(false);
+    expect(render(created.doc)).toBe("parent\n  \n  child");
   });
 });
 
