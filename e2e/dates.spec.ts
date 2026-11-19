@@ -107,3 +107,20 @@ test.describe("a UTC time", () => {
     await expect(deploy).toHaveText("Deploy 2026-10-19 9:00Z");
   });
 });
+
+test("Insert a date in the slash palette names !! and picks today on a phone", { tag: "@phone" }, async ({ page, isMobile }) => {
+  await onMonday(page, "First");
+  await clickEnd(page, "First");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/");
+  const insertDate = page.locator("#palette li").first();
+  await expect(insertDate).toContainText("Insert a date");
+  await expect(insertDate).toContainText("!!");
+  if (isMobile) await insertDate.tap();
+  else await insertDate.click();
+  const today = page.locator("#palette li").first();
+  await expect(today).toHaveText("2026-10-19Mon 19 Oct");
+  if (isMobile) await today.tap();
+  else await today.click();
+  expect(await caret(page)).toEqual({ text: "2026-10-19", offset: 10 });
+});

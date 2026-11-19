@@ -18,6 +18,8 @@ interface Shortcut {
   keys: string[];
   label: string;
   hidden?: boolean;
+  /** Text typed in an item that does the same, shown in the palettes in place of the keys. */
+  typed?: string;
   where: View | "any";
 }
 
@@ -136,7 +138,7 @@ const defaultBindings: Binding[] = [
   editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
   editor("mirror", ["Mod+j r"], "Mirror here", (c) => actions.mirrorHere(c)),
-  editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)),
+  { ...editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)), typed: "!!" },
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
   editor("copy-link", ["Mod+j y"], "Copy link to this item", (c) => copyLink(c.id)),
@@ -378,6 +380,8 @@ export function editorCommands(context: () => EditorContext): Command[] {
 }
 
 function shortcutFor(label: string): string {
+  const typed = bindingsHere().find((binding) => binding.label === label && binding.typed)?.typed;
+  if (typed) return `or type <kbd>${escape(typed)}</kbd>`;
   const keys = bindingsHere().filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
   return keys.length ? pretty(keys[0]) : "";
 }

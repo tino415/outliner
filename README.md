@@ -161,8 +161,8 @@ so does anything in backticks.
 
 A date is written as ISO text, `2026-10-14` or `2026-10-14 9:00`, in an
 item, a note or a property, and shows as a chip: "today", "tomorrow",
-"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J I D (⌘J I D) or typing `!!`
-asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
+"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J I D (⌘J I D), typing `!!`, or
+`/` then Insert a date on a phone asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
 `14.10.`, `14 oct`, `25` (the next 25th), each with an optional `9:00`. A
 click on a chip changes or removes it. The properties `scheduled` and
 `due` take their value from the same picker. Search understands
