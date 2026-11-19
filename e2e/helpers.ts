@@ -1,8 +1,16 @@
 import { Page, expect } from "@playwright/test";
 
+/** The row whose text is `text`; tags written after the title are the row's tag chips. */
 export function row(page: Page, text: string) {
-  const exact = new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
-  return page.locator(".row").filter({ has: page.locator(":scope > .body > .text", { hasText: exact }) });
+  const withTitle = (title: string) => page.locator(".row").filter({ has: page.locator(":scope > .body > .text", { hasText: exactly(title) }) });
+  const [, title, written] = /^(.*?)((?: #[\p{L}\p{N}_-]+)+)$/u.exec(text) ?? [];
+  if (!title) return withTitle(text);
+  const chips = written.trim().split(" ").reduce((rows, tag) => rows.filter({ has: page.locator(".props .tag-chip", { hasText: exactly(tag) }) }), withTitle(title));
+  return withTitle(text).or(chips);
+}
+
+function exactly(text: string): RegExp {
+  return new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 }
 
 export function editor(page: Page, text: string) {
@@ -51,7 +59,8 @@ export async function outlineText(page: Page): Promise<string> {
       for (const li of Array.from(list.children)) {
         const field = li.querySelector(":scope > .row .text") as HTMLElement;
         if (field.dataset.id === "bookmarks") continue;
-        const text = field.textContent;
+        const chips = Array.from(li.querySelectorAll(":scope > .row .props .tag-chip"), (chip) => ` ${chip.textContent}`).join("");
+        const text = field.textContent + chips;
         const done = li.classList.contains("completed") ? " [x]" : "";
         lines.push("  ".repeat(depth) + text + done);
         const children = li.querySelector(":scope > .children");

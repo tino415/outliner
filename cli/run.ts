@@ -16,6 +16,8 @@ import {
   indexInParent,
   insertChild,
   liftNoteProperties,
+  liftTags,
+  titleWithTags,
   isDescendant,
   moveTo,
   newChildIndex,
@@ -168,7 +170,8 @@ async function perform(command: string, args: string[], options: Options, outlin
       return options.columns ? showTable(doc, top, options) : showText(doc, top, options);
     }
     case "find": {
-      const found = options.query ? queryResults(doc, args.join(" "), options.limit) : findItems(doc, args.join(" "), options.limit);
+      const matched = options.query ? queryResults(doc, args.join(" "), options.limit) : findItems(doc, args.join(" "), options.limit);
+      const found = matched.map((item) => ({ ...item, text: titleWithTags(doc.items[item.id]) }));
       if (options.json) return json(found);
       return found.map((item) => `${item.id}  ${[...item.path, item.text].join(" / ")}`).join("\n");
     }
@@ -437,7 +440,7 @@ class Outline {
   }
 
   async save(next: Doc): Promise<void> {
-    const changes = diff(withoutBookmarksAbout(this.doc), withoutBookmarksAbout(liftNoteProperties(next)), this.replica, () => this.clock.tick());
+    const changes = diff(withoutBookmarksAbout(this.doc), withoutBookmarksAbout(liftTags(liftNoteProperties(next))), this.replica, () => this.clock.tick());
     if (changes.length > 0) await exchange(this.endpoint, { since: Number.MAX_SAFE_INTEGER, changes });
   }
 }
@@ -450,7 +453,7 @@ function resolve(doc: Doc, reference: string): ItemId {
   let current = ROOT;
   for (const step of reference.split("/").map((part) => part.trim()).filter(Boolean)) {
     const children = doc.items[current].children;
-    const exact = children.filter((child) => sameText(doc.items[child].text, step));
+    const exact = children.filter((child) => sameText(doc.items[child].text, step) || sameText(titleWithTags(doc.items[child]), step));
     const matches = exact.length > 0 ? exact : children.filter((child) => startsWith(doc.items[child].text, step));
     if (matches.length === 0) throw new Error(`no item "${step}" under ${describe(doc, current)}`);
     if (matches.length > 1) {
@@ -511,7 +514,7 @@ function showTable(doc: Doc, top: ItemId, options: Options): string {
   const rows: { label: string; values: string[] }[] = [];
   const visit = (id: ItemId, depth: number) => {
     const item = doc.items[id];
-    const label = `${"  ".repeat(depth)}${item.completed ? `~~${item.text}~~` : item.text}${options.ids ? `  [${id}]` : ""}`;
+    const label = `${"  ".repeat(depth)}${item.completed ? `~~${titleWithTags(item)}~~` : titleWithTags(item)}${options.ids ? `  [${id}]` : ""}`;
     rows.push({ label, values: keys.map((key) => cells.get(id)?.get(key)?.text ?? "") });
     if (options.depth !== undefined && depth >= options.depth) return;
     for (const child of childrenInOrder(doc, id)) visit(child, depth + 1);
@@ -558,7 +561,7 @@ function showText(doc: Doc, top: ItemId, options: Options): string {
 function line(doc: Doc, id: ItemId, depth: number, options: Options): string {
   const item = doc.items[id];
   const pad = "  ".repeat(depth);
-  const text = item.completed ? `~~${item.text}~~` : item.text;
+  const text = item.completed ? `~~${titleWithTags(item)}~~` : titleWithTags(item);
   const shownNote = isSealed(item.note) ? `🔒 private, sealed with the key ${sealedKeyOf(item.note)}` : [...propertyLines(item.properties), item.note].filter(Boolean).join("\n");
   const note = shownNote ? `\n${shownNote.split("\n").map((noteLine) => `${pad}  ${noteLine}`).join("\n")}` : "";
   return `${pad}- ${text}${options.ids ? `  [${id}]` : ""}${note}`;

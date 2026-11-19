@@ -1,4 +1,4 @@
-import { Item, SETTINGS } from "./model";
+import { Item, SETTINGS, tagsProperty } from "./model";
 import { escape, onlyUrl } from "./inline";
 import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
@@ -8,11 +8,19 @@ import { DATE_PROPERTIES, dateLabel, inReaderZone, readWrittenDate, today } from
 
 /** `computed` holds the results of the item's "=…" values; the chip shows the result, the formula on hover. */
 export function propertyChipsHtml(item: Item, shownElsewhere: ReadonlySet<string> = new Set(), computed: ReadonlyMap<string, Cell> = new Map()): string {
-  const chips = Object.keys(item.properties)
-    .filter((key) => key !== "approved" && key !== MIRROR && !shownElsewhere.has(key))
-    .sort((a, b) => Number(SETTINGS.has(a)) - Number(SETTINGS.has(b)) || a.localeCompare(b))
-    .map((key) => chipHtml(key, item.properties[key], computed.get(key)));
+  const tags = shownElsewhere.has("tags") ? [] : tagsProperty(item).filter(Boolean).map(tagChipHtml);
+  const chips = [
+    ...tags,
+    ...Object.keys(item.properties)
+      .filter((key) => key !== "approved" && key !== MIRROR && key !== "tags" && !shownElsewhere.has(key))
+      .sort((a, b) => Number(SETTINGS.has(a)) - Number(SETTINGS.has(b)) || a.localeCompare(b))
+      .map((key) => chipHtml(key, item.properties[key], computed.get(key))),
+  ];
   return chips.length ? `<div class="props">${chips.join("")}</div>` : "";
+}
+
+function tagChipHtml(tag: string): string {
+  return `<button type="button" tabindex="-1" class="prop-chip tag-chip" data-tag="${escape(`#${tag.toLowerCase()}`)}">#${escape(tag)}</button>`;
 }
 
 function chipHtml(key: string, value: string, result: Cell | undefined): string {

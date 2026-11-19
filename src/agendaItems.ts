@@ -1,6 +1,5 @@
-import { Doc, ItemId, ROOT, ViewFilter, isShown } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isShown, tagsOf } from "./model";
 import { Day, addDays, datesOf } from "./dates";
-import { tagsWritten } from "./inline";
 
 /*
  * What the agenda lists (doc/adr/0037): the items dated in the coming
@@ -46,7 +45,7 @@ function placeOf(doc: Doc, id: ItemId, now: Day, index: number): Placed[] {
   const dates = datesOf(item);
   const position = String(index).padStart(8, "0");
   if (dates.length === 0) {
-    const isTodo = tagsWritten(item.text).some((tag) => tag.toLowerCase() === "todo");
+    const isTodo = tagsOf(item).some((tag) => tag.toLowerCase() === "todo");
     return isTodo ? [{ id, section: { kind: "todo" }, order: `3 ${position}` }] : [];
   }
   const next = dates.filter((date) => date.day >= now).sort((a, b) => `${a.day} ${clockOrder(a.time)}`.localeCompare(`${b.day} ${clockOrder(b.time)}`))[0];

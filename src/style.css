@@ -1144,6 +1144,15 @@ code {
   font-style: italic;
 }
 
+.prop-chip.tag-chip {
+  color: var(--tag);
+  background: var(--tag-bg);
+  border: 0;
+  border-radius: 999px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .prop-chip.setting {
   color: var(--muted);
   background: none;

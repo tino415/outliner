@@ -1,6 +1,6 @@
 import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
-import { Doc, ItemId, ROOT, ViewFilter, isDescendant, isKept, liftNoteProperties, withBookmarksItem, withPrivateIds } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant, isKept, liftNoteProperties, liftTags, withBookmarksItem, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { loaded } from "./loaded";
 import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
@@ -98,6 +98,7 @@ export function start(): void {
   startSync();
   keepBookmarksItem();
   afterFirstSync(liftPropertiesWrittenInNotes);
+  afterFirstSync(liftTagsWrittenInText);
   afterFirstSync(leaveLinkToMissingItem);
   bindAttachments(syncEndpoint);
   onChangeHere(pluginsMayHaveChanged);
@@ -119,6 +120,14 @@ function liftPropertiesWrittenInNotes(): void {
   const focused = document.activeElement;
   const typingIn = focused instanceof HTMLElement && focused.classList.contains("note") ? focused.dataset.id : undefined;
   const lifted = liftNoteProperties(doc(), Object.keys(doc().items).filter((id) => id !== typingIn));
+  if (lifted !== doc()) commitAndRender(lifted, null);
+}
+
+/** Tags written in titles and notes, before they had a property or by an older build, become the `tags` property. */
+function liftTagsWrittenInText(): void {
+  const focused = document.activeElement;
+  const typingIn = focused instanceof HTMLElement && focused.dataset.id ? focused.dataset.id : undefined;
+  const lifted = liftTags(doc(), Object.keys(doc().items).filter((id) => id !== typingIn));
   if (lifted !== doc()) commitAndRender(lifted, null);
 }
 

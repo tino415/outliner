@@ -1,4 +1,4 @@
-import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown } from "./model";
+import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown, titleWithTags } from "./model";
 import { dateFilter } from "./dates";
 import { itemNamedBy } from "./itemLink";
 
@@ -138,7 +138,7 @@ export function search(doc: Doc, top: ItemId, query: string, filter: ViewFilter)
     for (const child of doc.items[id].children) {
       if (!isShown(doc, child, filter)) continue;
       const item = doc.items[child];
-      const haystack = `${item.text}\n${item.note}`.toLowerCase();
+      const haystack = `${titleWithTags(item)}\n${item.note}`.toLowerCase();
       const isMatch = terms.every((term) => haystack.includes(term)) && passes(item);
       if (isMatch) matches.add(child);
       if (walk(child) || isMatch) {

@@ -17,7 +17,7 @@ test("an ISO date shows as a chip that says when, red once past, and as written 
   const trip = editor(page, "Trip 2026-10-23 #travel");
   await trip.click({ position: { x: 4, y: 8 } });
   await expect(trip.locator(".date-raw")).toBeVisible();
-  await expect(trip).toHaveText("Trip 2026-10-23 #travel");
+  await expect(trip).toHaveText("Trip 2026-10-23");
 });
 
 test("Ctrl-J I D picks a date and writes it at the caret, apart from the word before", async ({ page }) => {

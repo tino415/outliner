@@ -7,7 +7,9 @@ async function boardText(page: Page): Promise<string> {
     [...document.querySelectorAll("#board .board-column")]
       .map((column) => {
         const title = column.querySelector(".board-column-head .text")!.textContent;
-        const cards = [...column.querySelectorAll(".board-card > .row > .text")].map((card) => card.textContent);
+        const cards = [...column.querySelectorAll(".board-card > .row > .text")].map(
+          (card) => card.textContent + [...(card.parentElement!.querySelectorAll(".props .tag-chip"))].map((chip) => ` ${chip.textContent}`).join(""),
+        );
         return `${title}: ${cards.join(", ")}`;
       })
       .join("\n"),
@@ -585,7 +587,8 @@ test("searching on a board opens a folded card with a match inside, offers no ad
   await expectBoard(page, "To do: Release, test");
   await page.locator("#search").fill("#web");
   await expectBoard(page, "To do: Release");
-  await expect(page.locator(".board-card .board-child .text")).toHaveText("fix #web");
+  await expect(page.locator(".board-card .board-child .text")).toHaveText("fix");
+  await expect(page.locator(".board-card .board-child .tag-chip")).toHaveText("#web");
   await expect(page.locator(".board-new-card")).toBeHidden();
   await page.locator("#search").fill("nothing like this");
   await expectBoard(page, "");

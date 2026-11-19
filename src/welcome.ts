@@ -12,7 +12,7 @@ Welcome to your outline
   Click a bullet to *zoom* into it. The breadcrumbs above lead back out.
   **Ctrl Enter** completes an item
   Backspace at the start of an item joins it with the one above
-  Search with **/** or Ctrl F, or click a tag like #ideas
+  Search with **/** or Ctrl F, or click a tag chip, like the one on Reading list
   **Ctrl K** jumps to any item by name
   Press **?** for every shortcut
   **Ctrl ;** sets a property like calories: 350 or effort: 2h; ⋯ → Columns then adds them up on every parent
@@ -45,7 +45,7 @@ export function welcomeDoc(): Doc {
   doc = setFlags(doc, byText("Bread").id, { completed: true });
   doc = setFlags(doc, byText("Indented items can be folded away").id, { collapsed: true });
   doc = setFlags(doc, byText("Groceries").id, { collapsed: true });
-  doc = setFlags(doc, byText("Plan the week #planning").id, {
+  doc = setFlags(doc, byText("Plan the week").id, {
     note: keyNames("Notes sit under an item. Shift Enter opens one."),
   });
   return doc;
