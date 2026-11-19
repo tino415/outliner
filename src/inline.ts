@@ -18,6 +18,22 @@ export function tagsWritten(text: string): string[] {
   return [...text.matchAll(new RegExp(TAG, "gu"))].map((match) => match[0].slice(1));
 }
 
+/** `line` without the tags written in it, one space left where each was, and the tags without their #. Tags inside code, links and references stay. */
+export function takeTags(line: string): { rest: string; tags: string[] } {
+  const tags: string[] = [];
+  let rest = "";
+  let last = 0;
+  for (const match of line.matchAll(TOKEN)) {
+    if (!match.groups!.tag || /[(\[]/.test(line[match.index! - 1] ?? "")) continue;
+    tags.push(match[0].slice(1));
+    rest += line.slice(last, match.index).replace(/[ \t]+$/, "");
+    last = match.index! + match[0].length;
+  }
+  if (tags.length === 0) return { rest: line, tags };
+  const indent = /^[ \t]*/.exec(line)![0];
+  return { rest: `${indent}${(rest + line.slice(last)).trim()}`, tags };
+}
+
 const URL_PATTERN = String.raw`https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"]`;
 
 /** The URL a value is made of, when it is nothing else. */

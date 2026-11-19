@@ -1,4 +1,5 @@
-import { isSealed, privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
+import { isOutsideCode, isSealed, privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
+import { tagsWritten, takeTags } from "./inline";
 
 export type ItemId = string;
 
@@ -462,6 +463,64 @@ export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.ite
       written.properties = { ...written.properties, ...Object.fromEntries([...properties].filter(([, value]) => value !== "")) };
     }
   });
+}
+
+/** The tags of an item: those in its `tags` property, then any still written in its title. */
+export function tagsOf(item: Item): string[] {
+  return distinctTags([...tagsProperty(item), ...tagsWritten(item.text)]);
+}
+
+export function tagsProperty(item: Item): string[] {
+  return (item.properties.tags ?? "").split(/\s+/).map((tag) => tag.replace(/^#+/, ""));
+}
+
+/** The title followed by its tags as `#a #b`, the form agents and exports read and write. */
+export function titleWithTags(item: Item): string {
+  const written = new Set(tagsWritten(item.text).map((tag) => tag.toLowerCase()));
+  const lifted = tagsProperty(item).filter((tag) => tag !== "" && !written.has(tag.toLowerCase()));
+  return [item.text, ...lifted.map((tag) => `#${tag}`)].filter(Boolean).join(" ");
+}
+
+function distinctTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  return tags.filter((tag) => tag !== "" && !seen.has(tag.toLowerCase()) && seen.add(tag.toLowerCase()));
+}
+
+/** Moves the #tags written in the title and note of `ids` (every item by default) into their `tags` property. A title that is only a tag keeps it. */
+export function liftTags(doc: Doc, ids: ItemId[] = Object.keys(doc.items)): Doc {
+  const lifted = ids.flatMap((id) => {
+    const item = doc.items[id];
+    if (!item || isReadOnly(id, "properties") || sealedKeyOf(item.note)) return [];
+    const fromTitle = isReadOnly(id, "title") ? { rest: item.text, tags: [] } : takeTags(item.text);
+    const title = fromTitle.rest === "" ? { rest: item.text, tags: [] } : fromTitle;
+    const fromNote = isReadOnly(id, "note") ? { note: item.note, tags: [] } : takeTagsFromNote(item.note);
+    const taken = [...title.tags, ...fromNote.tags];
+    if (taken.length === 0) return [];
+    return [{ id, text: title.rest, note: fromNote.note, tags: distinctTags([...tagsProperty(item), ...taken]) }];
+  });
+  if (lifted.length === 0) return doc;
+  return edit(doc, (d) => {
+    for (const { id, text, note, tags } of lifted) {
+      const written = d.write(id);
+      written.text = text;
+      written.note = note;
+      written.properties = { ...written.properties, tags: tags.join(" ") };
+    }
+  });
+}
+
+/** Lines made of nothing but tags go with them. */
+function takeTagsFromNote(note: string): { note: string; tags: string[] } {
+  const lines = note.split("\n");
+  const outside = isOutsideCode(lines);
+  const tags: string[] = [];
+  const kept = lines.flatMap((line, index) => {
+    if (!outside[index]) return [line];
+    const taken = takeTags(line);
+    tags.push(...taken.tags);
+    return taken.tags.length > 0 && taken.rest.trim() === "" ? [] : [taken.rest];
+  });
+  return { note: kept.join("\n"), tags };
 }
 
 /** The key a private item is sealed with: its `private` property where it is open, else the key its note names (doc/adr/0029). */

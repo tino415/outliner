@@ -1,8 +1,8 @@
-import { Doc } from "./model";
-import { isInCode, withoutCode } from "./notes";
+import { Doc, tagsOf } from "./model";
+import { isInCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
-import { escape, tagsWritten } from "./inline";
-import { insertText } from "./editing";
+import { escape } from "./inline";
+import { insertText, liftTagPickedAt } from "./editing";
 import { kindsIn } from "./kinds";
 
 /*
@@ -87,7 +87,7 @@ function keysIn(doc: Doc): string[] {
 }
 
 function tagsIn(doc: Doc): string[] {
-  return byUse(Object.values(doc.items).flatMap((item) => tagsWritten(`${item.text}\n${withoutCode(item.note)}`)));
+  return byUse(Object.values(doc.items).flatMap(tagsOf));
 }
 
 /** Most used first; a word written in several cases keeps its most common spelling. */
@@ -130,10 +130,13 @@ function choose(index: number): void {
   const caret = target && selectionIn(target);
   if (!target || !typed || !word || !caret) return closeCompletion();
   const replacement = typed.finish(word);
+  const picksTag = typed.finish === finishTag;
+  const tagStart = typed.start;
   const after = (target.textContent ?? "").slice(caret.end);
   select(target, typed.start, caret.end);
   closeCompletion();
   insertText(replacement.endsWith(" ") && /^\s/.test(after) ? replacement.trimEnd() : replacement);
+  if (picksTag) liftTagPickedAt(target.dataset.id!, tagStart);
 }
 
 /** A click, undo or anything else that moves the caret without typing leaves what was being typed. */

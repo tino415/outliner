@@ -402,7 +402,7 @@ test.describe("zoom and search", { tag: "@keys" }, () => {
 
   test("clicking a tag searches for it", async ({ page }) => {
     await freshOutline(page, "one #red\ntwo #blue\nthree #red");
-    await row(page, "two #blue").locator(".tag").click();
+    await row(page, "two #blue").locator(".tag-chip").click();
     await expect(page.locator("#search")).toHaveValue("#blue");
     await expectOutline(page, "two #blue");
   });

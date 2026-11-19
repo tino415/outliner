@@ -71,7 +71,9 @@ export function splitPropertyLines(note: string): { properties: Map<string, stri
 
 /** Properties written as the note lines exports use: `:key: value`, one per line. */
 export function propertyLines(properties: Readonly<Record<string, string>>): string[] {
-  return Object.entries(properties).map(([key, value]) => `:${key}: ${value}`);
+  return Object.entries(properties)
+    .filter(([key]) => key !== "tags")
+    .map(([key, value]) => `:${key}: ${value}`);
 }
 
 /** A private item's note as the sync server and devices without its key have it (doc/adr/0029). */

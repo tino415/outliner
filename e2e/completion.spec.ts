@@ -26,12 +26,12 @@ test("# offers the tags in use, most used first, and Escape closes the list", as
   await expect(list.locator("li")).toHaveText(["#work", "#home"]);
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Tab");
-  await expectOutline(page, "a #work\nb #work #home\nc #home ");
-  await page.keyboard.type("#w");
+  await expectOutline(page, "a #work\nb #work #home\nc #home");
+  await page.keyboard.type(" #w");
   await expect(list.locator("li")).toHaveText(["#work"]);
   await page.keyboard.press("Escape");
   await expect(list).toBeHidden();
-  await expect(editor(page, "c #home #w")).toBeFocused();
+  await expect(editor(page, "c #w")).toBeFocused();
 });
 
 test.describe("kinds", () => {
@@ -84,12 +84,48 @@ test("Ctrl-J T adds a tag at the end of the item", async ({ page }) => {
   await page.keyboard.press("t");
   await expect(page.locator(".completion li")).toHaveText(["#work"]);
   await page.keyboard.press("Enter");
-  await expectOutline(page, "write report #work\nbuy milk #work ");
+  await expectOutline(page, "write report #work\nbuy milk #work");
 });
 
-test("tags show as chips whose text is still the raw text", async ({ page }) => {
-  await freshOutline(page, "plan #ideas");
-  const tag = row(page, "plan #ideas").locator(".tag");
+test("a title that is only a tag keeps it in the text, as a tag", async ({ page }) => {
+  await freshOutline(page, "#ideas");
+  const tag = editor(page, "#ideas").locator(".tag");
   await expect(tag).toHaveText("#ideas");
   await expect(tag.locator(".tag-hash")).toHaveText("#");
+});
+
+test("a #tag typed in a title becomes a chip after the title when the title is left", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "the jump\nnext");
+  await editor(page, "the jump").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.type("Fix #bug ");
+  await editor(page, "next").click();
+  await expectOutline(page, "Fix the jump #bug\nnext");
+  await expect(row(page, "Fix the jump").locator(".props .tag-chip")).toHaveText("#bug");
+});
+
+test("a #tag typed in a note becomes a chip and leaves the note when the note is left", { tag: "@phone" }, async ({ page }) => {
+  await freshOutline(page, "plan\nnext");
+  await clickEnd(page, "plan");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("see #feature");
+  await editor(page, "next").click();
+  await expect(row(page, "plan").locator(".props .tag-chip")).toHaveText("#feature");
+  await expect(row(page, "plan").locator(".note")).toHaveText("see");
+});
+
+test("a tag picked from completion goes straight to the chips", async ({ page }) => {
+  await freshOutline(page, "a #work\nb");
+  await expect(row(page, "a").locator(".props .tag-chip")).toHaveText("#work");
+  await clickEnd(page, "b");
+  await page.keyboard.type(" #w");
+  await page.keyboard.press("Enter");
+  await expect(row(page, "b").locator(".props .tag-chip")).toHaveText("#work");
+  await expectOutline(page, "a #work\nb #work");
+});
+
+test("a tag chip searches for the tag", async ({ page }) => {
+  await freshOutline(page, "a #work\nb");
+  await row(page, "a").locator(".tag-chip").click();
+  await expect(page.locator("#search")).toHaveValue("#work");
 });

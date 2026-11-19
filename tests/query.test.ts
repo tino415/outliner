@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { byDate, byParent, groupingOf, parseQuery, queryMatches, queryOf } from "../src/query";
-import { Doc, ROOT, setFlags, setItemProperty } from "../src/model";
+import { Doc, ROOT, setFlags, setItemProperty, titleWithTags } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 
 const MONDAY = "2026-10-19";
@@ -12,8 +12,8 @@ const OUTLINE = [
   "    Crash on paste #bug",
   "    Agenda #feature",
   "  Garden",
-  "    Fence #todo 2026-10-15",
-  "    Seeds #todo 2026-10-21",
+  "    Fence 2026-10-15 #todo",
+  "    Seeds 2026-10-21 #todo",
   "Inbox",
   "  Draft #feature",
   "  Call mum",
@@ -21,11 +21,11 @@ const OUTLINE = [
 
 function outline(text = OUTLINE, change: (doc: Doc, idOf: (text: string) => string) => Doc = (doc) => doc): Doc {
   const doc = parseIndentedText(text);
-  return change(doc, (wanted) => Object.values(doc.items).find((item) => item.text === wanted)!.id);
+  return change(doc, (wanted) => Object.values(doc.items).find((item) => titleWithTags(item) === wanted)!.id);
 }
 
 function found(doc: Doc, query: string, showCompleted = true): string[] {
-  return queryMatches(doc, ROOT, parseQuery(query, MONDAY), { showCompleted }).map((id) => doc.items[id].text);
+  return queryMatches(doc, ROOT, parseQuery(query, MONDAY), { showCompleted }).map((id) => titleWithTags(doc.items[id]));
 }
 
 describe("the query language", () => {
@@ -44,8 +44,8 @@ describe("the query language", () => {
 
   it("keeps items below a path, given whole or by its last parts", () => {
     expect(found(outline(), 'under:"Projects/Outliner" #feature')).toEqual(["Query views #feature", "Agenda #feature"]);
-    expect(found(outline(), "under:garden")).toEqual(["Fence #todo 2026-10-15", "Seeds #todo 2026-10-21"]);
-    expect(found(outline(), "under:Projects/Garden")).toEqual(["Fence #todo 2026-10-15", "Seeds #todo 2026-10-21"]);
+    expect(found(outline(), "under:garden")).toEqual(["Fence 2026-10-15 #todo", "Seeds 2026-10-21 #todo"]);
+    expect(found(outline(), "under:Projects/Garden")).toEqual(["Fence 2026-10-15 #todo", "Seeds 2026-10-21 #todo"]);
     expect(found(outline(), "under:Inbox/Outliner")).toEqual([]);
   });
 
@@ -56,9 +56,9 @@ describe("the query language", () => {
   });
 
   it("filters by the date words of search", () => {
-    expect(found(outline(), "is:overdue")).toEqual(["Fence #todo 2026-10-15"]);
-    expect(found(outline(), "#todo date:>=today")).toEqual(["Seeds #todo 2026-10-21"]);
-    expect(found(outline(), "date:this-week")).toEqual(["Seeds #todo 2026-10-21"]);
+    expect(found(outline(), "is:overdue")).toEqual(["Fence 2026-10-15 #todo"]);
+    expect(found(outline(), "#todo date:>=today")).toEqual(["Seeds 2026-10-21 #todo"]);
+    expect(found(outline(), "date:this-week")).toEqual(["Seeds 2026-10-21 #todo"]);
   });
 
   it("finds items with a property set", () => {
@@ -69,7 +69,7 @@ describe("the query language", () => {
   it("does not look into what the Show completed switch hides", () => {
     const doc = outline(OUTLINE, (doc, idOf) => setFlags(doc, idOf("Garden"), { completed: true }));
     expect(found(doc, "#todo", false)).toEqual([]);
-    expect(found(doc, "#todo", true)).toEqual(["Fence #todo 2026-10-15", "Seeds #todo 2026-10-21"]);
+    expect(found(doc, "#todo", true)).toEqual(["Fence 2026-10-15 #todo", "Seeds 2026-10-21 #todo"]);
   });
 
   it("matches nothing when empty", () => {
@@ -91,16 +91,16 @@ describe("a query item", () => {
 
   it("does not list itself", () => {
     const doc = outline("Features #feature\nAgenda #feature");
-    const view = Object.values(doc.items).find((item) => item.text === "Features #feature")!.id;
-    expect(queryMatches(doc, ROOT, parseQuery("#feature"), { showCompleted: true }, view).map((id) => doc.items[id].text)).toEqual(["Agenda #feature"]);
+    const view = Object.values(doc.items).find((item) => titleWithTags(item) === "Features #feature")!.id;
+    expect(queryMatches(doc, ROOT, parseQuery("#feature"), { showCompleted: true }, view).map((id) => titleWithTags(doc.items[id]))).toEqual(["Agenda #feature"]);
   });
 
   it("groups by parent in the order the parents first appear", () => {
     const doc = outline();
     const ids = queryMatches(doc, ROOT, parseQuery("#feature OR #todo"), { showCompleted: true });
-    expect(byParent(doc, ids).map(({ section, ids }) => [doc.items[section].text, ids.map((id) => doc.items[id].text)])).toEqual([
+    expect(byParent(doc, ids).map(({ section, ids }) => [doc.items[section].text, ids.map((id) => titleWithTags(doc.items[id]))])).toEqual([
       ["Outliner", ["Query views #feature", "Agenda #feature"]],
-      ["Garden", ["Fence #todo 2026-10-15", "Seeds #todo 2026-10-21"]],
+      ["Garden", ["Fence 2026-10-15 #todo", "Seeds 2026-10-21 #todo"]],
       ["Inbox", ["Draft #feature"]],
     ]);
   });
@@ -108,7 +108,7 @@ describe("a query item", () => {
   it("groups by date: overdue, each day, undated, then done items dated earlier", () => {
     const doc = outline("Old 2026-10-01\nLater 2026-10-30\nSoon 2026-10-20\nUndated\nFinished 2026-10-02", (doc, idOf) => setFlags(doc, idOf("Finished 2026-10-02"), { completed: true }));
     const ids = queryMatches(doc, ROOT, parseQuery("-nothing"), { showCompleted: true });
-    expect(byDate(doc, ids, MONDAY).map(({ section, ids }) => [section.kind === "day" ? section.day : section.kind, ids.map((id) => doc.items[id].text)])).toEqual([
+    expect(byDate(doc, ids, MONDAY).map(({ section, ids }) => [section.kind === "day" ? section.day : section.kind, ids.map((id) => titleWithTags(doc.items[id]))])).toEqual([
       ["overdue", ["Old 2026-10-01"]],
       ["2026-10-20", ["Soon 2026-10-20"]],
       ["2026-10-30", ["Later 2026-10-30"]],

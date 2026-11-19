@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { agendaGroups } from "../src/agendaItems";
-import { Doc, setFlags, setItemProperty } from "../src/model";
+import { Doc, setFlags, setItemProperty, titleWithTags } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 
 const MONDAY = "2026-10-19";
@@ -14,7 +14,7 @@ function outline(text: string, change: (doc: Doc, idOf: (text: string) => string
 function shown(doc: Doc, showCompleted = false) {
   return agendaGroups(doc, MONDAY, { showCompleted }).map(({ section, ids }) => [
     section.kind === "day" ? section.day : section.kind,
-    ids.map((id) => doc.items[id].text),
+    ids.map((id) => titleWithTags(doc.items[id])),
   ]);
 }
 

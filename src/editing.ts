@@ -8,6 +8,7 @@ import {
   indent,
   insertChild,
   liftNoteProperties,
+  liftTags,
   privateKeyOf,
   indexInParent,
   isReadOnly,
@@ -100,6 +101,7 @@ export function bindEditorEvents(): void {
       dropTrailingBlankLines(editor.dataset.id!);
       liftTypedProperties(editor.dataset.id!);
     }
+    if (editor) liftTypedTags(editor.dataset.id!);
     const item = editor && doc().items[editor.dataset.id!];
     if (!editor || !item || isMirrorText(editor)) return;
     editor.innerHTML = isNoteEditor(editor) ? renderNote(item.note) : renderItemText(item.text);
@@ -242,6 +244,28 @@ function liftTypedProperties(id: ItemId): void {
     const lifted = liftNoteProperties(doc(), [id]);
     if (lifted !== doc()) commitAndRender(lifted, caretNow());
   });
+}
+
+/** `#tag` words typed into a title or note become the tags property once the item is left. */
+function liftTypedTags(id: ItemId): void {
+  setTimeout(() => {
+    if (editorOf(document.activeElement)?.dataset.id === id) return;
+    const lifted = liftTags(doc(), [id]);
+    if (lifted === doc()) return;
+    if (lifted.items[id].note === "") state.openNotes.delete(id);
+    commitAndRender(lifted, caretNow());
+  });
+}
+
+/** A tag picked from completion goes to the property at once, leaving the caret where the tag was. */
+export function liftTagPickedAt(id: ItemId, offset: number): void {
+  const lifted = liftTags(doc(), [id]);
+  if (lifted === doc()) return;
+  const active = editorOf(document.activeElement);
+  if (!active) return commitAndRender(lifted, null);
+  const inNote = isNoteEditor(active);
+  const length = (inNote ? lifted.items[id].note : lifted.items[id].text).length;
+  commitAndRender(lifted, { id, offset: Math.min(offset, length), inNote });
 }
 
 function dropTrailingBlankLines(id: ItemId): void {

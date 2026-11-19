@@ -1,4 +1,4 @@
-import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, setFlags, setNote } from "./model";
+import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, liftTags, setFlags, setNote, titleWithTags } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
 import { isInCode, mapLinesOutsideCode, propertyLines } from "./notes";
@@ -13,7 +13,7 @@ export function exportOpml(doc: Doc, top: ItemId): string {
     const item = readable(doc, doc.items[id]);
     const pad = "  ".repeat(depth);
     const attributes = [
-      `text="${attribute(item.text)}"`,
+      `text="${attribute(titleWithTags(item))}"`,
       noteWithProperties(item) ? `_note="${attribute(noteWithProperties(item))}"` : "",
       item.completed ? `_complete="true"` : "",
     ]
@@ -58,7 +58,8 @@ export function subtreesAsText(doc: Doc, roots: ItemId[], written = (_: Doc, ite
   const walk = (id: ItemId, depth: number) => {
     const item = written(doc, doc.items[id]);
     const pad = "  ".repeat(depth);
-    lines.push(`${pad}- ${item.completed ? `~~${item.text}~~` : item.text}`);
+    const title = titleWithTags(item);
+    lines.push(`${pad}- ${item.completed ? `~~${title}~~` : title}`);
     for (const noteLine of [...propertyLines(item.properties), ...item.note.split("\n")].filter(Boolean)) lines.push(`${pad}  ${noteLine}`);
     for (const child of item.children) walk(child, depth + 1);
   };
@@ -94,7 +95,7 @@ function importOpml(xml: string): Doc {
     }
   };
   walk(body, ROOT);
-  return liftNoteProperties(doc);
+  return liftTags(liftNoteProperties(doc));
 }
 
 const BULLET = /^([-*+]|\d+[.)])\s+/;
@@ -129,7 +130,7 @@ export function parseIndentedText(text: string): Doc {
       stack.push({ indent, item: created, bulleted });
     }
   });
-  return liftNoteProperties(parsed);
+  return liftTags(liftNoteProperties(parsed));
 }
 
 /** Copies every top-level item of `incoming`, with fresh ids, into `parent` starting at `index`. */

@@ -52,6 +52,13 @@ function splitArgs(command: string): string[] {
 }
 
 describe("outline CLI", () => {
+  it("stores a tag written in a title as the tags property and prints it after the title", async () => {
+    await outline('add "a #x b"');
+    expect(await outlineWithoutBookmarks("show")).toBe("- a b #x");
+    expect(await outline("show --json")).toContain('"tags": "x"');
+    expect(await outline("find --query \"#x\"")).toContain("a b #x");
+  });
+
   it("adds items, nests them by path and shows the outline", async () => {
     await outline('add "Projects"');
     await outline('add "Garden" --under Projects');

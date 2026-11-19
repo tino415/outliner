@@ -31,8 +31,9 @@ test("⋯ → Agenda lists what is overdue, each day of the week and the undated
     "Standup 2026-10-19 9:15",
     "Review 2026-10-19",
     "Water plants 2026-10-21",
-    "Write report #todo",
+    "Write report",
   ]);
+  await expect(agendaRow(page, "Write report").locator(".tag-chip")).toHaveText("#todo");
   await expect(agendaRow(page, "Standup").locator(".agenda-path")).toHaveText("Work");
   await page.screenshot({ path: `screenshots/${info.project.name}-agenda.png` });
   await agendaRow(page, "Standup").locator(".agenda-path").click();

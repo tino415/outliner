@@ -1,6 +1,5 @@
-import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown } from "./model";
+import { Doc, Item, ItemId, ROOT, ViewFilter, ancestors, isShown, tagsOf } from "./model";
 import { Day, dateFilter, datesOf, today } from "./dates";
-import { tagsWritten } from "./inline";
 
 /*
  * Query views (doc/adr/0044): `#feature is:open OR under:"Projects/Outliner" -draft`.
@@ -96,7 +95,7 @@ function wordTest(word: string, now: Day): Matcher {
   const lower = unquote(word).toLowerCase();
   if (word.startsWith("#") && word.length > 1) {
     const tag = lower.slice(1);
-    return (doc, id) => tagsWritten(doc.items[id].text).some((written) => written.toLowerCase() === tag);
+    return (doc, id) => tagsOf(doc.items[id]).some((written) => written.toLowerCase() === tag);
   }
   const operator = /^(is|under|has):(.+)$/i.exec(word);
   if (operator) {
