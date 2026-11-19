@@ -393,7 +393,7 @@ test("a file dropped on a card is attached to that card", { tag: "@phone" }, asy
     text.dispatchEvent(new DragEvent("dragover", { dataTransfer: data, bubbles: true, cancelable: true }));
     text.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
   });
-  await expect(card(page, "review").locator(".note")).toContainText("notes.txt");
+  await expect(childRows(card(page, "review"))).toHaveText([/^\[notes\.txt\]\(att:[0-9a-f]{64}\)$/]);
 });
 
 test("+ Add a card puts the card first in a column with :new: top", { tag: "@phone" }, async ({ page }) => {

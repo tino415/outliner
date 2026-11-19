@@ -270,9 +270,7 @@ test("a file attached on one device shows on another and reaches the CLI", async
   await (await chooser).setFiles({ name: "glitch.png", mimeType: "image/png", buffer: pixel });
   const preview = one.locator(".att-image");
   await expect(preview).toHaveAttribute("src", /^blob:/);
-  const note = await row(one, "glitch report").locator(".note").textContent();
-  const hash = /att:([0-9a-f]{64})/.exec(note ?? "")![1];
-  expect(note).toBe(`![glitch.png](att:${hash})`);
+  const hash = /att:([0-9a-f]{64})/.exec(await outlineText(one))![1];
   await synced(one);
 
   const two = await device(browser, "x");
