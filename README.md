@@ -43,6 +43,11 @@ Item pickers (jump, Move to, Mirror, Link to) match paths written with
 slashes, as `ID/IEx` for `PayoutID > IEx` (doc/adr/0064).
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
+Typing `/` at the start of a title, or after a space in it, lists the item's
+commands, the way in on a phone (doc/adr/0068). Choosing one deletes the `/`
+and runs it; Escape keeps the `/`. In a note, or inside a word or a URL, a
+`/` is just a slash.
+
 Ctrl-. folds the item; Ctrl-Shift-. collapses everything inside it, or
 expands it all once nothing inside is open, as the item menu's Collapse
 everything inside and Expand everything inside do (doc/adr/0054). On a
@@ -157,8 +162,8 @@ so does anything in backticks.
 
 A date is written as ISO text, `2026-10-14` or `2026-10-14 9:00`, in an
 item, a note or a property, and shows as a chip: "today", "tomorrow",
-"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J I D (⌘J I D) or typing `!!`
-asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
+"Tue 14 Oct", red once past (doc/adr/0036). Ctrl-J I D (⌘J I D), typing `!!`, or
+`/` then Insert a date on a phone asks for a date and writes it at the caret: `tomorrow`, `fri`, `+3d`, `2w`,
 `14.10.`, `14 oct`, `25` (the next 25th), each with an optional `9:00`. A
 click on a chip changes or removes it. The properties `scheduled` and
 `due` take their value from the same picker. Search understands

@@ -1,5 +1,5 @@
 import { Page, expect, test } from "@playwright/test";
-import { caret, clickEnd, editor, freshOutline, row } from "./helpers";
+import { caret, choose, clickEnd, editor, freshOutline, row } from "./helpers";
 
 async function onMonday(page: Page, outline: string) {
   await page.clock.setFixedTime(new Date(2026, 9, 19, 12));
@@ -106,4 +106,19 @@ test.describe("a UTC time", () => {
     await deploy.click({ position: { x: 4, y: 8 } });
     await expect(deploy).toHaveText("Deploy 2026-10-19 9:00Z");
   });
+});
+
+test("Insert a date in the slash palette names !! and picks today on a phone", { tag: "@phone" }, async ({ page, isMobile }) => {
+  await onMonday(page, "First");
+  await clickEnd(page, "First");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/");
+  const insertDate = page.locator("#palette li").first();
+  await expect(insertDate).toContainText("Insert a date");
+  await expect(insertDate).toContainText("!!");
+  await choose(insertDate, isMobile);
+  const today = page.locator("#palette li").first();
+  await expect(today).toHaveText("2026-10-19Mon 19 Oct");
+  await choose(today, isMobile);
+  expect(await caret(page)).toEqual({ text: "2026-10-19", offset: 10 });
 });

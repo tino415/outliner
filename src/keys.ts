@@ -18,6 +18,8 @@ interface Shortcut {
   keys: string[];
   label: string;
   hidden?: boolean;
+  /** Text typed in an item that does the same, shown in the palettes in place of the keys. */
+  typed?: string;
   where: View | "any";
 }
 
@@ -136,7 +138,7 @@ const defaultBindings: Binding[] = [
   editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
   editor("mirror", ["Mod+j r"], "Mirror here", (c) => actions.mirrorHere(c)),
-  editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)),
+  { ...editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)), typed: "!!" },
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
   editor("copy-link", ["Mod+j y"], "Copy link to this item", (c) => copyLink(c.id)),
@@ -361,7 +363,25 @@ export function keyCommands(editing: EditorContext | null): Command[] {
   return [...commands.values()];
 }
 
+const SLASH_ORDER: CommandName[] = ["date", "tag", "property", "kind", "link", "mirror", "attach", "bold", "italic", "code", "code-block"];
+
+/** The commands of the item being edited, the ones typed with a slash first. `context` is read when one runs, as the caret has moved by then. */
+export function editorCommands(context: () => EditorContext): Command[] {
+  const bindings = bindingsHere().filter((binding): binding is BindingIn<"editor"> => binding.context === "editor" && binding.isCommand && !binding.hidden && Boolean(binding.label));
+  const rank = (binding: BindingIn<"editor">) => {
+    const place = SLASH_ORDER.indexOf(binding.name as CommandName);
+    return place === -1 ? SLASH_ORDER.length : place;
+  };
+  const labels = new Set<string>();
+  return bindings
+    .filter((binding) => !labels.has(binding.label) && labels.add(binding.label))
+    .sort((a, b) => rank(a) - rank(b))
+    .map((binding) => ({ label: binding.label, shortcut: shortcutFor(binding.label), run: () => binding.run(context()) }));
+}
+
 function shortcutFor(label: string): string {
+  const typed = bindingsHere().find((binding) => binding.label === label && binding.typed)?.typed;
+  if (typed) return `or type <kbd>${escape(typed)}</kbd>`;
   const keys = bindingsHere().filter((binding) => binding.label === label).flatMap((binding) => usableKeys(binding));
   return keys.length ? pretty(keys[0]) : "";
 }
