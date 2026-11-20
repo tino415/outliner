@@ -53,6 +53,16 @@ describe("sync server", () => {
     ]);
   });
 
+  it("drops a push that renames Settings or Capture templates, or completes them, and keeps the rest", async () => {
+    const pushed = await sync({
+      since: 0,
+      changes: [change("settings", "Prefs", "1"), change("capture-templates", "Templates", "1"), { item: "capture-templates", field: "completed", value: true, clock: "2" }, change("other", "kept", "1")],
+    });
+    expect(pushed.status).toBe(200);
+    const stored = (await pushed.json()).changes as Change[];
+    expect(stored.map((c) => [c.item, c.field, c.value])).toEqual([["other", "text", "kept"]]);
+  });
+
   it("keeps the change with the later clock whatever order they arrive in", async () => {
     await sync({ since: 0, changes: [change("a", "later", "5")] });
     const answer = await (await sync({ since: 0, changes: [change("a", "earlier", "3")] })).json();

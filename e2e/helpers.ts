@@ -58,7 +58,7 @@ export async function outlineText(page: Page): Promise<string> {
     const walk = (list: Element, depth: number) => {
       for (const li of Array.from(list.children)) {
         const field = li.querySelector(":scope > .row .text") as HTMLElement;
-        if (field.dataset.id === "bookmarks") continue;
+        if (field.dataset.id === "settings") continue;
         const chips = Array.from(li.querySelectorAll(":scope > .row .props .tag-chip"), (chip) => ` ${chip.textContent}`).join("");
         const text = field.textContent + chips;
         const done = li.classList.contains("completed") ? " [x]" : "";

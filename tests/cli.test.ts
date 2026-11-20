@@ -31,7 +31,7 @@ async function outline(command: string, stdin = "") {
   return result.output;
 }
 
-/** Every outline holds the Bookmarks system item; the tests that compare a whole outline leave its line out. */
+/** Every outline holds the Settings system item; the tests that compare a whole outline leave it and what is under it out. */
 async function outlineWithoutBookmarks(command: string, stdin = "") {
   const lines = (await outline(command, stdin)).split("\n");
   const indentOf = (line: string) => line.length - line.trimStart().length;
@@ -40,7 +40,7 @@ async function outlineWithoutBookmarks(command: string, stdin = "") {
     .filter((line) => {
       if (skippingBelow >= 0 && indentOf(line) > skippingBelow) return false;
       skippingBelow = -1;
-      if (!/^\s*(- )?Bookmarks(\s+\[bookmarks\])?\s*(\d.*)?$/.test(line)) return true;
+      if (!/^\s*(- )?Settings(\s+\[settings\])?\s*(\d.*)?$/.test(line)) return true;
       skippingBelow = indentOf(line);
       return false;
     })
@@ -373,10 +373,12 @@ describe("outline CLI", () => {
     });
   });
 
-  it("makes the Bookmarks item on first run, once, and keeps it", async () => {
+  it("makes Settings with Bookmarks and Capture templates on first run, once, and keeps them", async () => {
     await outline("show");
     await outline('add "Garden"');
-    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Bookmarks\nabout-bookmarks {2}Bookmarks \/ About Bookmarks$/);
+    expect(await outline("find Bookmarks --ids")).toMatch(/^bookmarks {2}Settings \/ Bookmarks\nabout-bookmarks {2}Settings \/ Bookmarks \/ About Bookmarks$/);
+    expect(await outline("find Capture templates --ids")).toMatch(/^capture-templates {2}Settings \/ Capture templates\nabout-capture-templates {2}Settings \/ Capture templates \/ About Capture templates$/);
+    expect(await outline("show settings")).toMatch(/^- Settings\n {2}- Bookmarks\n(.*\n)*? {2}- Capture templates\n {4}:columns: capture key\n {4}- About Capture templates\n/);
     await outline('add "Plan" --under bookmarks');
     await expect(outline("rm bookmarks")).rejects.toThrow("Bookmarks stays; empty it instead");
     await expect(outline("rm about-bookmarks")).rejects.toThrow("About Bookmarks is read-only");
@@ -384,9 +386,12 @@ describe("outline CLI", () => {
     await expect(outline("move about-bookmarks --under Garden")).rejects.toThrow("About Bookmarks is read-only");
     await expect(outline("move about-bookmarks --under root")).rejects.toThrow("About Bookmarks is read-only");
     await expect(outline("move bookmarks --under Garden")).rejects.toThrow("Bookmarks stays; empty it instead");
-    await outline("move Garden --before bookmarks");
-    await outline("move bookmarks --before Garden");
-    expect((await outline("show --json").then(JSON.parse)).children.map((child: { id: string }) => child.id)[0]).toBe("bookmarks");
+    await expect(outline("move bookmarks --under root")).rejects.toThrow("Bookmarks stays; empty it instead");
+    await expect(outline("move capture-templates --under root")).rejects.toThrow("Capture templates stays; empty it instead");
+    await expect(outline("rm settings")).rejects.toThrow("Settings stays; empty it instead");
+    await outline("move Garden --before settings");
+    await outline("move settings --before Garden");
+    expect((await outline("show --json").then(JSON.parse)).children.map((child: { id: string }) => child.id)[0]).toBe("settings");
     expect(await outline("show bookmarks")).toMatch(/^- Bookmarks\n {2}:columns: key\n {2}- About Bookmarks\n(.*\n)*? {2}- Plan$/);
   });
 
@@ -404,10 +409,19 @@ describe("outline CLI", () => {
     expect(await outline("show bookmarks")).not.toContain(":columns:");
   });
 
+  it("refuses to change what Settings and Capture templates fix", async () => {
+    await outline("show");
+    await expect(outline("edit capture-templates x")).rejects.toThrow("Capture templates is read-only");
+    await expect(outline("edit settings x")).rejects.toThrow("Settings is read-only");
+    await expect(outline("edit about-capture-templates-1 x")).rejects.toThrow("About Capture templates is read-only");
+    await expect(outline("rm capture-templates")).rejects.toThrow("Capture templates stays; empty it instead");
+    expect(await outline("show capture-templates")).toContain("- About Capture templates");
+  });
+
   it("prints the tree as JSON with ids", async () => {
     await outline('add "a" --note "about a"');
     const tree = JSON.parse(await outline("show --json"));
-    expect(tree.children[0]).toMatchObject({ id: "bookmarks", text: "Bookmarks" });
+    expect(tree.children[0]).toMatchObject({ id: "settings", text: "Settings" });
     expect(tree.children[1]).toMatchObject({ text: "a", note: "about a", children: [] });
     expect(tree.children[1].id).toMatch(/\w+/);
   });
