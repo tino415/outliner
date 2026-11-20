@@ -3,7 +3,7 @@ import { selectionActions } from "./selection";
 import { globalActions } from "./chrome";
 import { escape } from "./inline";
 import { Platform, isMac, platform } from "./platform";
-import { View, shownView, toggleBoard } from "./board";
+import { View, editChecksOfPage, shownView, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
 import { copyLink, copyLinkToPage } from "./links";
 import { bookmarkThisPage, openBookmark, openBookmarkList } from "./bookmarking";
@@ -193,6 +193,7 @@ const defaultBindings: Binding[] = [
   ),
   global("open-bookmarks", ["Mod+j 0"], "Open Bookmarks", "anywhere", () => openBookmarkList()),
   global("bookmark-page", [], "Bookmark this page", "anywhere", () => bookmarkThisPage()),
+  global("edit-checks", [], "Edit checks of this page", "anywhere", () => editChecksOfPage()),
   global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),

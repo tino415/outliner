@@ -447,12 +447,12 @@ export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string
   });
 }
 
-/** Moves `:key: value` lines out of the notes of `ids` (every item by default) into their properties. */
-export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.items)): Doc {
+/** Moves `:key: value` lines out of the notes of `ids` (every item by default) into their properties, except the lines `refused` says no to. */
+export function liftNoteProperties(doc: Doc, ids: ItemId[] = Object.keys(doc.items), refused: (id: ItemId, key: string, value: string) => boolean = () => false): Doc {
   const lifted = ids.flatMap((id) => {
     const item = doc.items[id];
     if (!item || !item.note.includes(":") || sealedKeyOf(item.note)) return [];
-    const { properties, rest } = splitPropertyLines(item.note);
+    const { properties, rest } = splitPropertyLines(item.note, (key, value) => refused(id, key, value));
     return properties.size === 0 ? [] : [{ id, properties, rest }];
   });
   if (lifted.length === 0) return doc;

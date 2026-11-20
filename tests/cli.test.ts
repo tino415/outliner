@@ -455,6 +455,20 @@ describe("outline CLI", () => {
     expect(await outline("show Monday/Breakfast/Coffee")).toBe("- Coffee\n  :calories: 20 kcal");
   });
 
+  it("refuses a value that breaks a Checks: child, in set and in capture --set", async () => {
+    await outline('add "TODO:"');
+    const checks = await outline('add "Checks:" --under TODO:');
+    const effort = await outline(`add "effort: one of" --under ${checks}`);
+    for (const value of ["low", "high"]) await outline(`add ${value} --under ${effort}`);
+    const fix = await outline('add "Fix it" --under TODO:');
+
+    await outline(`set ${fix} effort low`);
+    const refused = await run(splitArgs(`set ${fix} effort huge`), env);
+    expect(refused.code).not.toBe(0);
+    expect(refused.output).toContain("effort must be one of low, high");
+    expect(await outline(`show ${fix}`)).toContain(":effort: low");
+  });
+
   it("keeps the table aligned with wide characters", async () => {
     await outline('add "日本語"');
     await outline('add "plain"');

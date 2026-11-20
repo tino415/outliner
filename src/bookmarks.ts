@@ -1,6 +1,7 @@
 import { BOOKMARKS, BOOKMARKS_ABOUT, Doc, ItemId, ROOT, appendChild, isPrivateItem, privateRootAbove, setText } from "./model";
 import { onlyUrl } from "./inline";
 import { referenceTo, resolveReference } from "./references";
+import { isChecksItem } from "./checks";
 
 /*
  * The list of bookmarks (doc/adr/0060) is the system item with the id
@@ -20,7 +21,7 @@ export interface Bookmark {
 const WHOLE_LINK = /^\[\[([^[\]\n]+)\](?:\[([^[\]\n]+)\])?\]$/;
 
 export function bookmarksIn(doc: Doc): Bookmark[] {
-  return (doc.items[BOOKMARKS]?.children ?? []).filter((child) => child !== BOOKMARKS_ABOUT).flatMap((child) => {
+  return (doc.items[BOOKMARKS]?.children ?? []).filter((child) => child !== BOOKMARKS_ABOUT && !isChecksItem(doc.items[child])).flatMap((child) => {
     const destination = destinationOf(doc, child);
     return destination ? [{ child, digit: digitOf(doc, child), destination }] : [];
   });

@@ -1144,6 +1144,15 @@ code {
   font-style: italic;
 }
 
+.prop-chip.bad .prop-value,
+.check-bad > .row .text {
+  color: light-dark(#b3261e, #ff8a80);
+}
+
+.item.checks > .row .text {
+  color: var(--muted);
+}
+
 .prop-chip.tag-chip {
   color: var(--tag);
   background: var(--tag-bg);
@@ -1370,7 +1379,8 @@ code {
 }
 
 .board-new-card,
-.board-new-column {
+.board-new-column,
+.board-checks {
   justify-self: start;
   padding: 4px 6px;
   border-radius: 7px;
@@ -1379,12 +1389,14 @@ code {
 }
 
 .board-new-card:hover,
-.board-new-column:hover {
+.board-new-column:hover,
+.board-checks:hover {
   background: var(--hover);
   color: var(--fg);
 }
 
-.board-new-column {
+.board-new-column,
+.board-checks {
   flex: 0 0 auto;
   margin-top: 8px;
 }
@@ -2495,7 +2507,8 @@ body.dragging {
 }
 
 .with-searching .board-new-card,
-.with-searching .board-new-column {
+.with-searching .board-new-column,
+.with-searching .board-checks {
   display: none;
 }
 
