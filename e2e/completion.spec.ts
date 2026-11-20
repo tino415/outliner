@@ -8,7 +8,7 @@ test("typing : at the start of a note line offers the keys in use", async ({ pag
   await page.keyboard.type(":");
   const list = page.locator(".completion");
   await expect(list).toBeVisible();
-  await expect(list.locator("li")).toHaveText([":calories:", ":protein:", ":columns:"]);
+  await expect(list.locator("li")).toHaveText([":calories:", ":columns:", ":protein:"]);
   await page.keyboard.type("pr");
   await expect(list.locator("li")).toHaveText([":protein:"]);
   await page.keyboard.press("Enter");

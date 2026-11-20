@@ -4,10 +4,11 @@ import {
   BOOKMARKS_ABOUT,
   Doc,
   ROOT,
+  SETTINGS_ITEM,
   appendChild,
   buildDoc,
   completeAll,
-  contradictsBookmarks,
+  contradictsKept,
   duplicate,
   indent,
   insertChild,
@@ -26,9 +27,9 @@ import {
   setText,
   split,
   toggleCompleted,
-  withBookmarksItem,
-  withBookmarksParts,
-  withoutBookmarksAbout,
+  withSettingsItems,
+  withKeptParts,
+  withoutKeptAbouts,
 } from "../src/model";
 import { bookmarkForDigit, bookmarkPage, bookmarksIn } from "../src/bookmarks";
 import { History } from "../src/store";
@@ -38,7 +39,7 @@ function outline() {
   const doc = buildDoc((root, append) => {
     for (const name of ["Garden", "Shed"]) ids[name] = append(root, name).id;
   });
-  return { doc: withBookmarksItem(doc), ids };
+  return { doc: withSettingsItems(doc), ids };
 }
 
 const filter = { showCompleted: true };
@@ -51,14 +52,15 @@ function withChild(doc: Doc, text: string): { doc: Doc; id: string } {
 }
 
 describe("the Bookmarks system item", () => {
-  it("is made once, at the top level, with the fixed id", () => {
+  it("is made once, under Settings, with the fixed id", () => {
     const { doc } = outline();
-    expect(doc.items[BOOKMARKS]).toMatchObject({ text: "Bookmarks", parent: ROOT });
-    expect(doc.items[ROOT].children.filter((id) => id === BOOKMARKS)).toHaveLength(1);
-    expect(withBookmarksItem(doc)).toBe(doc);
+    expect(doc.items[BOOKMARKS]).toMatchObject({ text: "Bookmarks", parent: SETTINGS_ITEM });
+    expect(doc.items[SETTINGS_ITEM].children.filter((id) => id === BOOKMARKS)).toHaveLength(1);
+    expect(doc.items[ROOT].children).not.toContain(BOOKMARKS);
+    expect(withSettingsItems(doc)).toBe(doc);
   });
 
-  it("refuses to be deleted, nested or merged away, and may be moved among the top items", () => {
+  it("refuses to be deleted, nested, merged away or moved out of Settings", () => {
     const { doc, ids } = outline();
     expect(remove(doc, BOOKMARKS)).toBe(doc);
     expect(removeAll(doc, [ids.Garden, BOOKMARKS])).toBe(doc);
@@ -66,7 +68,8 @@ describe("the Bookmarks system item", () => {
     expect(indent(doc, BOOKMARKS, { showCompleted: true })).toBe(doc);
     expect(mergeInto(doc, BOOKMARKS, ids.Shed).doc).toBe(doc);
     expect(mergeInto(doc, ids.Shed, BOOKMARKS).doc).toBe(doc);
-    expect(moveTo(doc, BOOKMARKS, ROOT, 0).items[ROOT].children[0]).toBe(BOOKMARKS);
+    expect(moveTo(doc, BOOKMARKS, ROOT, 0)).toBe(doc);
+    expect(outdent(doc, BOOKMARKS, ROOT)).toBe(doc);
   });
 });
 
@@ -93,25 +96,25 @@ describe("the About Bookmarks item", () => {
 
   it("is never in a saved or synced document", () => {
     const { doc } = outline();
-    const saved = withoutBookmarksAbout(doc);
+    const saved = withoutKeptAbouts(doc);
     expect(Object.keys(saved.items).filter(isAboutItem)).toEqual([]);
     expect(saved.items[BOOKMARKS].children).toEqual([]);
-    expect(withBookmarksItem(saved).items[BOOKMARKS].children[0]).toBe(BOOKMARKS_ABOUT);
+    expect(withSettingsItems(saved).items[BOOKMARKS].children[0]).toBe(BOOKMARKS_ABOUT);
   });
 
   it("is put back whole after a garbled line, a deleted line or a line moved away", () => {
     const { doc } = outline();
     const garbled = { items: { ...doc.items, [firstLine]: { ...doc.items[firstLine], text: "garbled" }, [nestedLine]: undefined as never } };
-    const restored = withBookmarksParts(garbled);
+    const restored = withKeptParts(garbled);
     expect(restored.items[firstLine].text).toBe("Add a bookmark");
     expect(restored.items[nestedLine].text).toBe("Add an item here with a link to a page or a web address");
     const moved = { items: { ...doc.items, [firstLine]: { ...doc.items[firstLine], parent: BOOKMARKS } } };
-    expect(withBookmarksParts(moved).items[firstLine].parent).toBe(BOOKMARKS_ABOUT);
+    expect(withKeptParts(moved).items[firstLine].parent).toBe(BOOKMARKS_ABOUT);
   });
 
   it("keeps its folding", () => {
     const unfolded = setCollapsed(outline().doc, BOOKMARKS_ABOUT, false);
-    expect(withBookmarksParts(unfolded)).toBe(unfolded);
+    expect(withKeptParts(unfolded)).toBe(unfolded);
   });
 
   it("is refused deletion, nesting, merging and leaving Bookmarks", () => {
@@ -135,8 +138,8 @@ describe("the About Bookmarks item", () => {
 
   it("stays first when a bookmark is added or moved to the top", () => {
     const { doc, id } = withChild(outline().doc, "Plan");
-    expect(withBookmarksParts(insertChild(doc, BOOKMARKS, 0).doc).items[BOOKMARKS].children[0]).toBe(BOOKMARKS_ABOUT);
-    expect(withBookmarksParts(moveTo(doc, id, BOOKMARKS, 0)).items[BOOKMARKS].children).toEqual([BOOKMARKS_ABOUT, id]);
+    expect(withKeptParts(insertChild(doc, BOOKMARKS, 0).doc).items[BOOKMARKS].children[0]).toBe(BOOKMARKS_ABOUT);
+    expect(withKeptParts(moveTo(doc, id, BOOKMARKS, 0)).items[BOOKMARKS].children).toEqual([BOOKMARKS_ABOUT, id]);
   });
 });
 
@@ -201,17 +204,17 @@ describe("what is read-only in Bookmarks and About Bookmarks", () => {
   it("is put back in a document where Bookmarks was renamed or completed", () => {
     const { doc } = outline();
     const renamed = { items: { ...doc.items, [BOOKMARKS]: { ...doc.items[BOOKMARKS], text: "Pages", note: "x", completed: true } } };
-    expect(withBookmarksParts(renamed).items[BOOKMARKS]).toMatchObject({ text: "Bookmarks", note: "", completed: false });
+    expect(withKeptParts(renamed).items[BOOKMARKS]).toMatchObject({ text: "Bookmarks", note: "", completed: false });
   });
 
   it("is not accepted from a sync write that differs, while a sealed note and the rest are", () => {
-    expect(contradictsBookmarks(BOOKMARKS, "text", "Pages")).toBe(true);
-    expect(contradictsBookmarks(BOOKMARKS, "text", "Bookmarks")).toBe(false);
-    expect(contradictsBookmarks(BOOKMARKS, "note", "x")).toBe(true);
-    expect(contradictsBookmarks(BOOKMARKS, "note", "🔒private:1:key:AAAA")).toBe(false);
-    expect(contradictsBookmarks(BOOKMARKS, "completed", true)).toBe(true);
-    expect(contradictsBookmarks(BOOKMARKS, "prop:columns", "key")).toBe(false);
-    expect(contradictsBookmarks("other", "text", "Pages")).toBe(false);
+    expect(contradictsKept(BOOKMARKS, "text", "Pages")).toBe(true);
+    expect(contradictsKept(BOOKMARKS, "text", "Bookmarks")).toBe(false);
+    expect(contradictsKept(BOOKMARKS, "note", "x")).toBe(true);
+    expect(contradictsKept(BOOKMARKS, "note", "🔒private:1:key:AAAA")).toBe(false);
+    expect(contradictsKept(BOOKMARKS, "completed", true)).toBe(true);
+    expect(contradictsKept(BOOKMARKS, "prop:columns", "key")).toBe(false);
+    expect(contradictsKept("other", "text", "Pages")).toBe(false);
   });
 
   it("has the notice that names it", () => {
@@ -228,7 +231,7 @@ describe("the key column of Bookmarks", () => {
   it("stays removed once Bookmarks exists", () => {
     const { doc } = outline();
     const cleared = setItemProperty(doc, BOOKMARKS, "columns", "");
-    expect(withBookmarksItem(cleared).items[BOOKMARKS].properties.columns).toBeUndefined();
+    expect(withSettingsItems(cleared).items[BOOKMARKS].properties.columns).toBeUndefined();
   });
 });
 
@@ -283,9 +286,9 @@ describe("what keeps the item", () => {
   it("comes back after an undo that went before its creation", () => {
     const bare = buildDoc(() => {});
     const history = new History(bare);
-    history.commit(withBookmarksItem(bare), null);
+    history.commit(withSettingsItems(bare), null);
     history.undo(null);
-    history.keep(withBookmarksItem(history.doc));
+    history.keep(withSettingsItems(history.doc));
     expect(history.doc.items[BOOKMARKS]).toBeDefined();
   });
 });
