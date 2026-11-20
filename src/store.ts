@@ -1,4 +1,4 @@
-import { Doc, ItemId, withBookmarksParts } from "./model";
+import { Doc, ItemId, withKeptParts } from "./model";
 
 export interface Caret {
   id: ItemId;
@@ -26,7 +26,7 @@ export class History {
   version = 0;
 
   constructor(public doc: Doc) {
-    this.doc = withBookmarksParts(doc);
+    this.doc = withKeptParts(doc);
   }
 
   commit(next: Doc, caretBefore: Caret | null, typingKey: string | null = null): void {
@@ -89,7 +89,7 @@ export class History {
   }
 
   private become(next: Doc): void {
-    this.doc = withBookmarksParts(next);
+    this.doc = withKeptParts(next);
     this.version++;
   }
 }

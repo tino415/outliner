@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT, setItemProperty, withBookmarksItem } from "../src/model";
+import { Doc, ItemId, ROOT, setItemProperty, withSettingsItems } from "../src/model";
 import { parseIndentedText } from "../src/transfer";
 import { search } from "../src/search";
 import { itemLink, itemNamedBy, linkBaseIn, mayShareTitle } from "../src/itemLink";
@@ -86,7 +86,7 @@ describe("the item a search names", () => {
   });
 
   it("is none for the fixed word ids typed bare, and the item for a link to one", () => {
-    const withBookmarks = withBookmarksItem(doc);
+    const withBookmarks = withSettingsItems(doc);
     expect(itemNamedBy(withBookmarks, "bookmarks")).toBeNull();
     expect(itemNamedBy(withBookmarks, "#/bookmarks")).toBe("bookmarks");
   });

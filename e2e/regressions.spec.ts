@@ -740,6 +740,8 @@ test("a warning shows when storage passes 80% of the quota", async ({ page }) =>
 for (const [what, title, at] of [
   ["Bookmarks", "Bookmarks", "./"],
   ["About Bookmarks", "About Bookmarks", "./#/bookmarks"],
+  ["Capture templates", "Capture templates", "./"],
+  ["About Capture templates", "About Capture templates", "./#/capture-templates"],
 ]) {
   test(`typing in the ${what} title leaves it as it was`, { tag: "@phone" }, async ({ page }) => {
     await freshOutline(page, "Garden");

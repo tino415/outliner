@@ -1,4 +1,4 @@
-import { BOOKMARKS, ItemId, Part, isKept, isReadOnly, keptNotice, readOnlyNotice, withBookmarksItem } from "./model";
+import { BOOKMARKS, ItemId, Part, isKept, isReadOnly, keptNotice, readOnlyNotice, withSettingsItems } from "./model";
 import { Bookmark, Destination, bookmarkForDigit, bookmarkPage } from "./bookmarks";
 import { commitAndRender, doc, state } from "./app";
 import { toast } from "./chrome";
@@ -6,7 +6,7 @@ import { zoomTo } from "./navigation";
 import { afterFirstSync } from "./syncing";
 
 export function keepBookmarksItem(): void {
-  afterFirstSync(() => commitAndRender(withBookmarksItem(doc()), null));
+  afterFirstSync(() => commitAndRender(withSettingsItems(doc()), null));
 }
 
 export function goTo(destination: Destination): void {
@@ -21,12 +21,12 @@ export function openBookmark(digit: number): void {
 }
 
 export function openBookmarkList(): void {
-  commitAndRender(withBookmarksItem(doc()), null);
+  commitAndRender(withSettingsItems(doc()), null);
   zoomTo(BOOKMARKS);
 }
 
 export function bookmarkThisPage(): void {
-  const result = bookmarkPage(withBookmarksItem(doc()), state.zoom);
+  const result = bookmarkPage(withSettingsItems(doc()), state.zoom);
   const said = {
     added: "Added to Bookmarks",
     already: "Already in Bookmarks",

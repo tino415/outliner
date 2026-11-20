@@ -9,9 +9,9 @@ async function bookmarkThroughMenu(page: Page) {
 }
 
 test.describe("bookmarks", { tag: "@keys" }, () => {
-  test("Bookmarks is made at the top level on first run", async ({ page }) => {
+  test("Bookmarks is made under Settings on first run, before Capture templates", async ({ page }) => {
     await freshOutline(page, "Garden\nShed");
-    await expect(page.locator("#tree .text")).toHaveText(["Garden", "Shed", "Bookmarks", "About Bookmarks"]);
+    await expect(page.locator("#tree .text")).toHaveText(["Garden", "Shed", "Settings", "Bookmarks", "About Bookmarks", "Capture templates", "About Capture templates"]);
     await page.goto("./#/bookmarks");
     await expect(page.locator("#title")).toHaveText("Bookmarks");
   });

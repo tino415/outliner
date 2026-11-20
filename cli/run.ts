@@ -9,8 +9,8 @@ import {
   keptNotice,
   movesKeptOut,
   readOnlyNotice,
-  withBookmarksItem,
-  withoutBookmarksAbout,
+  withSettingsItems,
+  withoutKeptAbouts,
   ancestors,
   childrenInOrder,
   indexInParent,
@@ -434,13 +434,13 @@ class Outline {
     const clock = new Clock(`cli-${newDeviceId()}`);
     for (const change of changes) clock.observe(change.clock);
     const fetched = materialize(replica);
-    const withList = withBookmarksItem(fetched);
+    const withList = withSettingsItems(fetched);
     await new Outline(endpoint, replica, clock, fetched).save(withList);
     return new Outline(endpoint, replica, clock, withList);
   }
 
   async save(next: Doc): Promise<void> {
-    const changes = diff(withoutBookmarksAbout(this.doc), withoutBookmarksAbout(liftTags(liftNoteProperties(next))), this.replica, () => this.clock.tick());
+    const changes = diff(withoutKeptAbouts(this.doc), withoutKeptAbouts(liftTags(liftNoteProperties(next))), this.replica, () => this.clock.tick());
     if (changes.length > 0) await exchange(this.endpoint, { since: Number.MAX_SAFE_INTEGER, changes });
   }
 }

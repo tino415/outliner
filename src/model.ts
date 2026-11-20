@@ -22,46 +22,140 @@ export interface Doc {
 
 export const ROOT: ItemId = "root";
 
-/** The one system item (doc/adr/0060): the list of bookmarks, at the top level of every outline. */
+export const SETTINGS_ITEM: ItemId = "settings";
 export const BOOKMARKS: ItemId = "bookmarks";
-export const BOOKMARKS_KEPT = "Bookmarks stays; empty it instead";
-const BOOKMARKS_TITLE = "Bookmarks";
-
-/** The first child of Bookmarks (doc/adr/0066): the explanation, defined in code and read-only, never saved or synced. */
+export const CAPTURE_TEMPLATES: ItemId = "capture-templates";
 export const BOOKMARKS_ABOUT: ItemId = "about-bookmarks";
-const BOOKMARKS_ABOUT_TITLE = "About Bookmarks";
+export const CAPTURE_TEMPLATES_ABOUT: ItemId = "about-capture-templates";
 
 export type Part = "title" | "note" | "completed" | "properties" | "children";
 
+interface Lines {
+  text: string;
+  children?: Lines[];
+}
+
+interface KeptItem {
+  id: ItemId;
+  parent: ItemId;
+  title: string;
+  columns?: string;
+  about?: { id: ItemId; lines: Lines[] };
+}
+
+/**
+ * The items that live in code (doc/adr/0069), in the order they sit in. A kept
+ * item's title, note and completion are fixed, it cannot be deleted or moved
+ * out of its parent, and its About, when it has one, is defined here and
+ * read-only, never saved or synced (doc/adr/0066).
+ */
+const KEPT_ITEMS: KeptItem[] = [
+  { id: SETTINGS_ITEM, parent: ROOT, title: "Settings" },
+  {
+    id: BOOKMARKS,
+    parent: SETTINGS_ITEM,
+    title: "Bookmarks",
+    columns: "key",
+    about: {
+      id: BOOKMARKS_ABOUT,
+      lines: [
+        { text: "Add a bookmark", children: [{ text: "Add an item here with a link to a page or a web address" }, { text: "Open the page, tap ⋯ and tap Bookmark this page" }] },
+        { text: "Tap or click a bookmark's link to open its page; a web address opens in a new tab" },
+        { text: "To give a bookmark a shortcut, write a digit from 1 to 9 in its key column" },
+      ],
+    },
+  },
+  {
+    id: CAPTURE_TEMPLATES,
+    parent: SETTINGS_ITEM,
+    title: "Capture templates",
+    columns: "capture key",
+    about: {
+      id: CAPTURE_TEMPLATES_ABOUT,
+      lines: [
+        {
+          text: "What a template is",
+          children: [{ text: "Each child with a capture property is a template, named by its text" }, { text: "Its children fill the page its target creates" }],
+        },
+        {
+          text: "Properties you can use",
+          children: [
+            { text: "capture: where items go, a path or an item id; {date} is today, {tomorrow} the day after; missing pages are made" },
+            { text: "key: the letter that picks this template" },
+            { text: "ask: the properties the Capture dialog asks for, separated by spaces" },
+            { text: "at: top files new items first; without it they go last" },
+            { text: "Any other property is set on the page the target creates" },
+          ],
+        },
+        {
+          text: "Keyboard shortcuts",
+          children: [
+            { text: "Ctrl-J N (⌘J N on a Mac), then the key: capture with that template" },
+            { text: "Ctrl-J W (⌘J W), then the key: go to the template's target without capturing" },
+          ],
+        },
+        {
+          text: "Other ways in",
+          children: [
+            { text: "⋯ → Capture…, or Capture in Ctrl-K" },
+            { text: "The address ?capture=Meal opens Capture with that template; adding &go goes to its target" },
+            { text: 'outline capture "Oats" --template Meal --set kcal=300 from a shell' },
+          ],
+        },
+      ],
+    },
+  },
+];
+
+function keptItem(id: ItemId): KeptItem | undefined {
+  return KEPT_ITEMS.find((kept) => kept.id === id);
+}
+
+function aboutOwner(id: ItemId): KeptItem | undefined {
+  return KEPT_ITEMS.find((kept) => kept.about && (id === kept.about.id || id.startsWith(`${kept.about.id}-`)));
+}
+
 export function isAboutItem(id: ItemId): boolean {
-  return id === BOOKMARKS_ABOUT || id.startsWith(`${BOOKMARKS_ABOUT}-`);
+  return aboutOwner(id) !== undefined;
+}
+
+export function isKeptHeading(id: ItemId): boolean {
+  return keptItem(id) !== undefined;
+}
+
+function isAboutHeading(id: ItemId): boolean {
+  return aboutOwner(id)?.about?.id === id;
+}
+
+function isFixedInPlace(id: ItemId): boolean {
+  return isAboutItem(id) || (isKeptHeading(id) && keptItem(id)!.parent !== ROOT);
 }
 
 export function isReadOnly(id: ItemId, part: Part): boolean {
   if (isAboutItem(id)) return true;
-  return id === BOOKMARKS && (part === "title" || part === "note" || part === "completed");
+  return isKeptHeading(id) && (part === "title" || part === "note" || part === "completed");
 }
 
 export function readOnlyNotice(id: ItemId): string {
-  return `${isAboutItem(id) ? BOOKMARKS_ABOUT_TITLE : BOOKMARKS_TITLE} is read-only`;
+  const owner = aboutOwner(id);
+  return owner ? `About ${owner.title} is read-only` : `${keptItem(id)?.title} is read-only`;
 }
 
 export function keptNotice(id: ItemId): string {
-  return isAboutItem(id) ? readOnlyNotice(id) : BOOKMARKS_KEPT;
+  return isAboutItem(id) ? readOnlyNotice(id) : `${keptItem(id)?.title} stays; empty it instead`;
 }
 
 export function keptStays(ids: ItemId[]): string {
-  return ids.includes(BOOKMARKS) ? "Bookmarks stays" : `${BOOKMARKS_ABOUT_TITLE} is read-only`;
+  const heading = ids.find(isKeptHeading);
+  return heading ? `${keptItem(heading)!.title} stays` : readOnlyNotice(ids.find(isAboutItem)!);
 }
 
 export function isKept(id: ItemId): boolean {
-  return id === BOOKMARKS || isAboutItem(id);
+  return isKeptHeading(id) || isAboutItem(id);
 }
 
 function keptParentOf(id: ItemId): ItemId | null {
-  if (id === BOOKMARKS) return ROOT;
-  if (id === BOOKMARKS_ABOUT) return BOOKMARKS;
-  return null;
+  return keptItem(id)?.parent ?? (aboutOwner(id)?.about?.id === id ? aboutOwner(id)!.id : null);
 }
 
 export function movesKeptOut(id: ItemId, parent: ItemId): boolean {
@@ -69,62 +163,81 @@ export function movesKeptOut(id: ItemId, parent: ItemId): boolean {
   return keptParent !== null && keptParent !== parent;
 }
 
-interface Lines {
-  text: string;
-  children?: Lines[];
-}
+const aboutItems: Record<ItemId, Item[]> = Object.fromEntries(
+  KEPT_ITEMS.filter((kept) => kept.about).map((kept) => {
+    const items: Item[] = [];
+    const add = (id: ItemId, parent: ItemId, text: string, lines: Lines[]): void => {
+      const children = lines.map((_, index) => `${id}-${index + 1}`);
+      items.push({ ...blankItem(id, parent, text), children, collapsed: id === kept.about!.id, updated: 0 });
+      lines.forEach((line, index) => add(children[index], id, line.text, line.children ?? []));
+    };
+    add(kept.about!.id, kept.id, `About ${kept.title}`, kept.about!.lines);
+    return [kept.id, items];
+  }),
+);
 
-const BOOKMARKS_ABOUT_LINES: Lines[] = [
-  { text: "Add a bookmark", children: [{ text: "Add an item here with a link to a page or a web address" }, { text: "Open the page, tap ⋯ and tap Bookmark this page" }] },
-  { text: "Tap or click a bookmark's link to open its page; a web address opens in a new tab" },
-  { text: "To give a bookmark a shortcut, write a digit from 1 to 9 in its key column" },
-];
-
-/** Bookmarks made when missing, with its key column the one time it is made. */
-export function withBookmarksItem(doc: Doc): Doc {
-  if (doc.items[BOOKMARKS]) return withBookmarksParts(doc);
-  return withBookmarksParts(edit(doc, (d) => {
-    d.adopt({ ...blankItem(BOOKMARKS, ROOT, BOOKMARKS_TITLE), properties: { columns: "key" } });
-    d.write(ROOT).children.push(BOOKMARKS);
+/** Settings and what lives under it made when missing, with their columns the one time each is made. */
+export function withSettingsItems(doc: Doc): Doc {
+  if (KEPT_ITEMS.every((kept) => doc.items[kept.id])) return withKeptParts(doc);
+  return withKeptParts(edit(doc, (d) => {
+    for (const kept of KEPT_ITEMS.filter((made) => !doc.items[made.id])) {
+      const properties: Record<string, string> = kept.columns ? { columns: kept.columns } : {};
+      d.adopt({ ...blankItem(kept.id, kept.parent, kept.title), properties });
+      const siblings = d.write(kept.parent).children;
+      siblings.splice(kept.id === SETTINGS_ITEM && doc.items[BOOKMARKS] ? Math.max(siblings.indexOf(BOOKMARKS), 0) : siblings.length, 0, kept.id);
+    }
   }));
 }
 
-const aboutItems: Item[] = (() => {
-  const items: Item[] = [];
-  const add = (id: ItemId, parent: ItemId, text: string, lines: Lines[]): void => {
-    const children = lines.map((_, index) => `${id}-${index + 1}`);
-    items.push({ ...blankItem(id, parent, text), children, collapsed: id === BOOKMARKS_ABOUT, updated: 0 });
-    lines.forEach((line, index) => add(children[index], id, line.text, line.children ?? []));
-  };
-  add(BOOKMARKS_ABOUT, BOOKMARKS, BOOKMARKS_ABOUT_TITLE, BOOKMARKS_ABOUT_LINES);
-  return items;
-})();
-
-/**
- * What lives in code and not in the outline: Bookmarks' title, note and
- * completion, and About with its lines, first under Bookmarks. Put back
- * whenever a document differs; About's folding is the one thing it keeps.
- */
-export function withBookmarksParts(doc: Doc): Doc {
-  const list = doc.items[BOOKMARKS];
-  if (!list) return doc;
-  const aboutIntact = aboutItems.every((fixed) => {
-    const item = doc.items[fixed.id];
-    return item && item.text === fixed.text && item.note === "" && item.parent === fixed.parent && !item.completed && Object.keys(item.properties).length === 0 && sameIds(item.children, fixed.children);
-  });
-  const note = isSealed(list.note) ? list.note : "";
-  const listIntact = list.text === BOOKMARKS_TITLE && list.note === note && !list.completed && list.children[0] === BOOKMARKS_ABOUT;
-  if (aboutIntact && listIntact) return doc;
-  const items = { ...doc.items };
-  for (const fixed of aboutItems) items[fixed.id] = { ...fixed, collapsed: doc.items[fixed.id]?.collapsed ?? fixed.collapsed };
-  items[BOOKMARKS] = { ...list, text: BOOKMARKS_TITLE, note, completed: false, children: [BOOKMARKS_ABOUT, ...list.children.filter((child) => child !== BOOKMARKS_ABOUT)] };
-  return { items };
+function leadingChildren(kept: KeptItem, items: Doc["items"]): ItemId[] {
+  const kids = KEPT_ITEMS.filter((child) => child.parent === kept.id && items[child.id]).map((child) => child.id);
+  return kept.about ? [kept.about.id, ...kids] : kids;
 }
 
-/** A write to Bookmarks' title, note or completion that code does not hold; a sealed note is how a private Bookmarks syncs. */
-export function contradictsBookmarks(id: ItemId, field: string, value: unknown): boolean {
-  if (id !== BOOKMARKS) return false;
-  if (field === "text") return value !== BOOKMARKS_TITLE;
+/**
+ * What lives in code and not in the outline: each kept item's title, note and
+ * completion, its place under its parent, and About with its lines, first
+ * under its item. Put back whenever a document differs; About's folding is the
+ * one thing it keeps.
+ */
+export function withKeptParts(doc: Doc): Doc {
+  const items = { ...doc.items };
+  let changed = false;
+  const put = (item: Item): void => {
+    items[item.id] = item;
+    changed = true;
+  };
+  for (const kept of KEPT_ITEMS) {
+    const item = items[kept.id];
+    if (!item || !items[kept.parent] || item.parent === kept.parent) continue;
+    const old = items[item.parent!];
+    if (old) put({ ...old, children: old.children.filter((child) => child !== kept.id) });
+    put({ ...items[kept.parent], children: [...items[kept.parent].children, kept.id] });
+    put({ ...item, parent: kept.parent });
+  }
+  for (const kept of KEPT_ITEMS) {
+    const item = items[kept.id];
+    if (!item) continue;
+    const note = isSealed(item.note) ? item.note : "";
+    const leading = leadingChildren(kept, items);
+    const children = [...leading, ...item.children.filter((child) => !leading.includes(child))];
+    if (item.text !== kept.title || item.note !== note || item.completed || !sameIds(item.children, children)) {
+      put({ ...item, text: kept.title, note, completed: false, children });
+    }
+    const aboutIntact = (aboutItems[kept.id] ?? []).every((fixed) => {
+      const shown = items[fixed.id];
+      return shown && shown.text === fixed.text && shown.note === "" && shown.parent === fixed.parent && !shown.completed && Object.keys(shown.properties).length === 0 && sameIds(shown.children, fixed.children);
+    });
+    if (!aboutIntact) for (const fixed of aboutItems[kept.id]) put({ ...fixed, collapsed: items[fixed.id]?.collapsed ?? fixed.collapsed });
+  }
+  return changed ? { items } : doc;
+}
+
+/** A write to a kept item's title, note or completion that code does not hold; a sealed note is how a private one syncs. */
+export function contradictsKept(id: ItemId, field: string, value: unknown): boolean {
+  const kept = keptItem(id);
+  if (!kept) return false;
+  if (field === "text") return value !== kept.title;
   if (field === "note") return value !== "" && !(typeof value === "string" && isSealed(value));
   if (field === "completed") return value !== false;
   return false;
@@ -137,13 +250,16 @@ function sameIds(a: ItemId[], b: ItemId[]): boolean {
 const listsWithoutAbout = new WeakMap<Item, Item>();
 
 /** The document as saved and synced: without the parts that live in code. */
-export function withoutBookmarksAbout(doc: Doc): Doc {
-  const list = doc.items[BOOKMARKS];
-  if (!list || !doc.items[BOOKMARKS_ABOUT]) return doc;
+export function withoutKeptAbouts(doc: Doc): Doc {
+  const withAbout = KEPT_ITEMS.filter((kept) => doc.items[kept.about?.id ?? ""]);
+  if (withAbout.length === 0) return doc;
   const items = { ...doc.items };
-  for (const fixed of aboutItems) delete items[fixed.id];
-  if (!listsWithoutAbout.has(list)) listsWithoutAbout.set(list, { ...list, children: list.children.filter((child) => child !== BOOKMARKS_ABOUT) });
-  items[BOOKMARKS] = listsWithoutAbout.get(list)!;
+  for (const kept of withAbout) {
+    for (const fixed of aboutItems[kept.id]) delete items[fixed.id];
+    const list = doc.items[kept.id];
+    if (!listsWithoutAbout.has(list)) listsWithoutAbout.set(list, { ...list, children: list.children.filter((child) => child !== kept.about!.id) });
+    items[kept.id] = listsWithoutAbout.get(list)!;
+  }
   return { items };
 }
 
@@ -287,8 +403,9 @@ export function withPrivateIds(doc: Doc): { doc: Doc; renamed: Map<ItemId, ItemI
     const rootHere = isPrivateRoot(doc.items, id) ? id : root;
     for (const child of doc.items[id].children) {
       if (isAboutItem(child)) continue;
-      if (rootHere && !child.startsWith(`${rootHere}~`)) renamed.set(child, `${rootHere}~${child}`);
-      else if (!rootHere && child.includes("~")) renamed.set(child, publicIdFor(doc, child));
+      const keepsItsId = isKeptHeading(child);
+      if (!keepsItsId && rootHere && !child.startsWith(`${rootHere}~`)) renamed.set(child, `${rootHere}~${child}`);
+      else if (!keepsItsId && !rootHere && child.includes("~")) renamed.set(child, publicIdFor(doc, child));
       visit(child, rootHere);
     }
   };
@@ -610,8 +727,8 @@ export function split(
   const item = doc.items[id];
   const parent = item.parent!;
   const index = indexInParent(doc, id);
-  const cutsFixedText = isReadOnly(id, "title") && offset < item.text.length && !(offset === 0 && id === BOOKMARKS);
-  if (cutsFixedText || (isAboutItem(id) && id !== BOOKMARKS_ABOUT)) return { doc, id, focus: id };
+  const cutsFixedText = isReadOnly(id, "title") && offset < item.text.length && !(offset === 0 && keptItem(id)?.parent === ROOT);
+  if (cutsFixedText || (isAboutItem(id) && !isAboutHeading(id))) return { doc, id, focus: id };
   childrenShown = childrenShown && !isReadOnly(id, "children");
 
   if (offset === 0 && item.text.length > 0) {
@@ -657,13 +774,13 @@ export function outdent(doc: Doc, id: ItemId, top: ItemId): Doc {
 
 export function moveUp(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const target = previousShownSibling(doc, id, filter);
-  if (!target || isAboutItem(target)) return doc;
+  if (!target || isFixedInPlace(target)) return doc;
   return moveTo(doc, id, doc.items[id].parent!, indexInParent(doc, target));
 }
 
 export function moveDown(doc: Doc, id: ItemId, filter: ViewFilter): Doc {
   const target = nextShownSibling(doc, id, filter);
-  if (!target) return doc;
+  if (!target || isFixedInPlace(target)) return doc;
   return moveTo(doc, id, doc.items[id].parent!, indexInParent(doc, target) + 1);
 }
 
@@ -682,7 +799,7 @@ export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc
 
 export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
   const parent = doc.items[id].parent;
-  if (id === BOOKMARKS || isAboutItem(id) || (parent && isReadOnly(parent, "children"))) return { doc, id };
+  if (isKept(id) || (parent && isReadOnly(parent, "children"))) return { doc, id };
   let copyId = "";
   const next = edit(doc, (d) => {
     const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
