@@ -31,8 +31,13 @@ export function isChecksItem(item: Item | undefined): boolean {
   return item?.text.trim().toLowerCase() === CHECKS_TITLE.toLowerCase();
 }
 
+const checksItems = new WeakMap<Doc, Map<ItemId, ItemId | undefined>>();
+
 export function checksItemOf(doc: Doc, ruled: ItemId): ItemId | undefined {
-  return doc.items[ruled]?.children.find((child) => isChecksItem(doc.items[child]));
+  const known = checksItems.get(doc) ?? new Map<ItemId, ItemId | undefined>();
+  checksItems.set(doc, known);
+  if (!known.has(ruled)) known.set(ruled, doc.items[ruled]?.children.find((child) => isChecksItem(doc.items[child])));
+  return known.get(ruled);
 }
 
 /** The item is a `Checks:` item or lies under one: what is written there is a check, not a value to check. */
