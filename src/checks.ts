@@ -79,7 +79,20 @@ export function problemInCheckRow(doc: Doc, id: ItemId): string {
   return "";
 }
 
+const readings = new WeakMap<Doc, Map<ItemId, ReadChecks>>();
+
+/** A doc never changes, so what was read from it once is read again for free while rendering. */
 function readChecks(doc: Doc, checksId: ItemId): ReadChecks {
+  const known = readings.get(doc) ?? new Map<ItemId, ReadChecks>();
+  readings.set(doc, known);
+  const cached = known.get(checksId);
+  if (cached) return cached;
+  const read = readChecksAnew(doc, checksId);
+  known.set(checksId, read);
+  return read;
+}
+
+function readChecksAnew(doc: Doc, checksId: ItemId): ReadChecks {
   const ruled = doc.items[checksId].parent!;
   const checks: Check[] = [];
   const problems = new Map<ItemId, string>();

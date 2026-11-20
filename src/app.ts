@@ -12,7 +12,7 @@ import { bindEditorEvents, caretNow } from "./editing";
 import { leaveLinkToMissingItem, zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, isMirroredOnScreen, render, rowShowsTypedText } from "./render";
 import { problemWith } from "./checks";
-import { applyAppearance,bindChrome, openItemMenu, toast } from "./chrome";
+import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
 import { bindCompletion } from "./completion";

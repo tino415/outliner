@@ -91,7 +91,7 @@ function typedInChecks(current: Doc, editor: HTMLElement, before: string): Typed
   if (parent && isChecksItem(parent)) return checkBeingWritten(before, parent.parent!);
   const check = parent && grandparent && isChecksItem(grandparent) ? typePartOf(parent.text) : null;
   if (check && /^(?:unique )?one of$/i.test(parent!.text.slice(check.typeStart).trim())) {
-    return { start: 0, prefix: before, finish: (value) => value, words: (doc) => valuesUnder(doc, grandparent!.parent!, check.key) };
+    return { start: 0, prefix: before, finish: (value) => value, words: (doc) => valuesUnder(doc, grandparent!.parent!, check.key.toLowerCase()) };
   }
   return null;
 }

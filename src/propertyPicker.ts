@@ -98,7 +98,7 @@ export function chooseValue(id: ItemId, key: string): void {
       const choices: Choice[] = [
         ...(typed && !listed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
         ...open,
-        ...known.slice(0, 12).map((value) => ({ text: value, path: [], value })),
+        ...known.slice(0, listed ? known.length : 12).map((value) => ({ text: value, path: [], value })),
       ];
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;
     },
