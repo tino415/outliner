@@ -11,6 +11,7 @@ import {
   liftTags,
   privateKeyOf,
   indexInParent,
+  insertChild,
   isReadOnly,
   readOnlyNotice,
   isBlank,
@@ -194,7 +195,7 @@ export function bindEditorEvents(): void {
     const files = [...(event.clipboardData?.files ?? [])];
     if (editor && files.length > 0) {
       event.preventDefault();
-      void attachFilesTo(editor.dataset.id!, files);
+      void (isNoteEditor(editor) ? attachFilesFromNote : attachFilesTo)(editor.dataset.id!, files);
       return;
     }
     const text = event.clipboardData?.getData("text/plain") ?? "";
@@ -221,14 +222,24 @@ export function bindEditorEvents(): void {
   }
 }
 
-/** Files go into the item's note as links, one line each (doc/adr/0028). */
-export async function attachFilesTo(id: ItemId, files: File[]): Promise<void> {
+export async function attachFilesTo(id: ItemId, files: File[]): Promise<ItemId[]> {
   const links = await keepFiles(files);
-  const item = doc().items[id];
-  if (!item) return;
-  state.openNotes.add(id);
-  commitAndRender(setNote(doc(), id, [item.note, ...links].filter(Boolean).join("\n")), caretNow());
+  if (!doc().items[id] || isReadOnly(id, "children")) return [];
+  let next = setCollapsed(doc(), id, false);
+  const children: ItemId[] = [];
+  for (const link of links) {
+    const added = insertChild(next, id, next.items[id].children.length, link);
+    next = added.doc;
+    children.push(added.id);
+  }
+  commitAndRender(next, caretNow());
   toast(files.length === 1 ? `Attached ${files[0].name || "a file"}` : `Attached ${files.length} files`);
+  return children;
+}
+
+async function attachFilesFromNote(id: ItemId, files: File[]): Promise<void> {
+  const children = await attachFilesTo(id, files);
+  insertText(children.map((child, index) => referenceTo(child, files[index].name || "pasted")).join(" "));
 }
 
 export function pickFiles(): Promise<File[]> {

@@ -8,7 +8,8 @@ export const expectedSkips: { title: string; skippedIn: string[] }[] = [
   { title: "a card dragged with a finger moves to another column", skippedIn: ["desktop", ...notChromium] },
   { title: "pasting several lines creates several items", skippedIn: ["firefox"] },
   { title: "Shift-click selects a range and copy puts it on the clipboard", skippedIn: notChromium },
-  { title: "pasting an image attaches it to the item's note and shows it, without sync too", skippedIn: notChromium },
+  { title: "pasting an image adds a child that shows it and leaves the note alone, without sync too", skippedIn: notChromium },
+  { title: "pasting an image in a note adds the child and a reference to it at the caret", skippedIn: notChromium },
   { title: "a finger dragged sideways over a board card scrolls the board", skippedIn: ["desktop"] },
 ];
 
