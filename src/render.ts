@@ -1,6 +1,7 @@
 import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./model";
 import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
+import { isChecksItem, problemInCheckRow, problemsOfItem } from "./checks";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
 import { countLabel } from "./counts";
@@ -89,7 +90,7 @@ function renderHead(): void {
   if (document.activeElement !== ui.title || ui.title.textContent !== item.text) ui.title.innerHTML = renderItemText(item.text);
   ui.title.classList.toggle("empty", item.text === "");
   ui.titleProps.dataset.id = item.id;
-  ui.titleProps.innerHTML = propertyChipsHtml(item, undefined, ownFormulaResults(item.id));
+  ui.titleProps.innerHTML = propertyChipsHtml(item, undefined, ownFormulaResults(item.id), problemsOfItem(doc(), item.id));
   ui.titleNote.contentEditable = isSealed(item.note) ? "false" : "plaintext-only";
   if (document.activeElement !== ui.titleNote || ui.titleNote.textContent !== item.note) ui.titleNote.innerHTML = renderNote(item.note);
   ui.titleNote.hidden = item.note === "" && !state.openNotes.has(item.id);
@@ -264,13 +265,15 @@ function renderItem(id: ItemId): HTMLLIElement {
   const results = ownFormulaResults(id);
   const mirror = isMirror(doc(), id) ? mirrorTextHtml(doc(), id) + mirroredChildrenHtml(doc(), id, filter()) : null;
   const foldedCount = hasChildren && !expanded && mirror === null ? countLabel(doc(), item.children) : "";
-  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${foldedCount} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""}`;
+  const breaking = problemsOfItem(doc(), id);
+  const rowProblem = problemInCheckRow(doc(), id);
+  const displayState = `${dayRendered} ${hasChildren} ${expanded} ${foldedCount} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""} ${[...breaking].join("|")} ${rowProblem}`;
 
   let rendered = renderedRows.get(id);
   if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results, foldedCount) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
+    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results, foldedCount, breaking, rowProblem) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
     rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
@@ -278,6 +281,8 @@ function renderItem(id: ItemId): HTMLLIElement {
   const li = rendered.li;
   li.classList.toggle("completed", item.completed);
   li.classList.toggle("mirror", mirror !== null);
+  li.classList.toggle("checks", isChecksItem(item));
+  li.classList.toggle("check-bad", rowProblem !== "");
   li.classList.toggle("has-children", hasChildren);
   li.classList.toggle("folded", hasChildren && !expanded);
   li.classList.toggle("match", Boolean(state.results?.matches.has(id)));
@@ -307,17 +312,17 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>, foldedCount: string): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>, foldedCount: string, breaking: Map<string, string>, rowProblem: string): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
     `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
     `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
     `<div class="body">` +
-    `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}">${renderItemText(item.text)}</div>` +
+    `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${rowProblem ? ` title="${escape(rowProblem)}"` : ""}>${renderItemText(item.text)}</div>` +
     (foldedCount === "" ? "" : `<span class="fold-count" title="Direct children">${escape(foldedCount)}</span>`) +
     `<button class="prop-add" type="button" tabindex="-1" aria-label="Add…" title="Add…">+</button>` +
-    propertyChipsHtml(item, keysShownAsColumns(), results) +
+    propertyChipsHtml(item, keysShownAsColumns(), results, breaking) +
     `<div class="note" contenteditable="${isSealed(item.note) ? "false" : "plaintext-only"}" spellcheck="true" data-id="${item.id}"${noteOpen ? "" : " hidden"}>${renderNote(item.note)}</div>` +
     `</div>` +
     cells;

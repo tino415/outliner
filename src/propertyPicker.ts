@@ -1,6 +1,7 @@
 import { commitAndRender, doc, state } from "./app";
 import { ItemId, SETTINGS, setItemProperty, tagsOf, tagsProperty } from "./model";
 import { tagsIn } from "./completion";
+import { checksFor, describeCheck, problemWith } from "./checks";
 import { isSealed, propertyKey, sealedKeyOf } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { declaredColumns } from "./properties";
@@ -84,26 +85,34 @@ export function chooseValue(id: ItemId, key: string): void {
   if (key === "private") return choosePrivacy(id);
   if (sealedHere(id)) return;
   const current = doc().items[id]?.properties[key];
-  if (isDateProperty(key)) return chooseDate(id, key, current);
+  const check = checksFor(doc(), id).get(key);
+  if (isDateProperty(key) || check?.type.kind === "date") return chooseDate(id, key, current);
+  const listed = check?.type.kind === "oneOf" ? check.type.values : null;
   openPalette<Choice>({
     placeholder: `${key}: ${current ?? "value…"}`,
-    hint: hintFor(key),
+    hint: check ? describeCheck(doc(), check) : hintFor(key),
     candidates: (query) => {
       const typed = query.trim();
-      const known = valuesOf(key).filter((value) => value.toLowerCase().includes(typed.toLowerCase()) && value !== typed);
+      const known = (listed ?? valuesOf(key)).filter((value) => value.toLowerCase().includes(typed.toLowerCase()) && (listed !== null || value !== typed));
       const open = current !== undefined && onlyUrl(current) ? [{ text: `Open ${current}`, path: [], value: OPEN }] : [];
       const choices: Choice[] = [
-        ...(typed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
+        ...(typed && !listed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
         ...open,
-        ...known.slice(0, 12).map((value) => ({ text: value, path: [], value })),
+        ...known.slice(0, listed ? known.length : 12).map((value) => ({ text: value, path: [], value })),
       ];
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;
     },
     choose: ({ value }) => {
       if (value === OPEN) window.open(current, "_blank", "noopener");
-      else commitAndRender(setItemProperty(doc(), id, key, value), caretNow());
+      else writeChecked(id, key, value);
     },
   });
+}
+
+function writeChecked(id: ItemId, key: string, value: string): void {
+  const problem = problemWith(doc(), id, key, value);
+  if (problem) return toast(problem);
+  commitAndRender(setItemProperty(doc(), id, key, value), caretNow());
 }
 
 function isDateProperty(key: string): boolean {
@@ -111,7 +120,7 @@ function isDateProperty(key: string): boolean {
 }
 
 function chooseDate(id: ItemId, key: string, current: string | undefined): void {
-  const write = (value: string) => commitAndRender(setItemProperty(doc(), id, key, value), caretNow());
+  const write = (value: string) => writeChecked(id, key, value);
   pickDate({
     current,
     placeholder: `${key}: ${current ?? "date…"}`,

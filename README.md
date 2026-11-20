@@ -76,6 +76,16 @@ changes or removes it, except on a value that is one URL: that opens the URL,
 and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a line
 `:calories: 350 kcal` into a note still works: it becomes a property when
 the note is left. Exports write properties as such lines, as org mode does.
+A `Checks:` child types the properties under its parent (doc/adr/0070): one
+child per property, `effort: one of` with a child per value, `estimate: integer`,
+`deadline: date`, `start: time`, `note: text`, or `key: one of 1..9`, each with
+`unique` in front when no two items under the parent may share a value. The
+nearest `Checks:` up the tree decides a key. A value that breaks its check is
+refused with a toast, in the app, in `outline set` and in `outline capture
+--set`, and shows red when it got there another way. A board's Checks button and
+Ctrl-K, Edit checks of this page, zoom into the page's `Checks:` child, making
+it when it is missing.
+
 ⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
 roll up, put a `columns` property on the page, as in org mode:

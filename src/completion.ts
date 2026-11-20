@@ -1,4 +1,5 @@
-import { Doc, tagsOf } from "./model";
+import { Doc, ItemId, tagsOf } from "./model";
+import { checksFor, isChecksItem, typePartOf, typeWordsOffered } from "./checks";
 import { isInCode } from "./notes";
 import { caretRect, select, selectionIn } from "./caret";
 import { escape } from "./inline";
@@ -55,7 +56,8 @@ export function bindCompletion(doc: () => Doc): void {
 export function offerCompletion(target: HTMLElement, current: Doc): void {
   const caret = selectionIn(target);
   const text = target.textContent ?? "";
-  typed = caret && caret.start === caret.end ? typedAt(text.slice(0, caret.start), target.classList.contains("note")) : null;
+  const before = text.slice(0, caret?.start ?? 0);
+  typed = caret && caret.start === caret.end ? typedInChecks(current, target, before) ?? typedAt(before, target.classList.contains("note")) : null;
   if (!typed) return closeCompletion();
   const prefix = typed.prefix.toLowerCase();
   const words = typed.words(current);
@@ -76,6 +78,49 @@ function typedAt(before: string, inNote: boolean): Typed | null {
   const tag = TAG_BEING_TYPED.exec(before);
   if (tag) return { start: before.length - tag[2].length - 1, prefix: tag[2], finish: finishTag, words: tagsIn };
   return null;
+}
+
+/** What is being written under a `Checks:` item (a key, its type, the values of one of), or in a note after `:key: ` of a key that has a check. */
+function typedInChecks(current: Doc, editor: HTMLElement, before: string): Typed | null {
+  const id = editor.dataset.id;
+  const item = id ? current.items[id] : undefined;
+  if (!item) return null;
+  if (editor.classList.contains("note")) return enumValueInNote(current, id!, before);
+  const parent = item.parent ? current.items[item.parent] : undefined;
+  const grandparent = parent?.parent ? current.items[parent.parent] : undefined;
+  if (parent && isChecksItem(parent)) return checkBeingWritten(before, parent.parent!);
+  const check = parent && grandparent && isChecksItem(grandparent) ? typePartOf(parent.text) : null;
+  if (check && /^(?:unique )?one of$/i.test(parent!.text.slice(check.typeStart).trim())) {
+    return { start: 0, prefix: before, finish: (value) => value, words: (doc) => valuesUnder(doc, grandparent!.parent!, check.key.toLowerCase()) };
+  }
+  return null;
+}
+
+function checkBeingWritten(before: string, ruled: ItemId): Typed | null {
+  const type = /^([\p{L}\p{N}_-]+): (.*)$/u.exec(before);
+  if (type) return { start: type[1].length + 2, prefix: type[2], finish: (word) => word, words: typeWordsOffered };
+  const key = /^[\p{L}\p{N}_-]*$/u.exec(before);
+  return key ? { start: 0, prefix: before, finish: (word) => `${word}: `, words: (doc) => keysUnder(doc, ruled) } : null;
+}
+
+function enumValueInNote(current: Doc, id: ItemId, before: string): Typed | null {
+  const written = /(?:^|\n)[ \t]*:([\p{L}\p{N}_-]+):[ \t]+([^\n]*)$/u.exec(before);
+  const check = written && checksFor(current, id).get(written[1].toLowerCase());
+  if (!written || !check || check.type.kind !== "oneOf") return null;
+  const values = check.type.values;
+  return { start: before.length - written[2].length, prefix: written[2], finish: (value) => value, words: () => values };
+}
+
+function keysUnder(doc: Doc, ruled: ItemId): string[] {
+  return byUse(itemsUnder(doc, ruled).flatMap((id) => Object.keys(doc.items[id].properties)));
+}
+
+function valuesUnder(doc: Doc, ruled: ItemId, key: string): string[] {
+  return byUse(itemsUnder(doc, ruled).flatMap((id) => doc.items[id].properties[key] ?? []));
+}
+
+function itemsUnder(doc: Doc, parent: ItemId): ItemId[] {
+  return doc.items[parent].children.filter((id) => !isChecksItem(doc.items[id])).flatMap((id) => [id, ...itemsUnder(doc, id)]);
 }
 
 const finishKey = (key: string) => `:${key}: `;

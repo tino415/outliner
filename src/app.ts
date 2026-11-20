@@ -11,6 +11,7 @@ import { enableBulletHandles } from "./bullets";
 import { bindEditorEvents, caretNow } from "./editing";
 import { leaveLinkToMissingItem, zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, isMirroredOnScreen, render, rowShowsTypedText } from "./render";
+import { problemWith } from "./checks";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
@@ -119,7 +120,7 @@ function renderIfTheDayChanged(): void {
 function liftPropertiesWrittenInNotes(): void {
   const focused = document.activeElement;
   const typingIn = focused instanceof HTMLElement && focused.classList.contains("note") ? focused.dataset.id : undefined;
-  const lifted = liftNoteProperties(doc(), Object.keys(doc().items).filter((id) => id !== typingIn));
+  const lifted = liftNoteProperties(doc(), Object.keys(doc().items).filter((id) => id !== typingIn), (id, key, value) => problemWith(doc(), id, key, value) !== null);
   if (lifted !== doc()) commitAndRender(lifted, null);
 }
 
