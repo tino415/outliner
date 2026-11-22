@@ -46,6 +46,7 @@ import { isKindName, kindOf, kindPrefixLength, kindsIn, withKind } from "./kinds
 import { itemLabel, plainText, renderItemText, renderNote, shortLabel } from "./inline";
 import { privateHolderOf, referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
+import { isChecksItem, problemWith, refusedInNote, startsAValidType, typePartOf } from "./checks";
 import { liveMirrorTarget, mirrorHere } from "./mirrors";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, noteListsToChildren, parseIndentedText } from "./transfer";
@@ -87,7 +88,7 @@ export function bindEditorEvents(): void {
     const editor = editorOf(event.target);
     if (!editor) return;
     caretBeforeInput = caretNow();
-    if (handledAsKey(event, editor)) event.preventDefault();
+    if (handledAsKey(event, editor) || startsNoValidType(event, editor)) event.preventDefault();
     else if (isReadOnlyEditor(editor) && !/^insert(Paragraph|LineBreak|CompositionText)/.test(event.inputType)) {
       event.preventDefault();
       toast(readOnlyNotice(editor.dataset.id!));
@@ -267,8 +268,10 @@ export function pickFiles(): Promise<File[]> {
 function liftTypedProperties(id: ItemId): void {
   if (!/^[ \t]*:[\p{L}\p{N}_-]+:/mu.test(doc().items[id]?.note ?? "")) return;
   setTimeout(() => {
-    const lifted = liftNoteProperties(doc(), [id]);
+    const refused = refusedInNote(doc(), id);
+    const lifted = liftNoteProperties(doc(), [id], (each, key, value) => problemWith(doc(), each, key, value) !== null);
     if (lifted !== doc()) commitAndRender(lifted, caretNow());
+    if (refused.length > 0) toast(refused[0]);
   });
 }
 
@@ -324,6 +327,19 @@ const keysMeantBy: Record<string, string> = {
   insertLineBreak: "Shift+Enter",
   deleteContentBackward: "Backspace",
 };
+
+/** In the type part of a check, a typed character that starts no valid type is refused; pasted text is let in and shows red. */
+function startsNoValidType(event: InputEvent, editor: HTMLElement): boolean {
+  if (event.inputType !== "insertText" || !event.data || isNoteEditor(editor)) return false;
+  const item = doc().items[editor.dataset.id!];
+  if (!item?.parent || !isChecksItem(doc().items[item.parent])) return false;
+  const caret = selectionIn(editor);
+  if (!caret) return false;
+  const after = item.text.slice(0, caret.start) + event.data + item.text.slice(caret.end);
+  const part = typePartOf(after);
+  if (!part || caret.start < part.typeStart - 1) return false;
+  return !startsAValidType(after.slice(part.typeStart).trimStart());
+}
 
 function handledAsKey(event: InputEvent, editor: HTMLElement): boolean {
   if (insertingText) return false;

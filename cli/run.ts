@@ -41,6 +41,7 @@ import { Clock, newDeviceId } from "../src/sync/clock";
 import { Endpoint, exchange } from "../src/sync/client";
 import { Replica, diff, materialize, merge } from "../src/sync/replica";
 import { noteProblem, titleProblem } from "../src/writingRules";
+import { problemWith } from "../src/checks";
 import { watch } from "./watch";
 
 export const USAGE = `outline: read and change the synced outline
@@ -221,7 +222,15 @@ async function perform(command: string, args: string[], options: Options, outlin
       if (args[0]) writable(doc, resolve(doc, args[0]));
       const [, key, ...words] = args;
       if (!key || !propertyKey(key)) throw new Error("set needs ITEM KEY VALUE; KEY is up to 64 letters, digits, - or _");
-      return changeItem(outline, args, (next, id) => setItemProperty(next, id, key, words.join(" ")), "properties");
+      return changeItem(
+        outline,
+        args,
+        (next, id) => {
+          requireChecked(next, id, key, words.join(" "));
+          return setItemProperty(next, id, key, words.join(" "));
+        },
+        "properties",
+      );
     }
     case "capture": {
       const text = args.join(" ");
@@ -229,7 +238,9 @@ async function perform(command: string, args: string[], options: Options, outlin
       const templates = captureTemplates(doc);
       const template = options.template ? templateNamed(templates, options.template) : templates[0];
       if (!template) throw new Error(`no capture template named ${options.template}; there are ${templates.map((each) => each.name).join(", ")}`);
-      const result = capture(doc, template, text, propertiesFrom(options.set), new Date());
+      const assigned = propertiesFrom(options.set);
+      const result = capture(doc, template, text, assigned, new Date());
+      for (const [key, value] of Object.entries(assigned)) requireChecked(result.doc, result.id, key, value);
       for (const id of [result.target, ...ancestors(result.doc, result.target)]) writable(result.doc, id);
       await outline.save(result.doc);
       return options.json ? json({ id: result.id, under: result.target }) : result.id;
@@ -380,6 +391,11 @@ function textFrom(argument: string, stdin: string, whenEmpty: string): string {
 function requireStdin(stdin: string, whenEmpty: string): string {
   if (!stdin.trim()) throw new Error(`read nothing from stdin${whenEmpty ? `; ${whenEmpty}` : ""}`);
   return stdin;
+}
+
+function requireChecked(doc: Doc, id: ItemId, key: string, value: string): void {
+  const problem = problemWith(doc, id, key, value);
+  if (problem) throw new Error(problem);
 }
 
 function requireTitle(title: string): void {

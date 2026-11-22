@@ -78,7 +78,16 @@ and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a li
 the note is left. Exports write properties as such lines, as org mode does.
 A note is prose: list lines and headings typed in it become child items when
 the note is left, and a title stops at 200 characters, with a counter from 180
-(doc/adr/0070).
+(doc/adr/0069).
+A `Checks:` child types the properties under its parent (doc/adr/0071): one
+child per property, `effort: one of` with a child per value, `estimate: integer`,
+`deadline: date`, `start: time`, `note: text`, or `key: one of 1..9`, each with
+`unique` in front when no two items under the parent may share a value. The
+nearest `Checks:` up the tree decides a key. A value that breaks its check is
+refused with a toast, in the app, in `outline set` and in `outline capture
+--set`, and shows red when it got there another way. A board's Checks button and
+Ctrl-K, Edit checks of this page, zoom into the page's `Checks:` child, making
+it when it is missing.
 ⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
 roll up, put a `columns` property on the page, as in org mode:
