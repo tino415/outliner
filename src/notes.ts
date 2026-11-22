@@ -56,15 +56,16 @@ export function isOutsideCode(lines: string[]): boolean[] {
   });
 }
 
-/** The `:key: value` lines of a note taken out of it, and the note without them. */
-export function splitPropertyLines(note: string): { properties: Map<string, string>; rest: string } {
+/** The `:key: value` lines of a note taken out of it, and the note without them; a line `refused` says no to stays in the note. */
+export function splitPropertyLines(note: string, refused: (key: string, value: string) => boolean = () => false): { properties: Map<string, string>; rest: string } {
   const lines = note.split("\n");
   const outside = isOutsideCode(lines);
   const properties = new Map<string, string>();
   const rest = lines.filter((line, index) => {
     const property = outside[index] ? propertyLine(line) : null;
-    if (property) properties.set(property.key, property.value);
-    return !property;
+    if (!property || refused(property.key, property.value)) return true;
+    properties.set(property.key, property.value);
+    return false;
   });
   return { properties, rest: rest.join("\n").replace(/^(?:[ \t]*\n)+/, "").replace(/(?:\n[ \t]*)+$/, "") };
 }

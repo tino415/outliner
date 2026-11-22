@@ -10,6 +10,8 @@ import { isMirror, mirrorBulletTitle, mirrorTextHtml } from "./mirrors";
 import { Drop, DropPlaces, scrollPageToward } from "./bullets";
 import { agendaShown } from "./agenda";
 import { queryViewShown } from "./queryView";
+import { ensureChecks, inChecks, isChecksItem, problemsOfItem } from "./checks";
+import { zoomTo } from "./navigation";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -59,9 +61,25 @@ export function toggleBoard(): void {
   commitAndRender(setItemProperty(doc(), page.id, "view", isBoard(page) ? "" : "board"), caretNow());
 }
 
+/** Zooms into the Checks: child of the page, making it first when the page has none. */
+export function editChecksOfPage(): void {
+  if (inChecks(doc(), state.zoom)) return;
+  const checks = ensureChecks(doc(), state.zoom);
+  if (checks.doc !== doc()) commitAndRender(checks.doc, null);
+  zoomTo(checks.id);
+}
+
 export function renderBoard(): void {
-  const columns = inResults(shownChildren(doc(), state.zoom, filter()));
-  ui.board.innerHTML = columns.map((id) => columnGapHtml(id) + columnHtml(id)).join("") + `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>`;
+  const columns = shownOnBoard(state.zoom);
+  ui.board.innerHTML =
+    columns.map((id) => columnGapHtml(id) + columnHtml(id)).join("") +
+    `<button type="button" class="board-new-column" data-board-new-column>+ Column</button>` +
+    `<button type="button" class="board-checks" data-board-checks title="The checks that type the properties of this board">Checks</button>`;
+}
+
+/** A Checks: child types the properties under its parent, so it is neither a column nor a card. */
+function shownOnBoard(parent: ItemId): ItemId[] {
+  return inResults(shownChildren(doc(), parent, filter())).filter((id) => !isChecksItem(doc().items[id]));
 }
 
 function columnGapHtml(nextColumn: ItemId): string {
@@ -70,10 +88,10 @@ function columnGapHtml(nextColumn: ItemId): string {
 
 function columnHtml(id: ItemId): string {
   const item = doc().items[id];
-  const cards = inResults(shownChildren(doc(), id, filter()));
+  const cards = shownOnBoard(id);
   return (
     `<section class="item board-column${item.completed ? " completed" : ""}${state.results?.matches.has(id) ? " match" : ""}" data-id="${escape(id)}">` +
-    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}<span class="board-count">${countLabel(doc(), item.children)}</span>${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}</div>` +
+    `<div class="row board-column-head">${bullet(id)}${textEditor(id)}<span class="board-count">${countLabel(doc(), item.children)}</span>${propertyButton()}${chips(id)}${noteEditor(id)}</div>` +
     `<ol class="board-cards">${cards.map(cardHtml).join("")}</ol>` +
     `<button type="button" class="board-new-card" data-board-new-card="${escape(id)}">+ Add a card</button></section>`
   );
@@ -82,12 +100,12 @@ function columnHtml(id: ItemId): string {
 /** An expanded card shows one level of its children as rows; deeper levels, and a folded card's children, are a count. */
 function cardHtml(id: ItemId): string {
   const item = doc().items[id];
-  const children = inResults(shownChildren(doc(), id, filter()));
+  const children = shownOnBoard(id);
   const expanded = children.length > 0 && (Boolean(state.results) || !item.collapsed);
   const classes = ["item", "board-card", state.results?.matches.has(id) && "match", item.completed && "completed", children.length > 0 && "has-children", children.length > 0 && !expanded && "folded"];
   return (
     `<li class="${classes.filter(Boolean).join(" ")}" data-id="${escape(id)}"><div class="row">` +
-    `${foldToggle(expanded)}${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
+    `${foldToggle(expanded)}${bullet(id)}${textEditor(id)}${propertyButton()}${chips(id)}${noteEditor(id)}` +
     (expanded ? "" : insideLink(id, children.length)) +
     `</div>` +
     (expanded ? `<ol class="board-children">${children.map(cardChildHtml).join("")}</ol>` : "") +
@@ -99,10 +117,14 @@ function cardChildHtml(id: ItemId): string {
   const item = doc().items[id];
   return (
     `<li class="item board-child${item.completed ? " completed" : ""}${state.results?.matches.has(id) ? " match" : ""}" data-id="${escape(id)}"><div class="row">` +
-    `${bullet(id)}${textEditor(id)}${propertyButton()}${propertyChipsHtml(item, undefined, ownFormulaResults(id))}${noteEditor(id)}` +
-    insideLink(id, inResults(shownChildren(doc(), id, filter())).length) +
+    `${bullet(id)}${textEditor(id)}${propertyButton()}${chips(id)}${noteEditor(id)}` +
+    insideLink(id, shownOnBoard(id).length) +
     `</div></li>`
   );
+}
+
+function chips(id: ItemId): string {
+  return propertyChipsHtml(doc().items[id], undefined, ownFormulaResults(id), problemsOfItem(doc(), id));
 }
 
 function foldToggle(expanded: boolean): string {
@@ -160,6 +182,7 @@ export function bindBoard(): void {
     const newCard = target.closest<HTMLElement>("[data-board-new-card]");
     if (newCard) addChild(newCard.dataset.boardNewCard!, newChildIndex(doc(), newCard.dataset.boardNewCard!));
     if (target.closest("[data-board-new-column]")) addChild(state.zoom);
+    if (target.closest("[data-board-checks]")) editChecksOfPage();
     const gap = target.closest<HTMLElement>("[data-board-gap]");
     if (gap) addChild(state.zoom, indexInParent(doc(), gap.dataset.boardGap!));
   });

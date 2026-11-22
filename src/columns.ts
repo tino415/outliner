@@ -4,6 +4,8 @@ import { caretNow } from "./editing";
 import { columnViewShown, render } from "./render";
 import { savePrefs } from "./storage";
 import { refusedAsReadOnly } from "./bookmarking";
+import { problemWith } from "./checks";
+import { toast } from "./chrome";
 
 /** Switches the column view of the current page, remembering the choice for that page. */
 export function toggleColumnView(): void {
@@ -37,7 +39,9 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   const finish = (save: boolean) => {
     if (done) return;
     done = true;
-    const next = save && doc().items[id] ? setItemProperty(doc(), id, key, input.value) : doc();
+    const problem = save && doc().items[id] ? problemWith(doc(), id, key, input.value) : null;
+    if (problem) toast(problem);
+    const next = save && !problem && doc().items[id] ? setItemProperty(doc(), id, key, input.value) : doc();
     if (next === doc()) {
       cell.replaceChildren(...shown);
       return;

@@ -1,4 +1,5 @@
 import { $, ChangeOrigin, commitAndRender, commitFromEventHandler, doc, onChangeHere, state } from "./app";
+import { problemWith } from "./checks";
 import { Doc, ItemId, insertChild, isDescendant, newChildIndex, setFlags, setItemProperty, setNote, setText } from "./model";
 import { propertiesOf, propertyKey } from "./notes";
 import { Plugin, TRUST_KEY, approvalOf, isApproved, listenedEvents, pluginsIn } from "./plugins";
@@ -179,6 +180,8 @@ function perform(call: Call, plugin: Plugin): unknown {
       const key = propertyKey(text(call.args[1]));
       if (!key) throw new Error("a property key is up to 64 letters, digits, - or _");
       refuseGuarded([key]);
+      const problem = problemWith(doc(), id, key, text(call.args[2]));
+      if (problem) throw new Error(problem);
       change(setItemProperty(doc(), id, key, text(call.args[2])));
       return null;
     }
