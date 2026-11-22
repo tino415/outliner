@@ -10,6 +10,7 @@ export const expectedSkips: { title: string; skippedIn: string[] }[] = [
   { title: "Shift-click selects a range and copy puts it on the clipboard", skippedIn: notChromium },
   { title: "pasting an image adds a child that shows it and leaves the note alone, without sync too", skippedIn: notChromium },
   { title: "pasting an image in a note adds the child and a reference to it at the caret", skippedIn: notChromium },
+  { title: "Mod+ArrowUp folds it to its file name and a reload keeps it folded", skippedIn: notChromium },
   { title: "a finger dragged sideways over a board card scrolls the board", skippedIn: ["desktop"] },
 ];
 
