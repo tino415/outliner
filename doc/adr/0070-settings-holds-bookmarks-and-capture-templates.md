@@ -1,4 +1,4 @@
-# 69. Settings holds Bookmarks and Capture templates
+# 70. Settings holds Bookmarks and Capture templates
 
 - **Status:** accepted, 2026-11-20
 - **Supersedes:** in [0060](0060-bookmarks-are-the-children-of-a-system-item.md),

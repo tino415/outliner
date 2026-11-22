@@ -44,7 +44,7 @@ interface KeptItem {
 }
 
 /**
- * The items that live in code (doc/adr/0069), in the order they sit in. A kept
+ * The items that live in code (doc/adr/0070), in the order they sit in. A kept
  * item's title, note and completion are fixed, it cannot be deleted or moved
  * out of its parent, and its About, when it has one, is defined here and
  * read-only, never saved or synced (doc/adr/0066).
