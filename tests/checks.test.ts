@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Doc, ItemId, ROOT, appendChild, emptyDoc, liftNoteProperties, setItemProperty, setNote } from "../src/model";
 import { checksFor, ensureChecks, problemInCheckRow, problemWith, problemsInChecks, startsAValidType } from "../src/checks";
 import { bookmarksIn } from "../src/bookmarks";
-import { BOOKMARKS, withBookmarksItem } from "../src/model";
+import { BOOKMARKS, withSettingsItems } from "../src/model";
 
 function add(doc: Doc, parent: ItemId, text: string, properties: Record<string, string> = {}): { doc: Doc; id: ItemId } {
   const created = appendChild(doc, parent, text);
@@ -147,7 +147,7 @@ describe("a :key: line in a note", () => {
 
 describe("Bookmarks with a Checks: child", () => {
   it("does not take the Checks: child for a bookmark", () => {
-    const added = add(withBookmarksItem(emptyDoc()), BOOKMARKS, "Checks:");
+    const added = add(withSettingsItems(emptyDoc()), BOOKMARKS, "Checks:");
     expect(bookmarksIn(added.doc)).toEqual([]);
   });
 });
