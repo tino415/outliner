@@ -8,7 +8,7 @@ export interface AttachmentTitle {
   hash: string;
 }
 
-/** An attachment child is an item whose whole title is one attachment link (doc/adr/0069). */
+/** An attachment child is an item whose whole title is one attachment link (doc/adr/0072). */
 export function attachmentTitle(text: string): AttachmentTitle | null {
   const found = WHOLE_TITLE.exec(text);
   return found && { image: found[1] === "!", name: found[2], hash: found[3] };

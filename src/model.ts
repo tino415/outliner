@@ -658,7 +658,7 @@ export function setCollapsed(doc: Doc, id: ItemId, collapsed: boolean): Doc {
   });
 }
 
-/** Items that fold: those with children, and a picture attached as a child, which folds to its file name (doc/adr/0069). */
+/** Items that fold: those with children, and a picture attached as a child, which folds to its file name (doc/adr/0072). */
 export function isFoldable(item: Item): boolean {
   return item.children.length > 0 || attachmentTitle(item.text)?.image === true;
 }

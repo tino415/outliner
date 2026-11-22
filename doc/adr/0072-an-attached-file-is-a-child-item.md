@@ -13,7 +13,7 @@ a picture or a file name appeared inside text the item's owner wrote.
 
 ## Decision
 
-- Each attached file adds one last child whose title is its link
+- Each attached file adds one child whose title is its link
   (`![glitch.png](att:<sha256>)`); the note is not opened or changed. A title
   with that link already renders as a picture or a 📎 name.
 - A new attachment child is placed like any new child: first when the item has

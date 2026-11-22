@@ -257,10 +257,11 @@ here".
 ## Attachments
 
 Paste an image into an item, drop files on it, or press Ctrl-J A (also
-in the item menu) to attach files (doc/adr/0028). Each becomes a last child
-of the item, titled `![glitch.png](att:<sha256>)`; images show as pictures
-(doc/adr/0069). Pasting in a note also puts a reference to the child at the
-caret. Files are kept in the browser and uploaded to the sync server on the
+in the item menu) to attach files (doc/adr/0028). Each becomes a child
+of the item, placed like any new child and titled `![glitch.png](att:<sha256>)`;
+it has a 📎 bullet, and an image shows as a picture that folds to its name and
+opens in a viewer when clicked (doc/adr/0072). Attaching from a note also puts
+a reference to the child at the caret. Files are kept in the browser and uploaded to the sync server on the
 next sync. From a shell:
 
 ```sh

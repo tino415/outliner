@@ -7,7 +7,7 @@ import { ATTACHMENT } from "./attachmentTitle";
  * An attachment is a Markdown link to `att:` and the SHA-256 of the file
  * (doc/adr/0028): `![screenshot.png](att:…)` for an image, shown as one,
  * `[report.pdf](att:…)` for any other file. An item holds it as a child
- * titled with the link (doc/adr/0069).
+ * titled with the link (doc/adr/0072).
  */
 
 export { ATTACHMENT };
