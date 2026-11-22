@@ -1,9 +1,20 @@
 import { isOutsideCode } from "./notes";
 
 export const MAX_TITLE_LENGTH = 200;
+export const TITLE_COUNTER_FROM = 180;
 
 const LIST_LINE = /^\s*([-*+]|\d+[.)])\s/;
 const HEADING = /^\s*#{1,6}\s/;
+
+export function isListLine(line: string): boolean {
+  return LIST_LINE.test(line) || HEADING.test(line);
+}
+
+export function listLinesOf(note: string): string[] {
+  const lines = note.split("\n");
+  const outside = isOutsideCode(lines);
+  return lines.filter((line, index) => outside[index] && isListLine(line));
+}
 
 export function titleProblem(title: string): string | undefined {
   if (!title.trim()) return "a title needs some text";
@@ -15,9 +26,7 @@ export function titleProblem(title: string): string | undefined {
 }
 
 export function noteProblem(note: string): string | undefined {
-  const lines = note.split("\n");
-  const outside = isOutsideCode(lines);
-  const offending = lines.find((line, index) => outside[index] && (LIST_LINE.test(line) || HEADING.test(line)));
+  const [offending] = listLinesOf(note);
   if (offending === undefined) return undefined;
   return `a note is prose, not a list or headings: "${offending.trim().slice(0, 40)}" belongs in children with add - --under ITEM (code fences and attachment links are fine in a note)`;
 }
