@@ -6,6 +6,7 @@ test("Ctrl-; sets a property by key and value, and the caret stays where it was"
   await clickEnd(page, "Soup");
   await page.keyboard.press("ControlOrMeta+j");
   await page.keyboard.press("p");
+  await page.keyboard.type("kc");
   await expect(page.locator("#palette li").first()).toHaveText("kcal");
   await page.keyboard.press("Enter");
   await expect(page.locator("#palette li").first()).toHaveText("300 kcal");

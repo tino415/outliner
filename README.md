@@ -78,7 +78,7 @@ and the key edits it (doc/adr/0057). Each property syncs on its own. Typing a li
 the note is left. Exports write properties as such lines, as org mode does.
 A note is prose: list lines and headings typed in it become child items when
 the note is left, and a title stops at 200 characters, with a counter from 180
-(doc/adr/0069).
+(doc/adr/0070).
 ⋯ → Columns (Ctrl-J C) shows the page's properties as columns, each
 parent showing the sum of its children. To choose the columns and how they
 roll up, put a `columns` property on the page, as in org mode:
@@ -346,7 +346,8 @@ Meal
 `:capture:` is a path or an item id (`{date}` is today, `{tomorrow}` the day
 after, missing pages are created), `:ask:` the properties to ask for, `:key:` the letter that picks
 the template, `:at: top` files at the top. Without templates, items go to
-`Inbox`.
+`Inbox`. Settings / Capture templates is the home of templates, with an About
+item that explains them (doc/adr/0070); Settings also holds Bookmarks.
 
 Straight into capture: long-press the installed app's icon → Capture, or
 share a page or text to the app on Android. Any device can open

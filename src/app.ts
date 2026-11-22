@@ -1,6 +1,6 @@
 import { bindAttachments } from "./attachments";
 import { pluginsMayHaveChanged } from "./pluginHost";
-import { Doc, ItemId, ROOT, ViewFilter, isDescendant, isKept, liftNoteProperties, liftTags, withBookmarksItem, withPrivateIds } from "./model";
+import { Doc, ItemId, ROOT, ViewFilter, isDescendant, isKept, liftNoteProperties, liftTags, withSettingsItems, withPrivateIds } from "./model";
 import { Caret, History } from "./store";
 import { loaded } from "./loaded";
 import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
@@ -205,7 +205,7 @@ export function redo(): void {
 
 function afterHistoryJump(before: Doc, caret: Caret | null | undefined): void {
   if (caret === undefined) return;
-  state.history.keep(withBookmarksItem(doc()));
+  state.history.keep(withSettingsItems(doc()));
   saveDocSoon(doc());
   changedHere(before, doc(), "history");
   if (caret && !doc().items[caret.id]) caret = null;
