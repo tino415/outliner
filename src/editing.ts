@@ -261,8 +261,10 @@ function noteSpotOf(editor: HTMLElement | null): NoteSpot | undefined {
 }
 
 export async function attachFilesTo(id: ItemId, files: File[], linkAt?: NoteSpot): Promise<void> {
+  if (!doc().items[id]) return;
+  if (isReadOnly(id, "children")) return void toast(readOnlyNotice(id));
   const links = await keepFiles(files);
-  if (!doc().items[id] || isReadOnly(id, "children")) return;
+  if (!doc().items[id]) return;
   const first = newChildIndex(doc(), id);
   let next = setCollapsed(doc(), id, false);
   const references: string[] = [];

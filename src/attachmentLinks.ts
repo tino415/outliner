@@ -1,7 +1,7 @@
 import { Doc, ItemId, ROOT, insertChild, isReadOnly, remove, setNote } from "./model";
 import { isOutsideCode, isSealed, propertyLine } from "./notes";
 import { referenceTo } from "./references";
-import { ATTACHMENT } from "./attachmentTitle";
+import { ATTACHMENT, attachmentTitle } from "./attachmentTitle";
 
 /*
  * An attachment is a Markdown link to `att:` and the SHA-256 of the file
@@ -9,8 +9,6 @@ import { ATTACHMENT } from "./attachmentTitle";
  * `[report.pdf](att:…)` for any other file. An item holds it as a child
  * titled with the link (doc/adr/0072).
  */
-
-export { ATTACHMENT };
 
 export function attachmentLink(name: string, hash: string, type: string): string {
   const label = name.replace(/[[\]\n]/g, " ").trim() || "file";
@@ -50,7 +48,7 @@ export function withoutAttachment(note: string, hash: string): string {
 }
 
 export function attachmentChildren(doc: Doc, id: ItemId, hash: string): ItemId[] {
-  return doc.items[id].children.filter((child) => new RegExp(`^\\s*${linkTo(hash).source}\\s*$`).test(doc.items[child].text));
+  return doc.items[id].children.filter((child) => attachmentTitle(doc.items[child].text)?.hash === hash);
 }
 
 export function withoutAttachmentChildren(doc: Doc, id: ItemId, hash: string): Doc {

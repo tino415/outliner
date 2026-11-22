@@ -1,4 +1,4 @@
-import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, liftNoteProperties, liftTags, setFlags, setNote, titleWithTags } from "./model";
+import { Doc, Item, ItemId, ROOT, appendChild, buildDoc, emptyDoc, insertChild, isFoldable, liftNoteProperties, liftTags, setFlags, setNote, titleWithTags } from "./model";
 import { escape } from "./inline";
 import { linksAsLabels } from "./references";
 import { isInCode, isOutsideCode, mapLinesOutsideCode, propertyLines } from "./notes";
@@ -146,7 +146,7 @@ export function graft(doc: Doc, incoming: Doc, parent: ItemId, index: number): {
       note: source.note,
       properties: source.properties,
       completed: source.completed,
-      collapsed: source.collapsed && source.children.length > 0,
+      collapsed: source.collapsed && isFoldable(source),
     });
     return created.id;
   };

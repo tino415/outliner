@@ -276,7 +276,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    const toggleOpen = attachment?.image ? !item.collapsed : expanded;
+    const toggleOpen = attachment?.image && !hasChildren ? !item.collapsed : expanded;
     li.prepend(mirror === null ? createRow(item, toggleOpen, noteOpen, cells, results, foldedCount, breaking, rowProblem, attachment !== null) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
     rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);

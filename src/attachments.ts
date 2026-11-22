@@ -106,7 +106,7 @@ async function openAttachment(attachment: HTMLElement): Promise<void> {
 let closeViewer: (() => void) | null = null;
 
 function showViewer(url: string, name: string): void {
-  closeViewer?.();
+  if (closeViewer) return;
   const viewer = Object.assign(document.createElement("div"), { className: "viewer" });
   viewer.setAttribute("role", "dialog");
   viewer.setAttribute("aria-label", name || "Picture");
@@ -119,7 +119,13 @@ function showViewer(url: string, name: string): void {
   const paint = () => (picture.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`);
   const zoomBy = (factor: number) => {
     view.scale = Math.min(8, Math.max(1, view.scale * factor));
-    if (view.scale === 1) Object.assign(view, { x: 0, y: 0 });
+    keepOnScreen();
+  };
+  const keepOnScreen = () => {
+    const reachX = (picture.offsetWidth * (view.scale - 1)) / 2;
+    const reachY = (picture.offsetHeight * (view.scale - 1)) / 2;
+    view.x = Math.min(reachX, Math.max(-reachX, view.x));
+    view.y = Math.min(reachY, Math.max(-reachY, view.y));
     paint();
   };
   viewer.addEventListener("wheel", (event) => {
@@ -139,7 +145,7 @@ function showViewer(url: string, name: string): void {
     if (others.length === 1) zoomBy(Math.hypot(event.clientX - others[0].x, event.clientY - others[0].y) / Math.hypot(before.x - others[0].x, before.y - others[0].y));
     else if (view.scale > 1) Object.assign(view, { x: view.x + event.clientX - before.x, y: view.y + event.clientY - before.y });
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    paint();
+    keepOnScreen();
   });
   for (const type of ["pointerup", "pointercancel"]) picture.addEventListener(type, (event) => pointers.delete((event as PointerEvent).pointerId));
 
