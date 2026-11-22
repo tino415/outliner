@@ -1,4 +1,4 @@
-import { ItemId, ROOT, foldableInside, insertShownChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
+import { ItemId, ROOT, foldableInside, isFoldable, insertShownChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
@@ -432,7 +432,7 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   menu.querySelector('[data-item-action="complete"] span')!.textContent = item.completed ? "Uncomplete" : "Complete";
   menu.querySelector('[data-item-action="note"] span')!.textContent = item.note ? "Edit note" : "Add a note";
   const fold = menu.querySelector<HTMLElement>('[data-item-action="fold"]')!;
-  fold.hidden = item.children.length === 0 || Boolean(state.results) || !foldShows(id);
+  fold.hidden = !isFoldable(item) || Boolean(state.results) || !foldShows(id);
   fold.querySelector("span")!.textContent = item.collapsed ? "Expand" : "Collapse";
   const holdsFolds = !state.results && (foldShows(id) || isColumn(id)) && foldableInside(doc(), id).length > 0;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action$="-inside"]')) entry.hidden = !holdsFolds;

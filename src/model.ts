@@ -1,5 +1,6 @@
 import { isOutsideCode, isSealed, privateKeyInNote, propertyKey, sealedKeyOf, splitPropertyLines } from "./notes";
 import { tagsWritten, takeTags } from "./inline";
+import { attachmentTitle } from "./attachmentTitle";
 
 export type ItemId = string;
 
@@ -657,11 +658,16 @@ export function setCollapsed(doc: Doc, id: ItemId, collapsed: boolean): Doc {
   });
 }
 
+/** Items that fold: those with children, and a picture attached as a child, which folds to its file name (doc/adr/0069). */
+export function isFoldable(item: Item): boolean {
+  return item.children.length > 0 || attachmentTitle(item.text)?.image === true;
+}
+
 export function setCollapsedEverywhere(doc: Doc, top: ItemId, collapsed: boolean): Doc {
   return edit(doc, (d) => {
     const walk = (id: ItemId) => {
       for (const child of d.read(id).children) {
-        if (d.read(child).children.length > 0 && d.read(child).collapsed !== collapsed) {
+        if (isFoldable(d.read(child)) && d.read(child).collapsed !== collapsed) {
           d.write(child).collapsed = collapsed;
         }
         walk(child);
@@ -672,7 +678,7 @@ export function setCollapsedEverywhere(doc: Doc, top: ItemId, collapsed: boolean
 }
 
 export function foldableInside(doc: Doc, top: ItemId): ItemId[] {
-  return doc.items[top].children.flatMap((child) => [...(doc.items[child].children.length > 0 ? [child] : []), ...foldableInside(doc, child)]);
+  return doc.items[top].children.flatMap((child) => [...(isFoldable(doc.items[child]) ? [child] : []), ...foldableInside(doc, child)]);
 }
 
 export function toggleCompleted(doc: Doc, id: ItemId): Doc {

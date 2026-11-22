@@ -427,11 +427,13 @@ kbd {
   transition: transform 0.18s ease;
 }
 
-.folded > .row .toggle svg {
+.folded > .row .toggle svg,
+.picture-folded > .row .toggle svg {
   transform: none;
 }
 
-.has-children > .row:hover .toggle {
+.has-children > .row:hover .toggle,
+.image-child > .row:hover .toggle {
   opacity: 1;
 }
 
@@ -439,7 +441,7 @@ kbd {
   color: var(--fg);
 }
 
-.item:not(.has-children) > .row .toggle {
+.item:not(.has-children):not(.image-child) > .row .toggle {
   visibility: hidden;
 }
 
@@ -738,6 +740,50 @@ code {
 
 :focus .att-is-file .att-label::before {
   content: none;
+}
+
+.clip {
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.attachment > .row .att-is-file .att-label::before {
+  content: none;
+}
+
+.attachment > .row .att-is-image {
+  display: block;
+}
+
+.attachment > .row .att-image {
+  margin: 0 0 3px;
+}
+
+.picture-folded > .row .att-image {
+  display: none;
+}
+
+.picture-folded > .row .att-is-image .att-label {
+  display: inline;
+}
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.85);
+  overflow: hidden;
+}
+
+.viewer img {
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .completion {
@@ -2169,7 +2215,8 @@ body.dragging {
 /* ---- touch and narrow screens ----------------------------------------------- */
 
 @media (hover: none) {
-  .has-children > .row .toggle {
+  .has-children > .row .toggle,
+  .image-child > .row .toggle {
     opacity: 0.6;
   }
 }
@@ -2242,7 +2289,8 @@ body.dragging {
     height: 15px;
   }
 
-  .has-children > .row .toggle {
+  .has-children > .row .toggle,
+  .image-child > .row .toggle {
     opacity: 0.7;
   }
 

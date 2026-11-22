@@ -1,6 +1,7 @@
 import { Doc, ItemId, ROOT, insertChild, isReadOnly, remove, setNote } from "./model";
 import { isOutsideCode, isSealed, propertyLine } from "./notes";
 import { referenceTo } from "./references";
+import { ATTACHMENT } from "./attachmentTitle";
 
 /*
  * An attachment is a Markdown link to `att:` and the SHA-256 of the file
@@ -9,7 +10,7 @@ import { referenceTo } from "./references";
  * titled with the link (doc/adr/0069).
  */
 
-export const ATTACHMENT = /(!?)\[([^\]\n]*)\]\(att:([0-9a-f]{64})\)/;
+export { ATTACHMENT };
 
 export function attachmentLink(name: string, hash: string, type: string): string {
   const label = name.replace(/[[\]\n]/g, " ").trim() || "file";

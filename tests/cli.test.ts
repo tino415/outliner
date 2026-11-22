@@ -111,14 +111,28 @@ describe("outline CLI", () => {
     writeFileSync(shot, "not really a png");
     await outline('add "Bug report" --note "steps"');
     await outline('add "first" --under "Bug report"');
-    const [hash, child] = (await outline(`attach "Bug report" ${shot}`)).split("\n");
-    expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(child).toBe((await outline('show "Bug report" --json').then(JSON.parse)).children[1].id);
+    const child = await outline(`attach "Bug report" ${shot}`);
+    const shown = await outline('show "Bug report" --json').then(JSON.parse);
+    expect(child).toBe(shown.children[1].id);
+    const hash = /att:([0-9a-f]{64})/.exec(shown.children[1].text)![1];
     expect(await outline('show "Bug report"')).toBe(`- Bug report\n  steps\n  - first\n  - ![glitch.png](att:${hash})`);
     const copy = join(folder, "copy.png");
     expect(await outline(`file ${hash} ${copy}`)).toBe(copy);
     expect(readFileSync(copy, "utf8")).toBe("not really a png");
     await expect(outline(`file ${"0".repeat(64)} ${copy}`)).rejects.toThrow(/no file/);
+    rmSync(folder, { recursive: true });
+  });
+
+  it("attaches a file as the first child under an item with :new: top", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "outline-cli-"));
+    const shot = join(folder, "glitch.png");
+    writeFileSync(shot, "not really a png");
+    await outline('add "Inbox"');
+    await outline("set Inbox new top");
+    await outline('add "older" --under Inbox');
+    const child = await outline(`attach Inbox ${shot}`);
+    expect(child).toMatch(/^\w+$/);
+    expect(await outline("show Inbox")).toMatch(/^- Inbox\n {2}:new: top\n {2}- !\[glitch\.png\]\(att:[0-9a-f]{64}\)\n {2}- older$/);
     rmSync(folder, { recursive: true });
   });
 
@@ -139,7 +153,8 @@ describe("outline CLI", () => {
       const shot = join(folder, "glitch.png");
       writeFileSync(shot, "not really a png");
       await outline('add "Bug report"');
-      hash = (await outline(`attach "Bug report" ${shot}`)).split("\n")[0];
+      await outline(`attach "Bug report" ${shot}`);
+      hash = /att:([0-9a-f]{64})/.exec(await outline('show "Bug report"'))![1];
     });
     afterEach(() => rmSync(folder, { recursive: true }));
 

@@ -74,9 +74,9 @@ commands:
   capture TEXT             file TEXT with a capture template (--template NAME,
                            the first by default) and --set KEY=VALUE properties
   rm ITEM                  delete an item and everything under it
-  attach ITEM FILE         upload FILE and add it as a last child of ITEM,
-                           titled with its link; prints the hash, then the
-                           child's id
+  attach ITEM FILE         upload FILE and add it as a child of ITEM, placed
+                           like any new child, titled with its link; prints
+                           the child's id
   detach [ITEM] HASH       take the attachment's link out of ITEM's note and
                            its children, then delete the file unless another
                            item links it too; without ITEM, only delete the
@@ -263,9 +263,9 @@ async function perform(command: string, args: string[], options: Options, outlin
       const type = typeFromName(path);
       await uploadFile(outline.endpoint, hash, type, bytes);
       const parent = editable(resolve(outline.doc, item), "children");
-      const child = insertChild(outline.doc, parent, outline.doc.items[parent].children.length, attachmentLink(basename(path), hash, type));
+      const child = insertChild(outline.doc, parent, newChildIndex(outline.doc, parent), attachmentLink(basename(path), hash, type));
       await outline.save(child.doc);
-      return `${hash}\n${child.id}`;
+      return child.id;
     }
     case "detach":
       return detach(outline, args);
