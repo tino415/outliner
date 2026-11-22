@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { Page, expect, test } from "@playwright/test";
 import { caret, clickEnd, editor, expectOutline, freshOutline, reloadOnceStored, row } from "./helpers";
 
 test.describe("keyboard editing", { tag: "@keys" }, () => {
@@ -452,21 +452,92 @@ test.describe("drag and drop", { tag: "@keys" }, () => {
   });
 });
 
-test("pasting an image attaches it to the item's note and shows it, without sync too", { tag: "@keys" }, async ({ page, browserName }) => {
-  test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
-  await freshOutline(page, "glitch");
-  await editor(page, "glitch").click();
+async function pasteImage(page: Page) {
   await page.evaluate(async () => {
     const pixel = await (await fetch("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")).blob();
     const data = new DataTransfer();
     data.items.add(new File([pixel], "shot.png", { type: "image/png" }));
     document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
   });
-  await expect(row(page, "glitch").locator(".note")).toHaveText(/^!\[shot\.png\]\(att:[0-9a-f]{64}\)$/);
-  await page.keyboard.press("Escape");
-  await expect(row(page, "glitch").locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+}
+
+test("pasting an image adds a child that shows it and leaves the note alone, without sync too", { tag: "@keys" }, async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
+  await freshOutline(page, "glitch | steps");
+  await editor(page, "glitch").click();
+  await pasteImage(page);
+  await expect(page.locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+  await expect(row(page, "glitch").locator(":scope > .body > .note")).toHaveText("steps");
   await page.reload();
-  await expect(row(page, "glitch").locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+  await expect(page.locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+});
+
+test("pasting an image in a note adds the child and a reference to it at the caret", { tag: "@keys" }, async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
+  await freshOutline(page, "glitch | see ");
+  await row(page, "glitch").locator(".note").click();
+  await page.keyboard.press("End");
+  await pasteImage(page);
+  await expect(row(page, "glitch").locator(".note")).toHaveText(/^see ?\[\[id:[^\]]+\]\[shot\.png\]\]$/);
+  await expect(page.locator(".att-image")).toHaveCount(1);
+});
+
+test.describe("an attached image child", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
+  const attachment = (page: Page) => page.locator(".item.attachment");
+
+  test.beforeEach(async ({ page }) => {
+    await freshOutline(page, "glitch | steps");
+    await editor(page, "glitch").click();
+    await pasteImage(page);
+    await expect(page.locator(".att-image")).toHaveJSProperty("naturalWidth", 1);
+  });
+
+  test("shows its picture on its own row, level with its 📎 bullet", async ({ page }) => {
+    await expect(attachment(page).locator(":scope > .row .clip")).toHaveText("📎");
+    const bullet = (await attachment(page).locator(":scope > .row .bullet").boundingBox())!;
+    const picture = (await page.locator(".att-image").boundingBox())!;
+    expect(Math.abs(picture.y - bullet.y)).toBeLessThanOrEqual(4);
+  });
+
+  test("Mod+ArrowUp folds it to its file name and a reload keeps it folded", { tag: "@keys" }, async ({ page }) => {
+    await attachment(page).locator(".text").click();
+    await page.keyboard.press("ControlOrMeta+ArrowUp");
+    await expect(page.locator(".att-image")).toBeHidden();
+    await expect(attachment(page).locator(".att-label")).toHaveText("shot.png");
+    await reloadOnceStored(page, "glitch");
+    await expect(page.locator(".att-image")).toBeHidden();
+    await attachment(page).locator(".text").click();
+    await page.keyboard.press("ControlOrMeta+ArrowDown");
+    await expect(attachment(page)).not.toHaveClass(/picture-folded/);
+  });
+
+  test("a click on the picture opens a viewer that Escape closes without leaving the page", async ({ page }) => {
+    const address = page.url();
+    await page.locator(".att-image").click();
+    await expect(page.locator(".viewer img")).toBeVisible();
+    expect(page.url()).toBe(address);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".viewer")).toHaveCount(0);
+    expect(page.url()).toBe(address);
+  });
+
+});
+
+test("a note's link goes to the note the file came from, even when focus moves meanwhile", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "only Chromium takes files from a synthetic paste event");
+  await freshOutline(page, "A | see \nB");
+  await row(page, "A").locator(".note").click();
+  await page.keyboard.press("End");
+  await page.evaluate(async () => {
+    const pixel = await (await fetch("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")).blob();
+    const data = new DataTransfer();
+    data.items.add(new File([pixel], "shot.png", { type: "image/png" }));
+    document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+    document.querySelector<HTMLElement>(".tree > .item:nth-child(2) .text")!.focus();
+  });
+  await expect(row(page, "A").locator(".note")).toHaveText(/\[\[id:[^\]]+\]\[shot\.png\]\]/);
+  await expect(row(page, "B").locator(":scope > .body > .note")).toBeHidden();
 });
 
 test.describe("order of new and completed items", { tag: "@keys" }, () => {

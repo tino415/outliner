@@ -6,7 +6,7 @@
  */
 
 import { kindOf } from "./kinds";
-import { ATTACHMENT } from "./attachmentLinks";
+import { ATTACHMENT } from "./attachmentTitle";
 import { SEALED_NOTE } from "./notes";
 import { DATE_WRITTEN, dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
 

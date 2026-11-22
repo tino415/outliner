@@ -1,3 +1,4 @@
+import { attachmentTitle } from "./attachmentTitle";
 import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./model";
 import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
@@ -260,6 +261,8 @@ function renderItem(id: ItemId): HTMLLIElement {
   const children = inResults(shown);
   const hasChildren = shown.length > 0;
   const expanded = hasChildren && (state.results ? children.length > 0 : !item.collapsed);
+  const attachment = attachmentTitle(item.text);
+  const foldedPicture = attachment?.image === true && item.collapsed;
   const noteOpen = item.note !== "" || state.openNotes.has(id);
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
@@ -273,7 +276,8 @@ function renderItem(id: ItemId): HTMLLIElement {
   if (!rendered || rendered.item !== item || rendered.state !== displayState || rendered.noteOpen !== noteOpen) {
     const li = rendered?.li ?? createItemElement(id);
     li.querySelector(":scope > .row")?.remove();
-    li.prepend(mirror === null ? createRow(item, expanded, noteOpen, cells, results, foldedCount, breaking, rowProblem) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
+    const toggleOpen = attachment?.image && !hasChildren ? !item.collapsed : expanded;
+    li.prepend(mirror === null ? createRow(item, toggleOpen, noteOpen, cells, results, foldedCount, breaking, rowProblem, attachment !== null) : createMirrorRow(item, expanded, noteOpen, cells, mirror));
     rendered = { item, state: displayState, noteOpen, li };
     renderedRows.set(id, rendered);
   }
@@ -285,8 +289,12 @@ function renderItem(id: ItemId): HTMLLIElement {
   li.classList.toggle("check-bad", rowProblem !== "");
   li.classList.toggle("has-children", hasChildren);
   li.classList.toggle("folded", hasChildren && !expanded);
+  li.classList.toggle("attachment", mirror === null && attachment !== null);
+  li.classList.toggle("image-child", mirror === null && attachment?.image === true);
+  li.classList.toggle("picture-folded", mirror === null && foldedPicture);
   li.classList.toggle("match", Boolean(state.results?.matches.has(id)));
   if (hasChildren) li.setAttribute("aria-expanded", String(expanded));
+  else if (attachment?.image) li.setAttribute("aria-expanded", String(!foldedPicture));
   else li.removeAttribute("aria-expanded");
 
   let list = li.querySelector<HTMLUListElement>(":scope > .children");
@@ -312,12 +320,12 @@ function createItemElement(id: ItemId): HTMLLIElement {
   return li;
 }
 
-function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>, foldedCount: string, breaking: Map<string, string>, rowProblem: string): HTMLElement {
+function createRow(item: Item, expanded: boolean, noteOpen: boolean, cells: string, results: Map<string, Cell>, foldedCount: string, breaking: Map<string, string>, rowProblem: string, attachment: boolean): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML =
     `<button class="toggle" type="button" tabindex="-1" aria-label="${expanded ? "Collapse" : "Expand"}"><svg viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3"/></svg></button>` +
-    `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move"><span class="dot"></span></button>` +
+    `<button class="bullet" type="button" tabindex="-1" aria-label="Zoom in" title="Zoom in · drag to move">${attachment ? `<span class="clip">📎</span>` : `<span class="dot"></span>`}</button>` +
     `<div class="body">` +
     `<div class="text${item.text === "" ? " empty" : ""}" contenteditable="plaintext-only" spellcheck="true" data-id="${item.id}"${rowProblem ? ` title="${escape(rowProblem)}"` : ""}>${renderItemText(item.text)}</div>` +
     (foldedCount === "" ? "" : `<span class="fold-count" title="Direct children">${escape(foldedCount)}</span>`) +

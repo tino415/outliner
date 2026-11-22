@@ -28,7 +28,7 @@ import {
   setText,
 } from "../src/model";
 import { exportJson, exportMarkdown, exportOpml, graft, parseIndentedText } from "../src/transfer";
-import { attachmentLink, linksAttachment, typeFromName, withoutAttachment } from "../src/attachmentLinks";
+import { attachmentChildren, attachmentLink, attachmentsToChildren, linksAttachment, typeFromName, withoutAttachment, withoutAttachmentChildren } from "../src/attachmentLinks";
 import { deleteFile, downloadFile, sha256Hex, uploadFile } from "../src/sync/files";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
@@ -74,11 +74,15 @@ commands:
   capture TEXT             file TEXT with a capture template (--template NAME,
                            the first by default) and --set KEY=VALUE properties
   rm ITEM                  delete an item and everything under it
-  attach ITEM FILE         upload FILE and link it in the item's note; prints
-                           its hash
-  detach [ITEM] HASH       take the attachment's link out of ITEM's note, then
-                           delete the file unless another item links it too;
-                           without ITEM, only delete the file (same check)
+  attach ITEM FILE         upload FILE and add it as a child of ITEM, placed
+                           like any new child, titled with its link; prints
+                           the child's id
+  detach [ITEM] HASH       take the attachment's link out of ITEM's note and
+                           its children, then delete the file unless another
+                           item links it too; without ITEM, only delete the
+                           file (same check)
+  lift-attachments         move the attachment links in notes into children
+                           of their items, once for the whole outline
   file HASH PATH           save the attached file with that hash to PATH
   export [ITEM]            --md (default), --opml or --json
   watch                    keep running and print a line per change made
@@ -258,12 +262,18 @@ async function perform(command: string, args: string[], options: Options, outlin
       const hash = await sha256Hex(bytes);
       const type = typeFromName(path);
       await uploadFile(outline.endpoint, hash, type, bytes);
-      const link = attachmentLink(basename(path), hash, type);
-      await changeItem(outline, [item], (next, id) => setNote(next, id, [next.items[id].note, link].filter(Boolean).join("\n")), "note");
-      return hash;
+      const parent = editable(resolve(outline.doc, item), "children");
+      const child = insertChild(outline.doc, parent, newChildIndex(outline.doc, parent), attachmentLink(basename(path), hash, type));
+      await outline.save(child.doc);
+      return child.id;
     }
     case "detach":
       return detach(outline, args);
+    case "lift-attachments": {
+      const { doc: lifted, lifted: ids } = attachmentsToChildren(outline.doc);
+      await outline.save(lifted);
+      return ids.map((id) => `${id} ${describe(lifted, id)}`).join("\n");
+    }
     case "file": {
       const [hash, path] = args;
       if (!/^[0-9a-f]{64}$/.test(hash ?? "") || !path) throw new Error("file needs HASH PATH; HASH is the 64 letters after att: in a note");
@@ -301,12 +311,13 @@ async function detach(outline: Outline, args: string[]): Promise<string> {
 
 function resolveLinking(doc: Doc, item: string, hash: string): ItemId {
   const id = writable(doc, resolve(doc, item));
-  if (!linksAttachment(doc.items[id].note, hash)) throw new Error(`${describe(doc, id)} has no link to att:${hash}`);
+  if (!linksAttachment(doc.items[id].note, hash) && attachmentChildren(doc, id, hash).length === 0) throw new Error(`${describe(doc, id)} has no link to att:${hash}`);
   return id;
 }
 
 async function unlinkAttachment(outline: Outline, id: ItemId, hash: string): Promise<void> {
-  await outline.save(setNote(outline.doc, id, withoutAttachment(outline.doc.items[id].note, hash)));
+  const unlinked = setNote(outline.doc, id, withoutAttachment(outline.doc.items[id].note, hash));
+  await outline.save(withoutAttachmentChildren(unlinked, id, hash));
 }
 
 function otherUses(doc: Doc, hash: string, except: ItemId | undefined): { linkedFrom: ItemId[]; unchecked: number } {

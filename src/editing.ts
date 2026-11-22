@@ -1,16 +1,19 @@
 import { queryViewShown } from "./queryView";
 import {
+  Doc,
   ItemId,
   ROOT,
   descendantCount,
   duplicate,
   foldableInside,
+  isFoldable,
   indent,
   insertShownChild,
   liftNoteProperties,
   liftTags,
   privateKeyOf,
   indexInParent,
+  insertChild,
   isReadOnly,
   readOnlyNotice,
   isBlank,
@@ -219,7 +222,7 @@ export function bindEditorEvents(): void {
     const files = [...(event.clipboardData?.files ?? [])];
     if (editor && files.length > 0) {
       event.preventDefault();
-      void attachFilesTo(editor.dataset.id!, files);
+      void attachFilesTo(editor.dataset.id!, files, noteSpotOf(editor));
       return;
     }
     const text = event.clipboardData?.getData("text/plain") ?? "";
@@ -246,14 +249,43 @@ export function bindEditorEvents(): void {
   }
 }
 
-/** Files go into the item's note as links, one line each (doc/adr/0028). */
-export async function attachFilesTo(id: ItemId, files: File[]): Promise<void> {
+/** Where in which note the files were attached from, so their links land there even when focus has moved on. */
+interface NoteSpot {
+  id: ItemId;
+  offset: number;
+}
+
+function noteSpotOf(editor: HTMLElement | null): NoteSpot | undefined {
+  if (!editor || !isNoteEditor(editor)) return undefined;
+  return { id: editor.dataset.id!, offset: selectionIn(editor)?.start ?? (editor.textContent ?? "").length };
+}
+
+export async function attachFilesTo(id: ItemId, files: File[], linkAt?: NoteSpot): Promise<void> {
+  if (!doc().items[id]) return;
+  if (isReadOnly(id, "children")) return void toast(readOnlyNotice(id));
   const links = await keepFiles(files);
-  const item = doc().items[id];
-  if (!item) return;
-  state.openNotes.add(id);
-  commitAndRender(setNote(doc(), id, [item.note, ...links].filter(Boolean).join("\n")), caretNow());
+  if (!doc().items[id]) return;
+  const first = newChildIndex(doc(), id);
+  let next = setCollapsed(doc(), id, false);
+  const references: string[] = [];
+  links.forEach((link, index) => {
+    const added = insertChild(next, id, first + index, link);
+    next = added.doc;
+    references.push(referenceTo(added.id, files[index].name || "pasted"));
+  });
+  const noted = linkAt && next.items[linkAt.id] && !isReadOnly(linkAt.id, "note") ? linkAtSpot(next, linkAt, references.join(" ")) : null;
+  commitAndRender(noted?.doc ?? next, noted ? noted.caret : caretNow());
   toast(files.length === 1 ? `Attached ${files[0].name || "a file"}` : `Attached ${files.length} files`);
+}
+
+function linkAtSpot(next: Doc, spot: NoteSpot, text: string): { doc: Doc; caret: Caret | null } {
+  const note = next.items[spot.id].note;
+  const at = Math.min(spot.offset, note.length);
+  const typingThere = caretNow()?.id === spot.id && caretNow()?.inNote;
+  return {
+    doc: setNote(next, spot.id, note.slice(0, at) + text + note.slice(at)),
+    caret: typingThere ? { id: spot.id, offset: at + text.length, inNote: true } : caretNow(),
+  };
 }
 
 export function pickFiles(): Promise<File[]> {
@@ -697,7 +729,7 @@ export const actions = {
   }),
 
   toggleFold: inPlace((c) => {
-    if (doc().items[c.id].children.length > 0 && foldShows(c.id)) toggleFold(c.id);
+    if (isFoldable(doc().items[c.id]) && foldShows(c.id)) toggleFold(c.id);
   }),
 
   collapseInside: inPlace((c) => foldEverythingInside(c, true)),
@@ -769,7 +801,8 @@ export const actions = {
   makePrivate: onItem((c) => choosePrivacy(c.id)),
 
   attachFile: onItem((c) => {
-    void pickFiles().then((files) => (files.length > 0 ? attachFilesTo(c.id, files) : undefined));
+    const spot = c.inNote ? { id: c.id, offset: c.start } : undefined;
+    void pickFiles().then((files) => (files.length > 0 ? attachFilesTo(c.id, files, spot) : undefined));
   }),
 
   setKind: onItem((c) => {
@@ -1012,7 +1045,7 @@ function toggleFold(id: ItemId): void {
 function foldEverythingInside(c: EditorContext, collapsed: boolean): void {
   if (state.results || !(foldShows(c.id) || isColumn(c.id))) return;
   const inside = setCollapsedEverywhere(doc(), c.id, collapsed);
-  const foldsItself = foldShows(c.id) && doc().items[c.id].children.length > 0;
+  const foldsItself = foldShows(c.id) && isFoldable(doc().items[c.id]);
   commitAndRender(foldsItself ? setCollapsed(inside, c.id, collapsed) : inside, keepCaret(c));
 }
 

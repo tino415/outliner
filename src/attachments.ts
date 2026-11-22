@@ -94,11 +94,81 @@ function showPreviewsIn(root: Element): void {
 async function openAttachment(attachment: HTMLElement): Promise<void> {
   const url = await urlFor(attachment.dataset.att!);
   if (!url) return;
+  if (attachment.classList.contains("att-is-image")) return showViewer(url, attachment.dataset.name ?? "");
   const link = document.createElement("a");
   link.href = url;
-  if (attachment.classList.contains("att-is-image")) Object.assign(link, { target: "_blank", rel: "noopener" });
-  else link.download = attachment.dataset.name ?? "file";
+  link.download = attachment.dataset.name ?? "file";
   link.click();
+}
+
+// ---- the viewer --------------------------------------------------------------------------
+
+let closeViewer: (() => void) | null = null;
+
+function showViewer(url: string, name: string): void {
+  if (closeViewer) return;
+  const viewer = Object.assign(document.createElement("div"), { className: "viewer" });
+  viewer.setAttribute("role", "dialog");
+  viewer.setAttribute("aria-label", name || "Picture");
+  const picture = Object.assign(document.createElement("img"), { src: url, alt: name });
+  viewer.append(picture);
+  document.body.append(viewer);
+  history.pushState({ viewer: true }, "");
+
+  const view = { scale: 1, x: 0, y: 0 };
+  const paint = () => (picture.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`);
+  const zoomBy = (factor: number) => {
+    view.scale = Math.min(8, Math.max(1, view.scale * factor));
+    keepOnScreen();
+  };
+  const keepOnScreen = () => {
+    const reachX = (picture.offsetWidth * (view.scale - 1)) / 2;
+    const reachY = (picture.offsetHeight * (view.scale - 1)) / 2;
+    view.x = Math.min(reachX, Math.max(-reachX, view.x));
+    view.y = Math.min(reachY, Math.max(-reachY, view.y));
+    paint();
+  };
+  viewer.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    zoomBy(event.deltaY < 0 ? 1.15 : 1 / 1.15);
+  }, { passive: false });
+
+  const pointers = new Map<number, { x: number; y: number }>();
+  picture.addEventListener("pointerdown", (event) => {
+    picture.setPointerCapture(event.pointerId);
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  });
+  picture.addEventListener("pointermove", (event) => {
+    const before = pointers.get(event.pointerId);
+    if (!before) return;
+    const others = [...pointers].filter(([id]) => id !== event.pointerId).map(([, point]) => point);
+    if (others.length === 1) zoomBy(Math.hypot(event.clientX - others[0].x, event.clientY - others[0].y) / Math.hypot(before.x - others[0].x, before.y - others[0].y));
+    else if (view.scale > 1) Object.assign(view, { x: view.x + event.clientX - before.x, y: view.y + event.clientY - before.y });
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    keepOnScreen();
+  });
+  for (const type of ["pointerup", "pointercancel"]) picture.addEventListener(type, (event) => pointers.delete((event as PointerEvent).pointerId));
+
+  const closeOnEscape = (event: KeyboardEvent) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeAndGoBack();
+  };
+  const remove = () => {
+    viewer.remove();
+    document.removeEventListener("keydown", closeOnEscape, true);
+    window.removeEventListener("popstate", remove);
+    closeViewer = null;
+  };
+  const closeAndGoBack = () => {
+    remove();
+    history.back();
+  };
+  viewer.addEventListener("click", (event) => event.target === viewer && closeAndGoBack());
+  document.addEventListener("keydown", closeOnEscape, true);
+  window.addEventListener("popstate", remove);
+  closeViewer = remove;
 }
 
 // ---- IndexedDB ---------------------------------------------------------------------------

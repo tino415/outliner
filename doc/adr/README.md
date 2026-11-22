@@ -78,3 +78,4 @@ file that says so.
 69. [The app keeps the CLI's writing rules](0069-the-app-keeps-the-clis-writing-rules.md)
 70. [Settings holds Bookmarks and Capture templates](0070-settings-holds-bookmarks-and-capture-templates.md) (supersedes part of 60)
 71. [A Checks: child types the properties under its parent](0071-a-checks-child-types-the-properties-under-its-parent.md) (extends 32)
+72. [An attached file is a child item, not a line in the note](0072-an-attached-file-is-a-child-item.md) (supersedes part of 28; amends 56)

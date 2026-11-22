@@ -105,19 +105,44 @@ describe("outline CLI", () => {
     expect(await outline("show TODO")).toBe("- TODO\n  :new: top\n  :completed: last\n  - newest\n  - old\n  - ~~newer~~");
   });
 
-  it("attaches a file to an item's note and fetches it back by its hash", async () => {
+  it("attaches a file as a last child and fetches it back by its hash", async () => {
     const folder = mkdtempSync(join(tmpdir(), "outline-cli-"));
     const shot = join(folder, "glitch.png");
     writeFileSync(shot, "not really a png");
-    await outline('add "Bug report"');
-    const hash = await outline(`attach "Bug report" ${shot}`);
-    expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(await outline('show "Bug report"')).toBe(`- Bug report\n  ![glitch.png](att:${hash})`);
+    await outline('add "Bug report" --note "steps"');
+    await outline('add "first" --under "Bug report"');
+    const child = await outline(`attach "Bug report" ${shot}`);
+    const shown = await outline('show "Bug report" --json').then(JSON.parse);
+    expect(child).toBe(shown.children[1].id);
+    const hash = /att:([0-9a-f]{64})/.exec(shown.children[1].text)![1];
+    expect(await outline('show "Bug report"')).toBe(`- Bug report\n  steps\n  - first\n  - ![glitch.png](att:${hash})`);
     const copy = join(folder, "copy.png");
     expect(await outline(`file ${hash} ${copy}`)).toBe(copy);
     expect(readFileSync(copy, "utf8")).toBe("not really a png");
     await expect(outline(`file ${"0".repeat(64)} ${copy}`)).rejects.toThrow(/no file/);
     rmSync(folder, { recursive: true });
+  });
+
+  it("attaches a file as the first child under an item with :new: top", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "outline-cli-"));
+    const shot = join(folder, "glitch.png");
+    writeFileSync(shot, "not really a png");
+    await outline('add "Inbox"');
+    await outline("set Inbox new top");
+    await outline('add "older" --under Inbox');
+    const child = await outline(`attach Inbox ${shot}`);
+    expect(child).toMatch(/^\w+$/);
+    expect(await outline("show Inbox")).toMatch(/^- Inbox\n {2}:new: top\n {2}- !\[glitch\.png\]\(att:[0-9a-f]{64}\)\n {2}- older$/);
+    rmSync(folder, { recursive: true });
+  });
+
+  it("lifts the attachment links of notes into children, once", async () => {
+    const link = `![glitch.png](att:${"c".repeat(64)})`;
+    await outline('add "Bug report"');
+    await outline(`note "Bug report" "steps\n${link}"`);
+    expect(await outline("lift-attachments")).toMatch(/^\w+ "Bug report"$/);
+    expect(await outline('show "Bug report"')).toBe(`- Bug report\n  steps\n  - ${link}`);
+    expect(await outline("lift-attachments")).toBe("");
   });
 
   describe("detach", () => {
@@ -128,14 +153,22 @@ describe("outline CLI", () => {
       const shot = join(folder, "glitch.png");
       writeFileSync(shot, "not really a png");
       await outline('add "Bug report"');
-      hash = await outline(`attach "Bug report" ${shot}`);
+      await outline(`attach "Bug report" ${shot}`);
+      hash = /att:([0-9a-f]{64})/.exec(await outline('show "Bug report"'))![1];
     });
     afterEach(() => rmSync(folder, { recursive: true }));
 
-    it("unlinks the file from the note and deletes it", async () => {
+    it("removes the child and deletes the file", async () => {
       expect(await outline(`detach "Bug report" ${hash}`)).toBe(`deleted ${hash}`);
       expect(await outline('show "Bug report"')).toBe("- Bug report");
       await expect(outline(`file ${hash} ${join(folder, "copy.png")}`)).rejects.toThrow(/no file/);
+    });
+
+    it("keeps the file while another item's child links it", async () => {
+      await outline('add "Duplicate"');
+      await outline(`add "[again](att:${hash})" --under Duplicate`);
+      expect(await outline(`detach "Bug report" ${hash}`)).toMatch(new RegExp(`^kept ${hash}, still linked from `));
+      expect(await outline('show "Bug report"')).toBe("- Bug report");
     });
 
     it("keeps the note's other lines", async () => {
@@ -165,7 +198,7 @@ describe("outline CLI", () => {
     });
 
     it("deletes the file of a link already taken out by hand", async () => {
-      await outline('note "Bug report" ""');
+      await outline(`rm ${(await outline('show "Bug report" --json').then(JSON.parse)).children[0].id}`);
       expect(await outline(`detach ${hash}`)).toBe(`deleted ${hash}`);
       await expect(outline(`file ${hash} ${join(folder, "copy.png")}`)).rejects.toThrow(/no file/);
     });
