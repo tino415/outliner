@@ -53,9 +53,10 @@ commands:
   find QUERY               items whose text contains every word of QUERY
                            (--query: QUERY in the language of query views, as
                            #tag is:open under:"A/B" has:KEY -word OR due:<+7d)
-  add TEXT                 a new item; TEXT "-" reads a subtree of indented
-                           "- " lines from stdin and prints each new item
-                           with its id (--json: the tree)
+  add TEXT                 a new item; TEXT "-" alone reads a subtree of
+                           indented "- " lines from stdin and prints each new
+                           item with its id (--json: the tree); the parent
+                           goes in --under, never before "-"
                            Writing rules: a title is one line of at most 200
                            characters, best under 80; one idea per item. A
                            list is children, never lines in a note: write a
@@ -181,6 +182,9 @@ async function perform(command: string, args: string[], options: Options, outlin
       return found.map((item) => `${item.id}  ${[...item.path, item.text].join(" / ")}`).join("\n");
     }
     case "add": {
+      if (args.length > 1 && args.includes("-")) {
+        throw new Error(`add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${args[0]}`);
+      }
       const { parent, at } = place(doc, options);
       const text = args.join(" ");
       if (text === "-") {
