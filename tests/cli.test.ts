@@ -324,6 +324,24 @@ describe("outline CLI", () => {
       expect(printed.split("\n").map((line) => line.replace(/  \[\w+\]$/, ""))).toEqual(["- Week", "  - Monday", "  - Tuesday", "- Notes"]);
     });
 
+    it("refuses a word before - and adds nothing", async () => {
+      const id = await outline("add x");
+      await expect(outline(`add ${id} -`, "- a")).rejects.toThrow(/--under/);
+      await expect(outline("add foo -", "- a")).rejects.toThrow(/outline add - --under foo/);
+      expect(await outlineWithoutBookmarks("show")).toBe("- x");
+    });
+
+    it("grafts a subtree under the item named by --under", async () => {
+      const id = await outline("add x");
+      await outline(`add - --under ${id}`, "- a\n  - b");
+      expect(await outlineWithoutBookmarks("show")).toBe("- x\n  - a\n    - b");
+    });
+
+    it("keeps a quoted title ending in a dash", async () => {
+      await outline('add "foo -"');
+      expect(await outlineWithoutBookmarks("show")).toBe("- foo -");
+    });
+
     it("prints the tree with --json", async () => {
       const trees = JSON.parse(await outline("add - --json", "- Week\n  - Monday\n- Notes"));
       expect(trees).toHaveLength(2);
