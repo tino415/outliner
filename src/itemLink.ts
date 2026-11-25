@@ -1,6 +1,4 @@
-import { BOOKMARKS, BOOKMARKS_ABOUT, CAPTURE_TEMPLATES, CAPTURE_TEMPLATES_ABOUT, Doc, ItemId, ROOT, SETTINGS_ITEM, isPrivateItem, privateRootAbove } from "./model";
-
-const WORD_IDS: ReadonlySet<ItemId> = new Set([SETTINGS_ITEM, BOOKMARKS, BOOKMARKS_ABOUT, CAPTURE_TEMPLATES, CAPTURE_TEMPLATES_ABOUT]);
+import { Doc, ItemId, ROOT, WORD_IDS, isPrivateItem, privateRootAbove } from "./model";
 /*
  * A link to an item is `<base>#/<id>`, which opens it zoomed in
  * (doc/adr/0050). The base is the first `link-base` property in outline
