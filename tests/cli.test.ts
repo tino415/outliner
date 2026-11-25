@@ -424,6 +424,50 @@ describe("outline CLI", () => {
     });
   });
 
+  describe("adding one item", () => {
+    it("refuses an item's id as the first word and adds nothing", async () => {
+      const id = await outline("add x");
+      await expect(outline(`add ${id} "a b"`)).rejects.toThrow(
+        new Error(`outline: add takes the parent in --under, not as the first word: outline add "a b" --under ${id}`),
+      );
+      expect(await outlineWithoutBookmarks("show")).toBe("- x");
+    });
+
+    it("refuses an item's path as the first word and adds nothing", async () => {
+      await outline("add Projects");
+      await outline("add Garden --under Projects");
+      await expect(outline("add Projects/Garden Shed")).rejects.toThrow(
+        new Error('outline: add takes the parent in --under, not as the first word: outline add "Shed" --under Projects/Garden'),
+      );
+      expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n  - Garden");
+    });
+
+    it("keeps an id as text when --under names the parent", async () => {
+      const id = await outline("add x");
+      const other = await outline("add y");
+      await outline(`add ${id} a --under ${other}`);
+      expect(await outlineWithoutBookmarks("show")).toBe(`- x\n- y\n  - ${id} a`);
+    });
+
+    it("keeps a first word that only matches a title as text", async () => {
+      await outline("add Inbox");
+      await outline("add Inbox zero");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Inbox\n- Inbox zero");
+    });
+
+    it("keeps a first word that is a built-in item's word id as text", async () => {
+      await outline("add root cause");
+      await outline("add settings page");
+      expect(await outlineWithoutBookmarks("show")).toBe("- root cause\n- settings page");
+    });
+
+    it("keeps a first word with a slash that only starts a title as text", async () => {
+      await outline("add Work");
+      await outline("add w/ Anna");
+      expect(await outlineWithoutBookmarks("show")).toBe("- Work\n- w/ Anna");
+    });
+  });
+
   it("makes Settings with Bookmarks and Capture templates on first run, once, and keeps them", async () => {
     await outline("show");
     await outline('add "Garden"');

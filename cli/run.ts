@@ -2,6 +2,7 @@ import {
   Doc,
   ItemId,
   ROOT,
+  WORD_IDS,
   Part,
   isAboutItem,
   isKept,
@@ -56,7 +57,7 @@ commands:
   add TEXT                 a new item; TEXT "-" alone reads a subtree of
                            indented "- " lines from stdin and prints each new
                            item with its id (--json: the tree); the parent
-                           goes in --under, never before "-"
+                           goes in --under, never before the text or "-"
                            Writing rules: a title is one line of at most 200
                            characters, best under 80; one idea per item. A
                            list is children, never lines in a note: write a
@@ -185,6 +186,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       if (args.length > 1 && args.includes("-")) {
         throw new Error(`add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${args[0]}`);
       }
+      refuseParentAsFirstWord(doc, args, options);
       const { parent, at } = place(doc, options);
       const text = args.join(" ");
       if (text === "-") {
@@ -351,6 +353,30 @@ function place(doc: Doc, options: Options): Place {
   return { parent: editable(writable(doc, doc.items[sibling].parent!), "children"), at, beside: sibling };
 }
 
+function refuseParentAsFirstWord(doc: Doc, args: string[], options: Options): void {
+  const [first, ...rest] = args;
+  const placed = options.under !== undefined || options.before !== undefined || options.after !== undefined;
+  if (rest.length === 0 || placed || !namesItem(doc, first)) return;
+  throw new Error(`add takes the parent in --under, not as the first word: outline add "${rest.join(" ")}" --under ${first}`);
+}
+
+function namesItem(doc: Doc, word: string): boolean {
+  if (Object.hasOwn(doc.items, word)) return word !== ROOT && !WORD_IDS.has(word);
+  if (!word.includes("/")) return false;
+  const named = itemAtExactPath(doc, word);
+  return named !== undefined && named !== ROOT;
+}
+
+function itemAtExactPath(doc: Doc, path: string): ItemId | undefined {
+  let current = ROOT;
+  for (const step of pathSteps(path)) {
+    const matches = doc.items[current].children.filter((child) => titledExactly(doc, child, step));
+    if (matches.length !== 1) return undefined;
+    current = matches[0];
+  }
+  return current;
+}
+
 function besideOf(options: Options): string | undefined {
   if (options.before !== undefined && options.after !== undefined) throw new Error("give either --before or --after, not both");
   return options.before ?? options.after;
@@ -482,9 +508,9 @@ function resolve(doc: Doc, reference: string): ItemId {
   if (reference === "/" || reference === "") return ROOT;
   if (doc.items[reference]) return reference;
   let current = ROOT;
-  for (const step of reference.split("/").map((part) => part.trim()).filter(Boolean)) {
+  for (const step of pathSteps(reference)) {
     const children = doc.items[current].children;
-    const exact = children.filter((child) => sameText(doc.items[child].text, step) || sameText(titleWithTags(doc.items[child]), step));
+    const exact = children.filter((child) => titledExactly(doc, child, step));
     const matches = exact.length > 0 ? exact : children.filter((child) => startsWith(doc.items[child].text, step));
     if (matches.length === 0) throw new Error(`no item "${step}" under ${describe(doc, current)}`);
     if (matches.length > 1) {
@@ -496,6 +522,8 @@ function resolve(doc: Doc, reference: string): ItemId {
   return current;
 }
 
+const pathSteps = (path: string) => path.split("/").map((part) => part.trim()).filter(Boolean);
+const titledExactly = (doc: Doc, id: ItemId, step: string) => sameText(doc.items[id].text, step) || sameText(titleWithTags(doc.items[id]), step);
 const comparable = (text: string) => text.trim().toLowerCase();
 const sameText = (text: string, step: string) => comparable(text) === comparable(step);
 const startsWith = (text: string, step: string) => comparable(text).startsWith(comparable(step));

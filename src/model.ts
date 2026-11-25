@@ -28,6 +28,7 @@ export const BOOKMARKS: ItemId = "bookmarks";
 export const CAPTURE_TEMPLATES: ItemId = "capture-templates";
 export const BOOKMARKS_ABOUT: ItemId = "about-bookmarks";
 export const CAPTURE_TEMPLATES_ABOUT: ItemId = "about-capture-templates";
+export const WORD_IDS: ReadonlySet<ItemId> = new Set([SETTINGS_ITEM, BOOKMARKS, BOOKMARKS_ABOUT, CAPTURE_TEMPLATES, CAPTURE_TEMPLATES_ABOUT]);
 
 export type Part = "title" | "note" | "completed" | "properties" | "children";
 
