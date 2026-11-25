@@ -428,7 +428,7 @@ describe("outline CLI", () => {
     it("refuses an item's id as the first word and adds nothing", async () => {
       const id = await outline("add x");
       await expect(outline(`add ${id} "a b"`)).rejects.toThrow(
-        new Error(`outline: add takes the parent in --under, not as the first word: outline add "a b" --under ${id}`),
+        new Error(`outline: add takes the parent in --under, not as the first word: outline add 'a b' --under ${id}`),
       );
       expect(await outlineWithoutBookmarks("show")).toBe("- x");
     });
@@ -437,7 +437,7 @@ describe("outline CLI", () => {
       await outline("add Projects");
       await outline("add Garden --under Projects");
       await expect(outline("add Projects/Garden Shed")).rejects.toThrow(
-        new Error('outline: add takes the parent in --under, not as the first word: outline add "Shed" --under Projects/Garden'),
+        new Error("outline: add takes the parent in --under, not as the first word: outline add 'Shed' --under Projects/Garden"),
       );
       expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n  - Garden");
     });
@@ -465,6 +465,28 @@ describe("outline CLI", () => {
       await outline("add Work");
       await outline("add w/ Anna");
       expect(await outlineWithoutBookmarks("show")).toBe("- Work\n- w/ Anna");
+    });
+
+    it("prints the --under form shell-quoted, so pasting it adds the same text", async () => {
+      await outline("add Projects");
+      await outline('add "My Garden" --under Projects');
+      const result = await run(["add", "Projects/My Garden", `it's "$HOME"`], env, "");
+      expect(result).toEqual({
+        code: 1,
+        output: `outline: add takes the parent in --under, not as the first word: outline add 'it'\\''s "$HOME"' --under 'Projects/My Garden'`,
+      });
+      expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n  - My Garden");
+    });
+
+    it("prints the - form with every other word as the parent, shell-quoted", async () => {
+      await outline("add Projects");
+      await outline('add "My Garden" --under Projects');
+      const refusal = (parent: string) => `outline: add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${parent}`;
+      expect(await run(["add", "Projects/My Garden", "-"], env, "- a")).toEqual({ code: 1, output: refusal("'Projects/My Garden'") });
+      expect(await run(["add", "Projects/My", "Garden", "-"], env, "- a")).toEqual({ code: 1, output: refusal("'Projects/My Garden'") });
+      expect(await run(["add", "-", "Projects"], env, "- a")).toEqual({ code: 1, output: refusal("Projects") });
+      expect(await run(["add", "=todo/Home", "-"], env, "- a")).toEqual({ code: 1, output: refusal("'=todo/Home'") });
+      expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n  - My Garden");
     });
   });
 

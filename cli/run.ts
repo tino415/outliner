@@ -184,7 +184,7 @@ async function perform(command: string, args: string[], options: Options, outlin
     }
     case "add": {
       if (args.length > 1 && args.includes("-")) {
-        throw new Error(`add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${args[0]}`);
+        throw new Error(`add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${shellWord(args.filter((word) => word !== "-").join(" "))}`);
       }
       refuseParentAsFirstWord(doc, args, options);
       const { parent, at } = place(doc, options);
@@ -357,8 +357,11 @@ function refuseParentAsFirstWord(doc: Doc, args: string[], options: Options): vo
   const [first, ...rest] = args;
   const placed = options.under !== undefined || options.before !== undefined || options.after !== undefined;
   if (rest.length === 0 || placed || !namesItem(doc, first)) return;
-  throw new Error(`add takes the parent in --under, not as the first word: outline add "${rest.join(" ")}" --under ${first}`);
+  throw new Error(`add takes the parent in --under, not as the first word: outline add ${shellQuoted(rest.join(" "))} --under ${shellWord(first)}`);
 }
+
+const shellWord = (word: string) => (/^[\w./:@%+-]+$/.test(word) ? word : shellQuoted(word));
+const shellQuoted = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
 
 function namesItem(doc: Doc, word: string): boolean {
   if (Object.hasOwn(doc.items, word)) return word !== ROOT && !WORD_IDS.has(word);
