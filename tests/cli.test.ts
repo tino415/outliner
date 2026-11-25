@@ -488,6 +488,38 @@ describe("outline CLI", () => {
       expect(await run(["add", "=todo/Home", "-"], env, "- a")).toEqual({ code: 1, output: refusal("'=todo/Home'") });
       expect(await outlineWithoutBookmarks("show")).toBe("- Projects\n  - My Garden");
     });
+
+    it("carries --note, --first and --json into the --under form", async () => {
+      const id = await outline("add Projects");
+      const result = await run(["add", id, "Buy", "seeds", "--note", "by Friday's market", "--first", "--json"], env, "");
+      expect(result).toEqual({
+        code: 1,
+        output: `outline: add takes the parent in --under, not as the first word: outline add 'Buy seeds' --under ${id} --note 'by Friday'\\''s market' --first --json`,
+      });
+      expect(await outlineWithoutBookmarks("show")).toBe("- Projects");
+    });
+
+    it("carries --first and --json into the - form, and leaves out --note, which a subtree does not read", async () => {
+      const result = await run(["add", "Projects", "-", "--note", "due Friday", "--first", "--json"], env, "- a");
+      expect(result).toEqual({
+        code: 1,
+        output: `outline: add reads a subtree with "-" alone; put the parent in --under: outline add - --under Projects --first --json`,
+      });
+    });
+
+    it("keeps the placement given in the - form instead of making the other words the parent", async () => {
+      const refusal = (placement: string) => `outline: add reads a subtree with "-" alone; put the parent in --under: outline add - ${placement}`;
+      expect(await run(["add", "foo", "-", "--under", "My Projects"], env, "- a")).toEqual({ code: 1, output: refusal("--under 'My Projects'") });
+      expect(await run(["add", "Garden", "-", "--after", "x1"], env, "- a")).toEqual({ code: 1, output: refusal("--after x1") });
+      expect(await run(["add", "Garden", "-", "--before", "x1"], env, "- a")).toEqual({ code: 1, output: refusal("--before x1") });
+    });
+
+    it("prints the - form alone when every word is a dash", async () => {
+      expect(await run(["add", "-", "-"], env, "- a")).toEqual({
+        code: 1,
+        output: `outline: add reads a subtree with "-" alone; put the parent in --under: outline add -`,
+      });
+    });
   });
 
   it("makes Settings with Bookmarks and Capture templates on first run, once, and keeps them", async () => {

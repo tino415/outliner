@@ -184,7 +184,7 @@ async function perform(command: string, args: string[], options: Options, outlin
     }
     case "add": {
       if (args.length > 1 && args.includes("-")) {
-        throw new Error(`add reads a subtree with "-" alone; put the parent in --under: outline add - --under ${shellWord(args.filter((word) => word !== "-").join(" "))}`);
+        throw new Error(`add reads a subtree with "-" alone; put the parent in --under: ${subtreeCommand(args, options)}`);
       }
       refuseParentAsFirstWord(doc, args, options);
       const { parent, at } = place(doc, options);
@@ -357,8 +357,29 @@ function refuseParentAsFirstWord(doc: Doc, args: string[], options: Options): vo
   const [first, ...rest] = args;
   const placed = options.under !== undefined || options.before !== undefined || options.after !== undefined;
   if (rest.length === 0 || placed || !namesItem(doc, first)) return;
-  throw new Error(`add takes the parent in --under, not as the first word: outline add ${shellQuoted(rest.join(" "))} --under ${shellWord(first)}`);
+  const command = commandLine("outline add", shellQuoted(rest.join(" ")), `--under ${shellWord(first)}`, noteOption(options), ...flags(options));
+  throw new Error(`add takes the parent in --under, not as the first word: ${command}`);
 }
+
+function subtreeCommand(args: string[], options: Options): string {
+  const words = args.filter((word) => word !== "-").join(" ");
+  const placement = givenPlacement(options);
+  const parent = placement.length > 0 ? placement : words ? [`--under ${shellWord(words)}`] : [];
+  return commandLine("outline add -", ...parent, ...flags(options));
+}
+
+function givenPlacement(options: Options): string[] {
+  const given: [string, string | undefined][] = [
+    ["--under", options.under],
+    ["--before", options.before],
+    ["--after", options.after],
+  ];
+  return given.flatMap(([flag, item]) => (item === undefined ? [] : [`${flag} ${shellWord(item)}`]));
+}
+
+const noteOption = (options: Options) => (options.note === undefined ? "" : `--note ${shellQuoted(options.note)}`);
+const flags = (options: Options) => [options.first ? "--first" : "", options.json ? "--json" : ""];
+const commandLine = (...parts: string[]) => parts.filter(Boolean).join(" ");
 
 const shellWord = (word: string) => (/^[\w./:@%+-]+$/.test(word) ? word : shellQuoted(word));
 const shellQuoted = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
