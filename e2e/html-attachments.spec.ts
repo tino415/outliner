@@ -29,6 +29,10 @@ const LEAK = "http://127.0.0.1:5189/leak";
 const pages = {
   word: `<body><script>document.body.append("drawn by its script")</script></body>`,
   heading: `<body><a href="#end">to the end</a><div style="height: 4000px"></div><h2 id="end">The end</h2></body>`,
+  links: `<body><h1>Links</h1><a id="plain" href="${LEAK}?plain">plain</a>
+    <svg width="200" height="40"><a id="svg" xlink:href="${LEAK}?svg"><text x="0" y="20">svg</text></a></svg>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="40" height="40" usemap="#map">
+    <map name="map"><area shape="rect" coords="0,0,40,40" href="${LEAK}?area"></map></body>`,
   hostile: `<head><meta http-equiv="refresh" content="1;url=${LEAK}?refresh"></head><body>
     <form id="post" method="post" action="${LEAK}?form"><input name="x" value="1"></form>
     <a id="away" href="${LEAK}?link">away</a>
@@ -129,11 +133,28 @@ test.describe("an attached html page", { tag: "@keys" }, () => {
     expect(await page.evaluate(() => localStorage.getItem("leak"))).toBeNull();
   });
 
-  test("a link to a heading scrolls the page to it", async ({ page }) => {
+  test("a link to a heading scrolls the page to it, and Close still leaves no step to go back", async ({ page }) => {
     await openPage(page, "heading");
     await expect(frame(page).locator("#end")).not.toBeInViewport();
     await frame(page).locator("a").click();
     await expect(frame(page).locator("#end")).toBeInViewport();
+    await page.locator(".viewer-close").click();
+    await expect(page.locator(".viewer")).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => history.state?.viewer ?? null)).toBeNull();
+  });
+
+  test("a link to another site does nothing and the page stays", async ({ page }) => {
+    await openPage(page, "links");
+    for (const link of ["#plain", "#svg text", "img[usemap]"]) await frame(page).locator(link).click();
+    await page.waitForTimeout(500);
+    await expect(frame(page).locator("h1")).toHaveText("Links");
+  });
+
+  test("keys pressed in the app while it is open do not reach the outline behind it", async ({ page }) => {
+    await openPage(page, "word");
+    await page.keyboard.press("?");
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await expect(page.locator(".viewer-close")).toBeFocused();
   });
 
   test("Download saves the attached file unchanged", async ({ page }) => {

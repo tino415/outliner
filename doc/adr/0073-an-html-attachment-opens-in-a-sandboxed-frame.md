@@ -3,8 +3,8 @@
 - **Status:** accepted, 2026-11-26
 - **Amends:** [0072](0072-an-attached-file-is-a-child-item.md), "Other files
   download"
-- **Applies to:** `src/attachments.ts`, `index.html`, `server/app.ts`,
-  `src/style.css`
+- **Applies to:** `src/attachments.ts`, `src/chrome.ts`, `index.html`,
+  `server/app.ts`, `src/style.css`
 
 ## Context
 
@@ -30,19 +30,22 @@ script from cdn.jsdelivr.net and one drew charts with a script of its own.
   downloads and top navigation stay off.
 - The page is a `data:` URL of a fixed prefix followed by the file's bytes. A
   `data:` page never has the app's origin, even if the sandbox attribute were
-  lost, and links to a heading work in it. A file over 1,400,000 bytes gets a
-  `blob:` URL instead, since Chromium shows nothing for a `data:` URL over
-  2 MB; links to a heading are not expected to jump there.
+  lost. A file over 1,400,000 bytes gets a `blob:` URL instead, since
+  Chromium shows nothing for a `data:` URL over 2 MB.
 - The prefix comes before any byte of the file and holds:
   - the page's CSP in a meta tag:
     `default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; form-action 'none'`.
     It stops fetch, sockets, beacons, images, styles, fonts, frames and form
     posts to every host, and scripts from every host but the CDN;
   - `no-referrer`;
-  - a script that cancels a click on a link that does not start with `#`,
-    and posts `{ type: "close-viewer" }` to the app on Escape, since keys
-    typed in the frame never reach the app. The app obeys that message only
-    from the viewer's own frame.
+  - a script that cancels every link click, `<a>`, `<area>` and SVG links
+    alike, and scrolls to the target itself when the link starts with `#`.
+    A followed `#` link would add a step to the session history, and closing
+    the viewer would then go back inside the frame instead of past the
+    viewer;
+  - the same script posts `{ type: "close-viewer" }` to the app on an Escape
+    the page did not handle, since keys typed in the frame never reach the
+    app. The app obeys that message only from the viewer's own frame.
 - The app's page sets `frame-src data: blob:`. The page's own CSP cannot stop
   a frame from sending itself to another address; the app's does, for a
   scripted address change, a meta refresh, a form submit and a link click.
@@ -53,7 +56,9 @@ script from cdn.jsdelivr.net and one drew charts with a script of its own.
   sent, `text/html` included, from the app's origin; before this only the
   missing `Authorization` header kept a browser from opening it there.
 - Close, Escape and Back close the viewer, which pushes a history state as the
-  picture viewer does; Close has focus when it opens. Download saves the
+  picture viewer does; Close has focus when it opens, and focus goes back
+  where it was when it closes. App shortcuts do not act behind it. Download
+  saves the
   stored file unchanged, without the prefix. The frame is white behind a page
   that sets no background, in the dark theme too.
 

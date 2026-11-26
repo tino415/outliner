@@ -98,7 +98,7 @@ async function openAttachment(attachment: HTMLElement): Promise<void> {
   if (!url) return;
   if (attachment.classList.contains("att-is-image")) return showViewer(url, name);
   const page = isPageChild(attachment, name) ? await blobFor(hash) : null;
-  if (page) return showPage(page, url, name);
+  if (page) return showPage(page, url, name).catch(() => download(url, name));
   download(url, name || "file");
 }
 
@@ -188,9 +188,11 @@ async function showPage(file: Blob, fileUrl: string, name: string): Promise<void
     if (event.source === frame.contentWindow && event.data?.type === "close-viewer") closeAndGoBack();
   };
   window.addEventListener("message", closeOnMessage);
+  const focusedBefore = document.activeElement as HTMLElement | null;
   const closeAndGoBack = showUntilEscapeOrBack(viewer, () => {
     window.removeEventListener("message", closeOnMessage);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
+    focusedBefore?.focus();
   });
   bar.querySelector(".viewer-close")!.addEventListener("click", closeAndGoBack);
   bar.querySelector(".viewer-download")!.addEventListener("click", () => download(fileUrl, name));
@@ -200,12 +202,25 @@ async function showPage(file: Blob, fileUrl: string, name: string): Promise<void
 const PAGE_CSP =
   "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; form-action 'none'";
 
+const PAGE_SCRIPT = `
+addEventListener("click", (event) => {
+  const link = event.target.closest && event.target.closest("a, area");
+  const href = link && (link.getAttribute("href") ?? link.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+  if (typeof href !== "string") return;
+  event.preventDefault();
+  if (href[0] !== "#") return;
+  const id = decodeURIComponent(href.slice(1));
+  const target = id === "" ? document.documentElement : document.getElementById(id) || document.getElementsByName(id)[0];
+  if (target) target.scrollIntoView();
+}, true);
+addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !event.defaultPrevented) parent.postMessage({ type: "close-viewer" }, "*");
+});`;
+
 const PAGE_PREFIX =
   `<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">` +
   `<meta http-equiv="Content-Security-Policy" content="${PAGE_CSP}">` +
-  `<script>addEventListener("click", (event) => { const link = event.target.closest && event.target.closest("a[href]");` +
-  ` if (link && link.getAttribute("href")[0] !== "#") event.preventDefault(); }, true);` +
-  ` addEventListener("keydown", (event) => { if (event.key === "Escape") parent.postMessage({ type: "close-viewer" }, "*"); });</script>`;
+  `<script>${PAGE_SCRIPT}</script>`;
 
 function dataUrlOf(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
