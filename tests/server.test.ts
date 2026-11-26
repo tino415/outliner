@@ -131,6 +131,16 @@ describe("attachments", () => {
     expect(new Uint8Array(await back.arrayBuffer())).toEqual(bytes);
   });
 
+  it("sends a file as a download that cannot run in the app's origin", async () => {
+    const page = new TextEncoder().encode("<script>alert(1)</script>");
+    const pageHash = createHash("sha256").update(page).digest("hex");
+    await put(pageHash, page, { ...auth, "Content-Type": "text/html" });
+    const back = await fetch(`${base}/files/${pageHash}`, { headers: auth });
+    expect(back.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(back.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
+    expect(back.headers.get("content-disposition")).toBe("attachment");
+  });
+
   it("refuses a file whose content does not match the name", async () => {
     const response = await put("0".repeat(64), bytes);
     expect(response.status).toBe(400);

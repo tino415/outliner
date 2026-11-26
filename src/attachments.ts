@@ -92,16 +92,28 @@ function showPreviewsIn(root: Element): void {
 }
 
 async function openAttachment(attachment: HTMLElement): Promise<void> {
-  const url = await urlFor(attachment.dataset.att!);
+  const hash = attachment.dataset.att!;
+  const name = attachment.dataset.name ?? "";
+  const url = await urlFor(hash);
   if (!url) return;
-  if (attachment.classList.contains("att-is-image")) return showViewer(url, attachment.dataset.name ?? "");
+  if (attachment.classList.contains("att-is-image")) return showViewer(url, name);
+  const page = isPageChild(attachment, name) ? await blobFor(hash) : null;
+  if (page) return showPage(page, url, name);
+  download(url, name || "file");
+}
+
+function isPageChild(attachment: HTMLElement, name: string): boolean {
+  return /\.html?$/i.test(name) && attachment.closest(".attachment > .row .text") !== null;
+}
+
+function download(url: string, name: string): void {
   const link = document.createElement("a");
   link.href = url;
-  link.download = attachment.dataset.name ?? "file";
+  link.download = name;
   link.click();
 }
 
-// ---- the viewer --------------------------------------------------------------------------
+// ---- the viewers -------------------------------------------------------------------------
 
 let closeViewer: (() => void) | null = null;
 
@@ -112,8 +124,7 @@ function showViewer(url: string, name: string): void {
   viewer.setAttribute("aria-label", name || "Picture");
   const picture = Object.assign(document.createElement("img"), { src: url, alt: name });
   viewer.append(picture);
-  document.body.append(viewer);
-  history.pushState({ viewer: true }, "");
+  const closeAndGoBack = showUntilEscapeOrBack(viewer);
 
   const view = { scale: 1, x: 0, y: 0 };
   const paint = () => (picture.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`);
@@ -149,6 +160,65 @@ function showViewer(url: string, name: string): void {
   });
   for (const type of ["pointerup", "pointercancel"]) picture.addEventListener(type, (event) => pointers.delete((event as PointerEvent).pointerId));
 
+  viewer.addEventListener("click", (event) => event.target === viewer && closeAndGoBack());
+}
+
+const LARGEST_DATA_URL_PAGE = 1_400_000;
+
+async function showPage(file: Blob, fileUrl: string, name: string): Promise<void> {
+  const page = new Blob([PAGE_PREFIX, file], { type: "text/html;charset=utf-8" });
+  const dataUrl = file.size > LARGEST_DATA_URL_PAGE ? null : await dataUrlOf(page);
+  if (closeViewer) return;
+  const blobUrl = dataUrl === null ? URL.createObjectURL(page) : null;
+  const viewer = Object.assign(document.createElement("div"), { className: "viewer viewer-page" });
+  viewer.setAttribute("role", "dialog");
+  viewer.setAttribute("aria-label", name);
+  const bar = Object.assign(document.createElement("header"), { className: "viewer-bar" });
+  bar.innerHTML =
+    `<span class="viewer-name"></span>` +
+    `<button class="link-button viewer-download" type="button">Download</button>` +
+    `<button class="icon-button viewer-close" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg></button>`;
+  bar.querySelector(".viewer-name")!.textContent = name;
+  const frame = Object.assign(document.createElement("iframe"), { className: "viewer-frame", title: name, referrerPolicy: "no-referrer" });
+  frame.setAttribute("sandbox", "allow-scripts");
+  frame.src = dataUrl ?? blobUrl!;
+  viewer.append(bar, frame);
+
+  const closeOnMessage = (event: MessageEvent) => {
+    if (event.source === frame.contentWindow && event.data?.type === "close-viewer") closeAndGoBack();
+  };
+  window.addEventListener("message", closeOnMessage);
+  const closeAndGoBack = showUntilEscapeOrBack(viewer, () => {
+    window.removeEventListener("message", closeOnMessage);
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  });
+  bar.querySelector(".viewer-close")!.addEventListener("click", closeAndGoBack);
+  bar.querySelector(".viewer-download")!.addEventListener("click", () => download(fileUrl, name));
+  bar.querySelector<HTMLElement>(".viewer-close")!.focus();
+}
+
+const PAGE_CSP =
+  "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; form-action 'none'";
+
+const PAGE_PREFIX =
+  `<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">` +
+  `<meta http-equiv="Content-Security-Policy" content="${PAGE_CSP}">` +
+  `<script>addEventListener("click", (event) => { const link = event.target.closest && event.target.closest("a[href]");` +
+  ` if (link && link.getAttribute("href")[0] !== "#") event.preventDefault(); }, true);` +
+  ` addEventListener("keydown", (event) => { if (event.key === "Escape") parent.postMessage({ type: "close-viewer" }, "*"); });</script>`;
+
+function dataUrlOf(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function showUntilEscapeOrBack(viewer: HTMLElement, onClose: () => void = () => {}): () => void {
+  document.body.append(viewer);
+  history.pushState({ viewer: true }, "");
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
@@ -159,16 +229,17 @@ function showViewer(url: string, name: string): void {
     viewer.remove();
     document.removeEventListener("keydown", closeOnEscape, true);
     window.removeEventListener("popstate", remove);
+    onClose();
     closeViewer = null;
   };
   const closeAndGoBack = () => {
     remove();
     history.back();
   };
-  viewer.addEventListener("click", (event) => event.target === viewer && closeAndGoBack());
   document.addEventListener("keydown", closeOnEscape, true);
   window.addEventListener("popstate", remove);
   closeViewer = remove;
+  return closeAndGoBack;
 }
 
 // ---- IndexedDB ---------------------------------------------------------------------------
