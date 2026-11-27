@@ -66,7 +66,13 @@ async function saveFile(request: IncomingMessage, response: ServerResponse, stor
 function sendFile(response: ServerResponse, store: Store, hash: string): void {
   const file = store.file(hash);
   if (!file) return send(response, 404, { error: "no such file" });
-  response.writeHead(200, { "Content-Type": file.type, "Cache-Control": "private, max-age=31536000, immutable" });
+  response.writeHead(200, {
+    "Content-Type": file.type,
+    "Cache-Control": "private, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox; default-src 'none'",
+    "Content-Disposition": "attachment",
+  });
   response.end(Buffer.from(file.bytes));
 }
 
