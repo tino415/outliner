@@ -1,4 +1,4 @@
-# 74. On a phone columns fit their content and scroll sideways
+# 80. On a phone columns fit their content and scroll sideways
 
 - **Status:** accepted, 2026-11-28
 - **Amends:** [0017](0017-properties-in-notes-and-a-column-view-with-rollups.md),

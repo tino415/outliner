@@ -44,7 +44,7 @@ slashes, as `ID/IEx` for `PayoutID > IEx` (doc/adr/0064).
 Alt-Shift with a letter is left to typing, as many layouts need it.
 
 Typing `/` at the start of a title, or after a space in it, lists the item's
-commands, the way in on a phone (doc/adr/0068). Choosing one deletes the `/`
+commands, the way in on a phone (doc/adr/0081). Choosing one deletes the `/`
 and runs it; Escape keeps the `/`. In a note, or inside a word or a URL, a
 `/` is just a slash.
 
@@ -99,7 +99,7 @@ roll up, put a `columns` property on the page, as in org mode:
 `{+}` sums (the default), `{min}`, `{max}` and `{mean}` take the least, most
 or average of the children. A page with `:columns:`, and everything under
 it, opens in column view. Cells are editable; a click writes the property.
-On a phone each column is as wide as its widest value (doc/adr/0074). Columns
+On a phone each column is as wide as its widest value (doc/adr/0080). Columns
 that need more than 55% of the screen scroll sideways under a drag on the
 numbers, while the titles stay.
 

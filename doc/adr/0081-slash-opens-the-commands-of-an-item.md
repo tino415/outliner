@@ -1,4 +1,4 @@
-# 68. A slash opens the commands of the item being edited
+# 81. A slash opens the commands of the item being edited
 
 - **Status:** accepted, 2026-11-19
 - **Applies to:** `src/slashCommands.ts`, `src/editing.ts`, `src/keys.ts`
