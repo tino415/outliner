@@ -120,3 +120,10 @@ test("a cell computed by the item's own formula shows that formula on hover", { 
   await expect(cell).toHaveText("6");
   await expect(cell).toHaveAttribute("title", "Computed: =count * 2");
 });
+
+test("on desktop a cell is 6.2 times its font size wide", async ({ page }) => {
+  await freshOutline(page, WEEK);
+  await row(page, "Week 41").locator(".bullet").click();
+  const [width, fontSize] = await cell(page, "Oats", "calories").evaluate((element) => [element.getBoundingClientRect().width, parseFloat(getComputedStyle(element).fontSize)]);
+  expect(width).toBeCloseTo(6.2 * fontSize, 0);
+});

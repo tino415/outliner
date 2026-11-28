@@ -20,6 +20,7 @@ import { agendaShown, renderAgenda } from "./agenda";
 import { queryViewShown, renderQueryView } from "./queryView";
 import { followShortcutSettings } from "./keys";
 import { isMirror, liveMirrorTarget, mirrorBulletTitle, mirrorTextHtml, mirroredChildrenHtml } from "./mirrors";
+import { fitColumns } from "./columnFit";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -133,22 +134,24 @@ function renderColumnsHead(): void {
   const head = ui.columnsHead;
   head.hidden = !columns;
   ui.tree.classList.toggle("with-columns", Boolean(columns?.columns.length));
-  if (!columns) return;
-  if (columns.columns.length === 0) {
-    head.innerHTML = `<p class="columns-empty">No properties on this page yet. Add one with Set a property… (Ctrl-J P or the item menu).</p>`;
-    return;
-  }
-  const totals = columns.cells.get(state.zoom)!;
-  head.innerHTML =
+  if (columns) head.innerHTML = columnsHeadHtml(columns);
+  fitColumns(columns, state.zoom);
+}
+
+function columnsHeadHtml(view: ColumnView): string {
+  if (view.columns.length === 0) return `<p class="columns-empty">No properties on this page yet. Add one with Set a property… (Ctrl-J P or the item menu).</p>`;
+  const totals = view.cells.get(state.zoom)!;
+  return (
     `<div class="cells">` +
-    columns.columns
+    view.columns
       .map(
         (column) =>
           `<div class="cell head"><span class="column-name">${escape(column.key)}</span>` +
           `<span class="column-total" title="${SUMMARY_LABELS[column.summary]}">${escape(totals.get(column.key)?.text ?? "")}</span></div>`,
       )
       .join("") +
-    `</div>`;
+    `</div>`
+  );
 }
 
 // ---- "=…" values of an item's own (doc/adr/0022) -------------------------------------------

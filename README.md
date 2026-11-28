@@ -99,6 +99,9 @@ roll up, put a `columns` property on the page, as in org mode:
 `{+}` sums (the default), `{min}`, `{max}` and `{mean}` take the least, most
 or average of the children. A page with `:columns:`, and everything under
 it, opens in column view. Cells are editable; a click writes the property.
+On a phone each column is as wide as its widest value (doc/adr/0074). Columns
+that need more than 55% of the screen scroll sideways under a drag on the
+numbers, while the titles stay.
 
 A column with a formula in its braces is computed for every row below the
 page that has no value of its own (doc/adr/0022). A day planned as a

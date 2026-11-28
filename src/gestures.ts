@@ -4,6 +4,7 @@ import { openItemMenu, toastWithUndo } from "./chrome";
 import { flashRow } from "./render";
 import { swallowNextClick } from "./clicks";
 import { refusedAsReadOnly } from "./bookmarking";
+import { columnsScrollUnder } from "./columnFit";
 
 /*
  * Swipes on rows for touch screens (doc/adr/0016, 0048): right completes, left opens the item menu.
@@ -27,7 +28,7 @@ export function enableRowSwipes(tree: HTMLElement): void {
     if (event.clientX < SCREEN_EDGE || event.clientX > window.innerWidth - SCREEN_EDGE) return;
     const target = event.target as Element;
     const row = target.closest<HTMLElement>(".row");
-    if (!row || target.closest(".bullet, .toggle")) return;
+    if (!row || target.closest(".bullet, .toggle") || columnsScrollUnder(target)) return;
     followSwipe(event, row);
   });
 }
