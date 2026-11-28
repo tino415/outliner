@@ -29,7 +29,7 @@ const LONG_PRESS_MS = 450;
  * a press that moves drags the item, and a long touch or a right click opens
  * the item's menu.
  */
-export function enableBulletHandles(outline: HTMLElement, host: DragHost, places: DropPlaces = treeDrops(outline)): void {
+export function enableBulletHandles(outline: HTMLElement, host: DragHost, places: DropPlaces): void {
   outline.addEventListener("pointerdown", (event) => {
     const bullet = (event.target as HTMLElement).closest<HTMLElement>(".bullet");
     if (!bullet || event.button !== 0) return;
@@ -127,7 +127,7 @@ function createGhost(source: HTMLElement): HTMLElement {
   return ghost;
 }
 
-function treeDrops(tree: HTMLElement): DropPlaces {
+export function treeDrops(tree: HTMLElement): DropPlaces {
   return { dropAt: (x, y, dragged, doc) => dropInTree(x, y, dragged, tree, doc), scrollToward: (_x, y) => scrollPageToward(y) };
 }
 

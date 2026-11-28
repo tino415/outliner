@@ -13,6 +13,7 @@ import { queryViewShown } from "./queryView";
 import { ensureChecks, inChecks, isChecksItem, problemsOfItem } from "./checks";
 import { isSettingsItem } from "./insertLists";
 import { zoomTo } from "./navigation";
+import { sidewaysShown } from "./sideways";
 
 /*
  * The board view (doc/adr/0031): an item with `:view: board` shows its
@@ -20,10 +21,18 @@ import { zoomTo } from "./navigation";
  * edited in place; moving one to another column moves it in the outline.
  */
 
-export type View = "tree" | "board";
+/** How the page is shown: `tree` is the outline, `sideways` the tree laid out from the title to the right. */
+export type View = "tree" | "board" | "sideways";
 
 export function shownView(): View {
-  return boardShown() ? "board" : "tree";
+  if (boardShown()) return "board";
+  return sidewaysShown() ? "sideways" : "tree";
+}
+
+const VIEW_PROPERTY: Record<View, string> = { tree: "", board: "board", sideways: "tree" };
+
+export function showPageAs(view: View): void {
+  commitAndRender(setItemProperty(doc(), state.zoom, "view", VIEW_PROPERTY[view]), caretNow());
 }
 
 export function boardShown(): boolean {
@@ -58,8 +67,7 @@ export function pageAbove(page: ItemId): ItemId {
 }
 
 export function toggleBoard(): void {
-  const page = doc().items[state.zoom];
-  commitAndRender(setItemProperty(doc(), page.id, "view", isBoard(page) ? "" : "board"), caretNow());
+  showPageAs(isBoard(doc().items[state.zoom]) ? "tree" : "board");
 }
 
 /** Zooms into the Checks: child of the page, making it first when the page has none. */

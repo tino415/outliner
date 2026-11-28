@@ -52,6 +52,7 @@ export const COMMAND_NAMES = [
   "toggle-completed",
   "toggle-columns",
   "toggle-board",
+  "toggle-sideways",
   "agenda",
   "capture",
   "go-to-target",

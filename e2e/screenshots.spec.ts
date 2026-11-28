@@ -27,6 +27,15 @@ for (const theme of ["light", "dark"] as const) {
     await page.waitForTimeout(300);
     await shot("zoomed");
 
+    await page.locator("#menu-button").click();
+    await page.locator("#view-choice").getByRole("radio", { name: "Tree" }).click();
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    await shot("tree-view");
+    await page.locator("#menu-button").click();
+    await page.locator("#view-choice").getByRole("radio", { name: "Outline" }).click();
+    await page.keyboard.press("Escape");
+
     await row(page, "Monday: write the draft").locator(".bullet").click();
     await page.locator(".title", { hasText: "Monday" }).waitFor();
     await page.waitForTimeout(300);

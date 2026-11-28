@@ -2672,3 +2672,220 @@ body.dragging {
 .with-searching .board-gap {
   visibility: hidden;
 }
+
+/* ---- the tree view: the same rows, laid sideways ------------------------------- */
+
+.page.with-sideways {
+  --map-line: light-dark(#cfc9bc, #44464e);
+  --spine: 18px;
+  --node-width: 250px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) max-content minmax(0, 1fr);
+  box-sizing: border-box;
+  max-width: none;
+  height: calc(100dvh - 56px - env(safe-area-inset-top) - var(--keyboard));
+  margin: 0;
+  padding: 28px max(24px, env(safe-area-inset-right)) 28px max(24px, env(safe-area-inset-left));
+  overflow: auto;
+}
+
+.page.with-sideways > .search-summary {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.page.with-sideways > .page-head {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  max-width: calc(var(--node-width) + 10px);
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+
+.page.with-sideways .title {
+  font-size: 1.05em;
+  line-height: var(--line);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.page.with-sideways > .tree,
+.page.with-sideways > .add-item {
+  grid-column: 3;
+  grid-row: 3;
+  align-self: center;
+  margin: 0 0 0 calc(var(--spine) * 2);
+}
+
+.page.with-sideways > .tree {
+  margin: 0;
+}
+
+.tree.sideways,
+.tree.sideways .children {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 0 0 calc(var(--spine) * 2);
+}
+
+.tree.sideways:empty {
+  display: none;
+}
+
+.tree.sideways .item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.tree.sideways::before,
+.tree.sideways .children::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  bottom: auto;
+  width: var(--spine);
+  height: 0;
+  border-top: 2px solid var(--map-line);
+  background: none;
+}
+
+.tree.sideways .item::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--spine) * -1);
+  top: 50%;
+  width: var(--spine);
+  border-top: 2px solid var(--map-line);
+}
+
+.tree.sideways .item::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--spine) * -1);
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--map-line);
+}
+
+.tree.sideways .item:first-child::after {
+  top: 50%;
+}
+
+.tree.sideways .item:last-child::after {
+  bottom: calc(50% - 2px);
+}
+
+.tree.sideways .item:only-child::after {
+  display: none;
+}
+
+.tree.sideways .item > .row {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  max-width: var(--node-width);
+  padding: 2px 12px 2px 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  touch-action: auto;
+}
+
+.tree.sideways .item > .row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.tree.sideways .bullet {
+  flex: none;
+  width: var(--bullet-col);
+}
+
+/* The + keeps its place beside the text rather than over it, as a node is only as wide as its text. */
+.tree.sideways .item > .row > .body {
+  min-width: 0;
+  padding-right: 26px;
+}
+
+.tree.sideways .row .text {
+  padding-right: 0;
+}
+
+.tree.sideways .item > .row .toggle {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  translate: 0 -50%;
+  border: 1px solid var(--map-line);
+  border-radius: 50%;
+  background: var(--surface);
+  opacity: 1;
+}
+
+.tree.sideways .item > .row .toggle::after {
+  inset: -8px;
+}
+
+.tree.sideways .toggle svg {
+  width: 10px;
+  height: 10px;
+  transform: rotate(180deg);
+}
+
+.tree.sideways .folded > .row .toggle {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tree.sideways .folded > .row .toggle svg {
+  display: none;
+}
+
+.tree.sideways .folded > .row .fold-count {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  translate: 0 -50%;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.tree.sideways .folded > .row .dot {
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .page.with-sideways {
+    --spine: 11px;
+    --node-width: 190px;
+    padding: 16px max(12px, env(safe-area-inset-right)) 16px max(12px, env(safe-area-inset-left));
+  }
+
+  .page.with-sideways > .page-head {
+    max-width: 170px;
+  }
+}

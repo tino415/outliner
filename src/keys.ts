@@ -5,6 +5,7 @@ import { escape } from "./inline";
 import { Platform, isMac, platform } from "./platform";
 import { View, editChecksOfPage, shownView, toggleBoard } from "./board";
 import { openAgenda } from "./agenda";
+import { toggleSideways } from "./sideways";
 import { copyLink, copyLinkToPage } from "./links";
 import { bookmarkThisPage, openBookmark, openBookmarkList } from "./bookmarking";
 import { Doc } from "./model";
@@ -20,7 +21,7 @@ interface Shortcut {
   hidden?: boolean;
   /** Text typed in an item that does the same, shown in the palettes in place of the keys. */
   typed?: string;
-  where: View | "any";
+  where: View[] | "any";
 }
 
 interface EditorBinding extends Shortcut {
@@ -96,15 +97,16 @@ const global = (name: CommandName | undefined, keys: string[], label: string, re
   where: "any",
 });
 
-const inTree = <B extends Binding>(binding: B): B => ({ ...binding, where: "tree" });
-const onBoard = <B extends Binding>(binding: B): B => ({ ...binding, where: "board" });
+const whereRowsNest = <B extends Binding>(binding: B): B => ({ ...binding, where: ["tree", "sideways"] });
+const inOutline = <B extends Binding>(binding: B): B => ({ ...binding, where: ["tree"] });
+const onBoard = <B extends Binding>(binding: B): B => ({ ...binding, where: ["board"] });
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 const defaultBindings: Binding[] = [
   typing(["Enter"], "New item, or split at the caret", (c) => actions.enter(c)),
-  inTree(fixed(["Tab"], "Indent", (c) => actions.indent(c))),
-  inTree(fixed(["Shift+Tab"], "Outdent", (c) => actions.outdent(c))),
+  whereRowsNest(fixed(["Tab"], "Indent", (c) => actions.indent(c))),
+  whereRowsNest(fixed(["Shift+Tab"], "Outdent", (c) => actions.outdent(c))),
   onBoard(fixed(["Tab"], "To the column on the right", (c) => actions.toColumn(c, 1))),
   onBoard(fixed(["Shift+Tab"], "To the column on the left", (c) => actions.toColumn(c, -1))),
   typing(["Backspace"], "At the start: join with the item above", (c) => actions.backspace(c)),
@@ -165,8 +167,8 @@ const defaultBindings: Binding[] = [
   selection(undefined, ["ArrowUp"], () => selectionActions.leaveAt("start")),
   selection(undefined, ["ArrowDown", "Enter"], () => selectionActions.leaveAt("end")),
   selection(undefined, ["Escape"], () => selectionActions.leave()),
-  inTree(selection(undefined, ["Tab"], () => selectionActions.indent())),
-  inTree(selection(undefined, ["Shift+Tab"], () => selectionActions.outdent())),
+  whereRowsNest(selection(undefined, ["Tab"], () => selectionActions.indent())),
+  whereRowsNest(selection(undefined, ["Shift+Tab"], () => selectionActions.outdent())),
   selection("move-up", ["Alt+Shift+ArrowUp", "Mod+Shift+ArrowUp"], () => selectionActions.moveUp()),
   selection("move-down", ["Alt+Shift+ArrowDown", "Mod+Shift+ArrowDown"], () => selectionActions.moveDown()),
   selection("complete", ["Mod+Enter"], () => selectionActions.complete()),
@@ -183,8 +185,9 @@ const defaultBindings: Binding[] = [
   global("help", ["Mod+/"], "Show shortcuts", "anywhere", () => globalActions.help()),
   global("help", ["?"], "Show shortcuts", "outsideFields", () => globalActions.help()),
   global("toggle-completed", ["Mod+o"], "Show / hide completed", "anywhere", () => globalActions.toggleCompleted()),
-  inTree(global("toggle-columns", ["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns())),
+  inOutline(global("toggle-columns", ["Mod+j c"], "Show / hide columns", "anywhere", () => globalActions.toggleColumns())),
   global("toggle-board", ["Mod+j b"], "Show this page as a board", "anywhere", () => toggleBoard()),
+  global("toggle-sideways", [], "Show this page as a tree", "anywhere", () => toggleSideways()),
   global("agenda", ["Mod+j g"], "Agenda: overdue, today and the next 7 days", "anywhere", () => openAgenda()),
   global("capture", ["Mod+j n"], "Capture…", "anywhere", () => globalActions.capture()),
   global("go-to-target", ["Mod+j w"], "Go to a capture target…", "anywhere", () => globalActions.goToTarget()),
@@ -226,7 +229,7 @@ function keysOfUnnamedCommands(): string[] {
 /** The bindings that mean something in the view shown: the outline's structure keys are not offered on a board, nor the board's in the outline. */
 function bindingsHere(): Binding[] {
   const view = shownView();
-  return bindings.filter((binding) => binding.where === "any" || binding.where === view);
+  return bindings.filter((binding) => binding.where === "any" || binding.where.includes(view));
 }
 
 /**

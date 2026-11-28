@@ -7,6 +7,7 @@ const view = vi.hoisted(() => ({ shown: "tree" }));
 
 vi.mock("../src/board", () => ({ shownView: () => view.shown, toggleBoard: () => {} }));
 vi.mock("../src/agenda", () => ({ openAgenda: () => {} }));
+vi.mock("../src/sideways", () => ({ toggleSideways: () => {} }));
 vi.mock("../src/links", () => ({ copyLink: () => {}, copyLinkToPage: () => {} }));
 vi.mock("../src/bookmarking", () => ({ openBookmark: () => {}, openBookmarkList: () => {}, bookmarkThisPage: () => {} }));
 
@@ -191,5 +192,16 @@ describe("the view shown", () => {
     expect(row).toContain("move-right");
     expect(row).toContain("<kbd>Tab</kbd>");
     expect(row).toContain("<kbd>→</kbd>");
+  });
+
+  it("makes Tab indent on a Tree page, and offers no columns there", () => {
+    view.shown = "sideways";
+    const labels = () => keyCommands(editing).map((command) => command.label);
+    expect(bindingFor(tab, "editor", "other")?.label).toBe("Indent");
+    expect(bindingFor(shiftTab, "editor", "other")?.label).toBe("Outdent");
+    expect(bindingForKeys("Tab", "selection")).not.toBeNull();
+    expect(labels()).not.toContain("Show / hide columns");
+    expect(labels()).toContain("Show this page as a tree");
+    expect(labels()).toContain("Show this page as a board");
   });
 });

@@ -15,7 +15,7 @@ import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from 
 import { bindColumnCells, toggleColumnView } from "./columns";
 import { refitColumns } from "./columnFit";
 import { goToTargetCommands, openCapture, openGoToTarget } from "./capturing";
-import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, shownView, toggleBoard } from "./board";
+import { View, bindBoard, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, showPageAs, shownView } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
 import { bookmarkThisPage, openBookmarkList } from "./bookmarking";
 import { bindPropertyChips } from "./propertyPicker";
@@ -98,7 +98,7 @@ function paletteCommands(): Command[] {
   return [...keyed, ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands().filter((command) => !labels.has(command.label))];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -284,7 +284,6 @@ const menuActions: Record<string, () => void> = {
     openBookmarkList();
   },
   "toggle-columns": () => toggleColumnView(),
-  "toggle-board": () => toggleBoard(),
   "toggle-completed": () => {
     updatePrefs({ showCompleted: !state.prefs.showCompleted });
     render(caretNow());
@@ -363,6 +362,11 @@ function bindMenu(): void {
   document.addEventListener("click", (event) => {
     const button = (event.target as Element).closest<HTMLElement>("[data-action]");
     if (button && !button.closest("#toolbar")) menuActions[button.dataset.action!]?.();
+  });
+
+  $("view-choice").addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLElement>("[data-view]");
+    if (button) showPageAs(button.dataset.view as View);
   });
 
   ui.menu.addEventListener("click", (event) => {
@@ -527,8 +531,9 @@ export function renderMenuState(): void {
   ui.menu.querySelector<HTMLElement>('[data-action="insert"]')!.hidden = !canInsertFromList(state.zoom);
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
-  $("board-switch").classList.toggle("on", boardShown());
-  for (const entry of ui.menu.querySelectorAll<HTMLElement>("[data-where]")) entry.hidden = entry.dataset.where !== shownView();
+  const view = shownView();
+  for (const button of $("view-choice").querySelectorAll<HTMLElement>("[data-view]")) button.setAttribute("aria-checked", String(button.dataset.view === view));
+  for (const entry of ui.menu.querySelectorAll<HTMLElement>("[data-where]")) entry.hidden = !entry.dataset.where!.split(" ").includes(view);
 }
 
 export function applyAppearance(): void {

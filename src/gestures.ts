@@ -5,6 +5,7 @@ import { flashRow } from "./render";
 import { swallowNextClick } from "./clicks";
 import { refusedAsReadOnly } from "./bookmarking";
 import { columnsScrollUnder } from "./columnFit";
+import { sidewaysShown } from "./sideways";
 
 /*
  * Swipes on rows for touch screens (doc/adr/0016, 0048): right completes, left opens the item menu.
@@ -24,7 +25,7 @@ const LABELS: Record<SwipeAction, string> = {
 
 export function enableRowSwipes(tree: HTMLElement): void {
   tree.addEventListener("pointerdown", (event) => {
-    if (event.pointerType !== "touch" || !event.isPrimary || state.results) return;
+    if (event.pointerType !== "touch" || !event.isPrimary || state.results || sidewaysShown()) return;
     if (event.clientX < SCREEN_EDGE || event.clientX > window.innerWidth - SCREEN_EDGE) return;
     const target = event.target as Element;
     const row = target.closest<HTMLElement>(".row");
