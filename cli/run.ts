@@ -35,7 +35,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { Candidate, findItems, pathOf } from "../src/search";
 import { parseQuery, queryMatches } from "../src/query";
-import { Template, capture, captureTemplates } from "../src/capture";
+import { Template, capture, captureTemplates, defaultsOf } from "../src/capture";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { isSealed, propertyKey, propertyLines, sealedKeyOf } from "../src/notes";
 import { Clock, newDeviceId } from "../src/sync/clock";
@@ -74,7 +74,9 @@ commands:
   set ITEM KEY VALUE       set a property of an item; an empty VALUE
                            removes it
   capture TEXT             file TEXT with a capture template (--template NAME,
-                           the first by default) and --set KEY=VALUE properties
+                           the first by default) and --set KEY=VALUE properties;
+                           an asked default (:ask: grams=100) is written
+                           unless --set gives its key
   rm ITEM                  delete an item and everything under it
   attach ITEM FILE         upload FILE and add it as a child of ITEM, placed
                            like any new child, titled with its link; prints
@@ -248,7 +250,7 @@ async function perform(command: string, args: string[], options: Options, outlin
       const templates = captureTemplates(doc);
       const template = options.template ? templateNamed(templates, options.template) : templates[0];
       if (!template) throw new Error(`no capture template named ${options.template}; there are ${templates.map((each) => each.name).join(", ")}`);
-      const assigned = propertiesFrom(options.set);
+      const assigned = { ...byLowerKey(defaultsOf(template)), ...byLowerKey(propertiesFrom(options.set)) };
       const result = capture(doc, template, text, assigned, new Date());
       for (const [key, value] of Object.entries(assigned)) requireChecked(result.doc, result.id, key, value);
       for (const id of [result.target, ...ancestors(result.doc, result.target)]) writable(result.doc, id);
@@ -447,6 +449,10 @@ function propertiesFrom(assignments: string[]): Record<string, string> {
       return [match[1], match[2]];
     }),
   );
+}
+
+function byLowerKey(properties: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(properties).map(([key, value]) => [key.toLowerCase(), value]));
 }
 
 function textFrom(argument: string, stdin: string, whenEmpty: string): string {

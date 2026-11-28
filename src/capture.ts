@@ -4,8 +4,9 @@ import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemPro
 /*
  * Capture, as in org-capture (doc/adr/0023): a template is an item whose note
  * has a `:capture:` property naming where new items go; `:ask:` lists the
- * properties to ask for, `:at: top` or `:at: bottom` overrides where the
- * target page files new items (`:new: top`, or the bottom),
+ * properties to ask for, `grams=100` giving one a default (doc/adr/0076),
+ * `:at: top` or `:at: bottom` overrides where the target page files new
+ * items (`:new: top`, or the bottom),
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
  * a page per day, `{tomorrow}` is the day after (doc/adr/0062), and
@@ -20,9 +21,14 @@ export interface Template {
   id?: ItemId;
   name: string;
   target: string;
-  ask: string[];
+  ask: Asked[];
   at?: "top" | "bottom";
   key: string;
+}
+
+export interface Asked {
+  key: string;
+  default?: string;
 }
 
 export const INBOX: Template = { name: "Inbox", target: "Inbox", ask: [], key: "i" };
@@ -48,10 +54,25 @@ export function templateOf(doc: Doc, id: ItemId): Template | null {
     id,
     name: doc.items[id].text.trim() || target,
     target,
-    ask: (properties.ask ?? "").split(/[\s,]+/).filter(Boolean),
+    ask: askedOf(properties.ask ?? ""),
     at: placementOf(properties.at),
     key: (properties.key ?? "").slice(0, 1).toLowerCase(),
   };
+}
+
+export function defaultsOf(template: Template): Record<string, string> {
+  return Object.fromEntries(template.ask.filter((asked) => asked.default !== undefined).map((asked) => [asked.key, asked.default!]));
+}
+
+function askedOf(written: string): Asked[] {
+  return written
+    .split(/[\s,]+/)
+    .map((word) => {
+      const [key, ...rest] = word.split("=");
+      const value = rest.join("=");
+      return value ? { key, default: value } : { key };
+    })
+    .filter((asked) => asked.key);
 }
 
 export function goToTarget(doc: Doc, template: Template, today: Date): { doc: Doc; target: ItemId } {

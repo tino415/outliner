@@ -371,7 +371,7 @@ named by its text:
 ```
 Meal
   :capture: Food/{date}
-  :ask: kcal protein
+  :ask: grams=100 kcal protein
   :key: m
   :at: top
 ```
@@ -380,7 +380,8 @@ Meal
 after, `{current-week}` and `{tomorrow-week}` their ISO weeks, like 2026-W48,
 so `Food/{current-week}/{date}` files under the week; missing pages are
 created), `:ask:` the properties to ask for, `:key:` the letter that picks
-the template, `:at: top` files at the top. Without templates, items go to
+the template, `:at: top` files at the top. The grams field opens holding 100,
+and `outline capture` writes it unless `--set` gives the key. Without templates, items go to
 `Inbox`. Settings / Capture templates is the home of templates, with an About
 item that explains them (doc/adr/0070); Settings also holds Bookmarks.
 
