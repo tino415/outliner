@@ -26,7 +26,8 @@ reading.
   marked "this page". On touch the list opens as a bottom sheet, as the item
   menu does.
 - The command "Show the path" (`show-path`, Mod-J U) opens the same list on
-  the parent's line, also when no level is hidden. At Home it does nothing.
+  the line "Zoom out" goes to: the parent, or the board for a card. It opens
+  also when no level is hidden. At Home it does nothing.
 - "Zoom out" stays the direct key to the parent, and the palette lists it
   also when no item is being edited.
 

@@ -3,6 +3,7 @@ import { escape, itemLabel } from "./inline";
 import { doc, state, ui } from "./app";
 import { agendaShown } from "./agenda";
 import { zoomTo } from "./navigation";
+import { pageAbove } from "./board";
 
 /*
  * Breadcrumbs keep Home and the nearest levels that fit with their whole
@@ -23,6 +24,7 @@ export function renderCrumbs(): void {
   const shown = JSON.stringify(trail.map((id) => [id, levelName(id)]));
   if (shown === crumbsShown) return;
   crumbsShown = shown;
+  if (pathMenu().matches(":popover-open")) pathMenu().hidePopover();
   ui.crumbs.classList.toggle("at-home", trail.length === 0);
   ui.crumbs.innerHTML = trail.length === 0 ? `<span class="brand"><span class="brand-dot"></span>Outliner</span>` : crumbsHtml(trail);
   fitCrumbs();
@@ -111,12 +113,16 @@ function fillPathMenu(): void {
 function placePathMenu(): void {
   const pathButton = ui.crumbs.querySelector<HTMLElement>(".path-step:not([hidden]) .path-button");
   const anchor = (pathButton ?? ui.crumbs.querySelector<HTMLElement>(".crumb.home") ?? ui.crumbs).getBoundingClientRect();
-  pathMenu().style.left = `${Math.max(8, anchor.left)}px`;
+  const width = parseFloat(getComputedStyle(pathMenu()).width);
+  pathMenu().style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8))}px`;
   pathMenu().style.top = `${anchor.bottom + 4}px`;
 }
 
 function focusParentLine(): void {
-  levelLines().at(-1)?.focus();
+  const parent = agendaShown() ? ROOT : pageAbove(state.zoom);
+  levelLines()
+    .find((line) => line.dataset.zoom === parent)
+    ?.focus();
 }
 
 function levelLines(): HTMLElement[] {
