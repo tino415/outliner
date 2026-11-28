@@ -76,6 +76,27 @@ export const FORMULA_EXAMPLES: FormulaExample[] = [
       "    :grams: 30",
     ].join("\n"),
   },
+  {
+    title: "Calories of a recipe",
+    explanation: "kcal comes from grams and per100; a typed kcal stays; every parent adds up its children, in whole numbers.",
+    outline: [
+      "- Example: Recipe",
+      "  :columns: grams kcal{sum round = grams * per100 / 100}",
+      "  - Dough",
+      "    - Flour",
+      "      :grams: 250",
+      "      :per100: 364",
+      "    - Butter",
+      "      :grams: 125",
+      "      :per100: 717",
+      "  - Filling",
+      "    - Apples",
+      "      :grams: 600",
+      "      :per100: 52",
+      "    - Sugar",
+      "      :kcal: 200",
+    ].join("\n"),
+  },
 ];
 
 const REFERENCE: [string, [string, string][]][] = [
@@ -85,6 +106,8 @@ const REFERENCE: [string, [string, string][]][] = [
       [":columns: effort start{=…}", "On a page: a column computed for every row below it that has no value of its own"],
       [":start: 14:00", "A row's own value wins over the formula"],
       [":effort: =24:00 - start", "A value starting with = is a formula of that item's own, here the rest of the day"],
+      [":columns: kcal{sum = …}", "A summary word before the =: a parent shows the sum of its children; also min, max, mean"],
+      [":columns: kcal{sum round = …}", "round shows computed values and sums as whole numbers"],
       ["error", "A formula that cannot be computed; hover the cell for the reason"],
     ],
   ],

@@ -63,7 +63,10 @@ export type Summary = "sum" | "min" | "max" | "mean";
 
 export interface Column {
   key: string;
-  summary: Summary;
+  /** Absent on a computed column that names no summary word: its parents do not roll up. */
+  summary?: Summary;
+  /** Computed values and summaries show as whole numbers. */
+  round?: true;
   /** A computed column (doc/adr/0022): what fills the rows below the page that have no value of their own. */
   formula?: Formula | FormulaError;
   formulaSource?: string;
@@ -73,14 +76,32 @@ export interface Column {
 
 const SUMMARIES: Record<string, Summary> = { "+": "sum", ":": "sum", sum: "sum", min: "min", max: "max", mean: "mean", avg: "mean" };
 
-/** Reads `effort{+} calories{mean} weight start{=parent.start + before(effort)}` into columns; a column without braces sums. */
+/**
+ * Reads `effort{+} calories{mean round} weight start{=parent.start + before(effort)} kcal{sum = grams * per100 / 100}`
+ * into columns; a column without braces sums.
+ */
 export function parseColumns(spec: string): Column[] {
   return [...spec.matchAll(/([\p{L}\p{N}_-]+)(?:\{([^}]*)\})?/gu)].map((match) => {
     const key = match[1].toLowerCase();
-    const braces = (match[2] ?? "+").trim();
-    if (braces.startsWith("=")) return { key, summary: "sum", formula: formulaOrError(braces.slice(1)), formulaSource: braces.slice(1).trim() };
-    return { key, summary: SUMMARIES[braces.toLowerCase().replace(/^:(?=.)/, "")] ?? "sum" };
+    const [wordsSource, formulaSource] = splitAtFirst(match[2] ?? "", "=");
+    const words = wordsSource.trim().split(/\s+/).filter(Boolean);
+    const round = words.some((word) => word.toLowerCase() === "round") ? { round: true as const } : {};
+    const summaries = words.filter((word) => word.toLowerCase() !== "round").map((word) => ({ word, summary: summaryNamed(word) }));
+    const summary = summaries.find((named) => named.summary)?.summary;
+    if (formulaSource === null) return { key, summary: summary ?? "sum", ...round };
+    const unknown = summaries.find((named) => !named.summary)?.word;
+    const formula = unknown ? new FormulaError(`unknown ${unknown}: use sum, min, max, mean or round`) : formulaOrError(formulaSource);
+    return { key, ...(summary ? { summary } : {}), ...round, formula, formulaSource: formulaSource.trim() };
   });
+}
+
+function summaryNamed(word: string): Summary | undefined {
+  return SUMMARIES[word.toLowerCase().replace(/^:(?=.)/, "")];
+}
+
+function splitAtFirst(text: string, separator: string): [string, string | null] {
+  const at = text.indexOf(separator);
+  return at < 0 ? [text, null] : [text.slice(0, at), text.slice(at + separator.length)];
 }
 
 /** A value written as "=…" is a formula of the item's own: its source, or null for a plain value. */
@@ -162,9 +183,9 @@ export function columnCells(doc: Doc, top: ItemId, columns: Column[], filter: Vi
  * An item whose children have values shows their summary, recursively;
  * otherwise its own value, or the result of its own "=…" formula. A computed
  * column fills, below the item that declares it (`top` when none does), the
- * items without a value of their own from its formula; a key that is no
- * column is summed. Children the view hides (completed ones, when those are
- * hidden) count for nothing.
+ * items without a value of their own from its formula, and rolls up only when
+ * it names a summary word; a key that is no column is summed. Children the
+ * view hides (completed ones, when those are hidden) count for nothing.
  */
 export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: ViewFilter = { showCompleted: true }): (id: ItemId, key: string) => Cell | null {
   const byKey = new Map(columns.map((column) => [column.key, column]));
@@ -188,30 +209,32 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
   };
 
   const freshValue = (id: ItemId, key: string): Value => {
-    const column = byKey.get(key) ?? { key, summary: "sum" as Summary };
+    const column: Column = byKey.get(key) ?? { key, summary: "sum" };
     const raw = doc.items[id].properties[key];
     const ownFormula = formulaIn(raw);
-    if (ownFormula !== null) return computed(id, formulaOrError(ownFormula));
+    if (ownFormula !== null) return computed(id, column, formulaOrError(ownFormula));
+    const summary = column.summary ? summarize(children(id).flatMap((child) => valueOf(child, key).amount ?? []), column.summary) : null;
+    if (summary) return { amount: summary, cell: { text: shownAmount(summary, column), rolled: true } };
     const formulaApplies = column.formula && raw === undefined && isDescendant(doc, id, column.declaredOn ?? top);
-    if (formulaApplies) return computed(id, column.formula!);
-    const fromChildren = () => children(id).flatMap((child) => valueOf(child, key).amount ?? []);
-    const summary = column.formula ? null : summarize(fromChildren(), column.summary);
-    if (summary) return { amount: summary, cell: { text: formatAmount(summary), rolled: true } };
+    if (formulaApplies) return computed(id, column, column.formula!);
     if (raw === undefined) return { amount: null, cell: null };
     const amount = parseAmount(raw);
     return { amount, cell: { text: amount ? formatAmount(amount) : raw, rolled: false } };
   };
 
-  const computed = (id: ItemId, formula: Formula | FormulaError): Value => {
+  const computed = (id: ItemId, column: Column, formula: Formula | FormulaError): Value => {
     try {
       if (formula instanceof FormulaError) throw formula;
       const amount = evaluate(formula, scopeOf(id));
-      return { amount, cell: amount ? { text: formatAmount(amount), rolled: false, computed: true } : null };
+      return { amount, cell: amount ? { text: shownAmount(amount, column), rolled: false, computed: true } : null };
     } catch (error) {
       if (!(error instanceof FormulaError)) throw error;
       return { amount: null, cell: { text: "error", rolled: false, computed: true, error: error.message }, failure: error };
     }
   };
+
+  const shownAmount = (amount: Amount, column: Column): string =>
+    formatAmount(column.round && amount.kind === "number" ? { ...amount, value: Math.round(amount.value) } : amount);
 
   /** A value a formula reads; a dependency in error makes the formula an error too, and one in a loop still being computed puts it in the loop. */
   const amountOf = (id: ItemId, key: string): Amount | null => {
