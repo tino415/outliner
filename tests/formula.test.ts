@@ -338,6 +338,14 @@ describe("a computed column that sums and rounds", () => {
     expect(cell.error).toBe("unknown total: use sum, min, max, mean or round");
   });
 
+  it("a total over a row in error is an error too, with that row's reason", () => {
+    const doc = outline(["Day | :columns: kcal{sum = grams * per100 / 100}", "  Breakfast", "    Yoghurt | :grams: 150; :per100: 59", "    Broken | :kcal: =grams +"].join("\n"));
+    const top = idOf(doc, "Day");
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!);
+    expect(column(doc, "Day", "kcal")).toEqual({ Day: "error", Breakfast: "error", Yoghurt: "88.5", Broken: "error" });
+    expect(cells.get(top)!.get("kcal")!.error).toBe(cells.get(idOf(doc, "Broken"))!.get("kcal")!.error);
+  });
+
   it("rounds a summary without a formula and keeps the typed values", () => {
     const doc = outline(["Scores | :columns: score{mean round}", "  First | :score: 1", "  Second | :score: 2"].join("\n"));
     expect(column(doc, "Scores", "score")).toEqual({ Scores: "2", First: "1", Second: "2" });

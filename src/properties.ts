@@ -213,8 +213,8 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     const raw = doc.items[id].properties[key];
     const ownFormula = formulaIn(raw);
     if (ownFormula !== null) return computed(id, column, formulaOrError(ownFormula));
-    const summary = column.summary ? summarize(children(id).flatMap((child) => valueOf(child, key).amount ?? []), column.summary) : null;
-    if (summary) return { amount: summary, cell: { text: shownAmount(summary, column), rolled: true } };
+    const rolled = column.summary ? rolledUp(id, column, column.summary) : null;
+    if (rolled) return rolled;
     const formulaApplies = column.formula && raw === undefined && isDescendant(doc, id, column.declaredOn ?? top);
     if (formulaApplies) return computed(id, column, column.formula!);
     if (raw === undefined) return { amount: null, cell: null };
@@ -231,6 +231,15 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
       if (!(error instanceof FormulaError)) throw error;
       return { amount: null, cell: { text: "error", rolled: false, computed: true, error: error.message }, failure: error };
     }
+  };
+
+  /** The summary of the children's values; a child in error makes it an error, so a total never leaves a row out silently. */
+  const rolledUp = (id: ItemId, column: Column, summary: Summary): Value | null => {
+    const values = children(id).map((child) => valueOf(child, column.key));
+    const failed = values.find((value) => value.cell?.error)?.cell?.error;
+    if (failed) return { amount: null, cell: { text: "error", rolled: true, error: failed } };
+    const amount = summarize(values.flatMap((value) => value.amount ?? []), summary);
+    return amount && { amount, cell: { text: shownAmount(amount, column), rolled: true } };
   };
 
   const shownAmount = (amount: Amount, column: Column): string =>
