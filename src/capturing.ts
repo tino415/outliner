@@ -32,12 +32,27 @@ export function bindCapture(): void {
     event.preventDefault();
     choose(picked);
   });
+  selectDefaultsOnFocus();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     file();
   });
   element("capture-go").addEventListener("click", () => visit(templates[chosen]));
   element("capture-close").addEventListener("click", () => dialog.close());
+}
+
+/** WebKit puts the caret where the click let go, so the mouseup of the click that focused the field is kept from undoing the selection. */
+function selectDefaultsOnFocus(): void {
+  let focusingClick = false;
+  fields.addEventListener("pointerdown", (event) => (focusingClick = event.target !== document.activeElement));
+  const defaulted = (target: EventTarget | null) => target instanceof HTMLInputElement && holdsItsDefault(target);
+  fields.addEventListener("focusin", (event) => {
+    if (defaulted(event.target)) (event.target as HTMLInputElement).select();
+  });
+  fields.addEventListener("mouseup", (event) => {
+    if (focusingClick && defaulted(event.target)) event.preventDefault();
+    focusingClick = false;
+  });
 }
 
 export function openCapture(templateName = "", prefill = ""): void {
@@ -140,17 +155,27 @@ function paint(): void {
         `${escape(itemLabel(option.name, 24))}${option.key ? ` <kbd>${escape(option.key)}</kbd>` : ""}</button>`,
     )
     .join("");
-  const kept = new Map([...fields.querySelectorAll<HTMLInputElement>("input")].map((input) => [input.dataset.key!, input.value]));
-  fields.innerHTML = template.ask.map((key) => `<label>${escape(key)}<input type="text" autocomplete="off" data-key="${escape(key)}" /></label>`).join("");
-  for (const input of fields.querySelectorAll<HTMLInputElement>("input")) input.value = kept.get(input.dataset.key!) ?? "";
+  const typed = new Map([...askedInputs()].filter((input) => input.value !== "" && !holdsItsDefault(input)).map((input) => [input.dataset.key!, input.value]));
+  fields.innerHTML = template.ask
+    .map((asked) => `<label>${escape(asked.key)}<input type="text" autocomplete="off" data-key="${escape(asked.key)}" data-default="${escape(asked.default ?? "")}" /></label>`)
+    .join("");
+  for (const input of askedInputs()) input.value = typed.get(input.dataset.key!) ?? input.dataset.default!;
   target.textContent = `Goes to ${template.target}${template.at === "top" ? ", at the top" : ""}`;
 }
 
 function file(): void {
   const template = templates[chosen];
-  const properties = Object.fromEntries([...fields.querySelectorAll<HTMLInputElement>("input")].map((input) => [input.dataset.key!, input.value]));
+  const properties = Object.fromEntries([...askedInputs()].map((input) => [input.dataset.key!, input.value]));
   const result = capture(doc(), template, text.value.trim(), properties, new Date());
   dialog.close();
   commitAndRender(result.doc, null);
   toast(`Captured to “${itemLabel(result.doc.items[result.target].text, 30)}”`, { label: "Go there", run: () => zoomTo(result.target) });
+}
+
+function askedInputs(): NodeListOf<HTMLInputElement> {
+  return fields.querySelectorAll<HTMLInputElement>("input");
+}
+
+function holdsItsDefault(input: HTMLInputElement): boolean {
+  return input.value !== "" && input.value === input.dataset.default;
 }

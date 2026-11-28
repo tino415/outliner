@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Doc, ItemId, ROOT } from "../src/model";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
-import { INBOX, capture, captureRequest, captureTemplates, goToTarget } from "../src/capture";
+import { INBOX, Template, capture, captureRequest, captureTemplates, defaultsOf, goToTarget } from "../src/capture";
 import { subtreesAsText } from "../src/transfer";
 
 function idOf(doc: Doc, text: string): ItemId {
@@ -18,13 +18,26 @@ function withTemplates(): Doc {
   return doc;
 }
 
+function ingredient(): Template {
+  const doc = parseIndentedText("Ingredient");
+  return captureTemplates(setNote(doc, idOf(doc, "Ingredient"), ":capture: Food\n:ask: grams=100 kcal, protein"))[0];
+}
+
 describe("capture templates", () => {
   it("are items with a :capture: property, anywhere in the outline", () => {
     const doc = withTemplates();
     expect(captureTemplates(doc)).toEqual([
-      { id: idOf(doc, "Meal"), name: "Meal", target: "Food/Monday", ask: ["kcal", "protein"], key: "m" },
+      { id: idOf(doc, "Meal"), name: "Meal", target: "Food/Monday", ask: [{ key: "kcal" }, { key: "protein" }], key: "m" },
       { id: idOf(doc, "Idea"), name: "Idea", target: "Journal/{date}", ask: [], at: "top", key: "" },
     ]);
+  });
+
+  it("reads a default written after an asked key", () => {
+    expect(ingredient().ask).toEqual([{ key: "grams", default: "100" }, { key: "kcal" }, { key: "protein" }]);
+  });
+
+  it("gives the defaults of the asked keys that have one", () => {
+    expect(defaultsOf(ingredient())).toEqual({ grams: "100" });
   });
 
   it("fall back to an Inbox at the top when there are none", () => {

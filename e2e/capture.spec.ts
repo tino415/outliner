@@ -1,5 +1,5 @@
 import { Page, expect, test } from "@playwright/test";
-import { expectOutline, freshOutline, outlineText, row } from "./helpers";
+import { choose, expectOutline, freshOutline, outlineText, row } from "./helpers";
 
 const TEMPLATES = `
 Templates
@@ -25,6 +25,53 @@ test("Ctrl-J N captures with a template picked by its key, asking for its proper
   await expect(page.locator("#toast")).toContainText("Captured to “Monday”");
   await expect(row(page, "Oats").locator(".prop-chip")).toHaveText("kcal 300 kcal");
   await expectOutline(page, "Templates\n  Meal\n  Idea\nFood\n  Monday\n    Oats\nIdeas\n  older idea");
+});
+
+async function openCaptureFromMenu(page: Page, isMobile: boolean) {
+  await choose(page.locator("#menu-button"), isMobile);
+  await choose(page.getByRole("button", { name: "Capture…" }), isMobile);
+  await expect(page.locator("#capture-dialog")).toBeVisible();
+}
+
+const grams = (page: Page) => page.locator('#capture-fields input[data-key="grams"]');
+
+test("an asked property with a default opens filled and files it untouched", { tag: "@phone" }, async ({ page, isMobile }) => {
+  await freshOutline(page, "Ingredient | :capture: Food; :ask: grams=100 kcal\nFood");
+  await openCaptureFromMenu(page, isMobile);
+  await expect(grams(page)).toHaveValue("100");
+  await expect(page.locator('#capture-fields input[data-key="kcal"]')).toHaveValue("");
+  await page.locator("#capture-text").fill("Rice");
+  await choose(page.getByRole("button", { name: "Capture", exact: true }), isMobile);
+  await expect(row(page, "Rice").locator(".prop-chip")).toHaveText("grams 100");
+});
+
+test("typing into a defaulted field replaces the default", { tag: ["@phone", "@keys"] }, async ({ page, isMobile }) => {
+  await freshOutline(page, "Ingredient | :capture: Food; :ask: grams=100 kcal\nFood");
+  await openCaptureFromMenu(page, isMobile);
+  await choose(grams(page), isMobile);
+  await page.keyboard.type("250");
+  await expect(grams(page)).toHaveValue("250");
+});
+
+test("an untouched default follows the template, a typed value stays", async ({ page }) => {
+  await freshOutline(page, "Rice | :capture: Food; :ask: grams=100\nOil | :capture: Food; :ask: grams=50\nFood");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
+  await expect(grams(page)).toHaveValue("100");
+  await page.locator("#capture-templates").getByRole("radio", { name: "Oil" }).click();
+  await expect(grams(page)).toHaveValue("50");
+  await grams(page).fill("70");
+  await page.locator("#capture-templates").getByRole("radio", { name: "Rice" }).click();
+  await expect(grams(page)).toHaveValue("70");
+});
+
+test("an untouched empty field takes the default of the template switched to", async ({ page }) => {
+  await freshOutline(page, "Rice | :capture: Food; :ask: grams\nOil | :capture: Food; :ask: grams=50\nFood");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("n");
+  await expect(grams(page)).toHaveValue("");
+  await page.locator("#capture-templates").getByRole("radio", { name: "Oil" }).click();
+  await expect(grams(page)).toHaveValue("50");
 });
 
 test("a template filing at the top, and Go there", async ({ page }) => {

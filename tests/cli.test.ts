@@ -309,6 +309,14 @@ describe("outline CLI", () => {
     expect(await outline("show Plans")).toBe("- Plans\n  - Today\n    - buy milk\n    - call mum\n    - Stretch");
   });
 
+  it("writes an asked default unless --set gives the key", async () => {
+    await outline('add "Ingredient" --note ":capture: Food\n:ask: grams=100 kcal"');
+    await outline('capture "Rice" --template ingredient');
+    await outline('capture "Oil" --template ingredient --set grams=15');
+    await outline('capture "Salt" --template ingredient --set grams=');
+    expect(await outline("show Food")).toBe("- Food\n  - Rice\n    :grams: 100\n  - Oil\n    :grams: 15\n  - Salt");
+  });
+
   it("picks a capture template by its key letter too", async () => {
     await outline('add "Meal" --note ":capture: Food"');
     await outline("set Meal key m");
@@ -630,6 +638,19 @@ describe("outline CLI", () => {
     expect(refused.code).not.toBe(0);
     expect(refused.output).toContain("effort must be one of low, high");
     expect(await outline(`show ${fix}`)).toContain(":effort: low");
+  });
+
+  it("refuses an asked default that breaks a Checks: child", async () => {
+    await outline('add "TODO:"');
+    const checks = await outline('add "Checks:" --under TODO:');
+    const effort = await outline(`add "effort: one of" --under ${checks}`);
+    for (const value of ["low", "high"]) await outline(`add ${value} --under ${effort}`);
+    await outline('add "Task" --note ":capture: TODO:\n:ask: effort=huge"');
+
+    const refused = await run(splitArgs('capture "Fix it" --template task'), env);
+    expect(refused.code).not.toBe(0);
+    expect(refused.output).toContain("effort must be one of low, high");
+    expect(await outline("show TODO:")).not.toContain("Fix it");
   });
 
   it("keeps the table aligned with wide characters", async () => {
