@@ -244,6 +244,14 @@ describe("a formula that reads the item a link property points to", () => {
     expect(kcalCells(doc, "Food", { showCompleted: false })["Skyr cup"].text).toBe("103.6");
   });
 
+  it("counts a hidden linked item from the shown sibling above it", () => {
+    const shown = outline(["Day | :columns: end{=previous.end + 1h} seen{=food.end}", "  First | :end: 9:00", "  Done", "  Later | :food: [[Done]]"].join("\n"));
+    const doc = toggleCompleted(shown, idOf(shown, "Done"));
+    const top = idOf(doc, "Day");
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!, { showCompleted: false });
+    expect(cells.get(idOf(doc, "Later"))!.get("seen")!.text).toBe("10:00");
+  });
+
   it("reads a meal's grams as the sum of its lines", () => {
     const doc = outline(["Day | :columns: weight{=food.grams}", "  Bowl", "    Skyr | :grams: 150", "    Oats | :grams: 250", "  Lunch | :food: [[Bowl]]"].join("\n"));
     expect(column(doc, "Day", "weight").Lunch).toBe("400");

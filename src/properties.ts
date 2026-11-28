@@ -1,4 +1,4 @@
-import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, isDescendant, shownChildren } from "./model";
+import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, childrenInOrder, isDescendant, isShown, shownChildren } from "./model";
 import { readWrittenDate } from "./dates";
 import { onlyReference, resolveReference } from "./references";
 import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
@@ -226,9 +226,15 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     if (raw === undefined) return null;
     const reference = onlyReference(raw);
     if (!reference) throw new FormulaError(`${key} is not a link`);
-    const target = resolveReference(doc, reference.target);
+    const target = resolved(reference.target);
     if (!target) throw new FormulaError(`${key} links an item that is not here`);
     return target;
+  };
+
+  const targets = new Map<string, ItemId | null>();
+  const resolved = (target: string): ItemId | null => {
+    if (!targets.has(target)) targets.set(target, resolveReference(doc, target));
+    return targets.get(target)!;
   };
 
   const previousOf = new Map<ItemId, ItemId | null>();
@@ -237,8 +243,15 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     if (!previousOf.has(id)) {
       const siblings = parent ? children(parent) : [id];
       siblings.forEach((sibling, index) => previousOf.set(sibling, siblings[index - 1] ?? null));
+      if (!previousOf.has(id)) previousOf.set(id, shownBefore(parent!, id));
     }
     return previousOf.get(id) ?? null;
+  };
+
+  /** A linked item the view hides follows the shown sibling above it. */
+  const shownBefore = (parent: ItemId, id: ItemId): ItemId | null => {
+    const siblings = childrenInOrder(doc, parent);
+    return siblings.slice(0, siblings.indexOf(id)).filter((sibling) => isShown(doc, sibling, filter)).at(-1) ?? null;
   };
 
   const totals = new Map<string, Amount>();
