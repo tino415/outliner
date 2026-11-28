@@ -15,6 +15,7 @@ import { problemWith } from "./checks";
 import { applyAppearance, bindChrome, openItemMenu, toast } from "./chrome";
 import { afterFirstSync, isSyncing, startSync, syncEndpoint, syncedDoc } from "./syncing";
 import { enableRowSwipes } from "./gestures";
+import { enableColumnScroll } from "./columnFit";
 import { bindCompletion } from "./completion";
 import { bindCapture, captureFromAddress } from "./capturing";
 import { today } from "./dates";
@@ -81,6 +82,7 @@ export function start(): void {
   enableBulletHandles(ui.tree, bullets);
   enableBulletHandles(ui.board, bullets, boardDrops);
   enableRowSwipes(ui.tree);
+  enableColumnScroll(ui.page, ui.columnsHead);
   onDocChangedInAnotherTab((incoming) => {
     const caret = caretNow();
     state.history.replaceFromElsewhere(incoming);

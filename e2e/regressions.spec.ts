@@ -765,3 +765,105 @@ test("a save the browser refuses says so", async ({ page }) => {
   await expect(page.locator("#toast")).toContainText("Could not save the outline");
   await expect(page.locator("#toast")).toContainText("Export a backup");
 });
+
+const FOOD_DAY = `
+Day | :columns: kcal{+} protein{+} carbs{+} fat{+}
+  Breakfast
+    Oats | :kcal: 338; :protein: 12; :carbs: 58; :fat: 6
+    Milk | :kcal: 122; :protein: 8; :carbs: 12; :fat: 5
+  Lunch
+    Rice | :kcal: 1258; :protein: 29; :carbs: 270; :fat: 18
+`;
+
+const EIGHT_COLUMNS = `
+Day | :columns: kcal{+} protein{+} carbs{+} fat{+} fibre{+} sugar{+} salt{+} water{+}
+  Breakfast
+    Oats | :kcal: 338; :protein: 12; :carbs: 58; :fat: 6; :fibre: 9; :sugar: 4; :salt: 1; :water: 300
+  Lunch
+    Rice | :kcal: 458; :protein: 29; :carbs: 70; :fat: 18; :fibre: 3; :sugar: 2; :salt: 2; :water: 200
+`;
+
+async function openDay(page: import("@playwright/test").Page, outline: string) {
+  await freshOutline(page, outline);
+  await row(page, "Day").locator(".bullet").click();
+  await expect(page.locator("#columns-head")).toBeVisible();
+}
+
+function rightEdges(cells: import("@playwright/test").Locator) {
+  return cells.evaluateAll((elements) => elements.map((element) => Math.round(element.getBoundingClientRect().right)));
+}
+
+test.describe("columns on a phone", { tag: "@touch" }, () => {
+  test("four columns leave the titles their line and line up with the head", async ({ page }) => {
+    await openDay(page, FOOD_DAY);
+
+    const title = editor(page, "Breakfast");
+    const [height, lineHeight] = await title.evaluate((element) => [element.getBoundingClientRect().height, parseFloat(getComputedStyle(element).minHeight)]);
+    expect(height).toBeLessThanOrEqual(lineHeight + 1);
+
+    const cut = await page.locator(".cell, #columns-head .cell span").evaluateAll((elements) => elements.filter((element) => element.scrollWidth > element.clientWidth).map((element) => element.textContent));
+    expect(cut).toEqual([]);
+
+    const head = await rightEdges(page.locator("#columns-head .cell"));
+    for (const text of ["Breakfast", "Oats", "Milk", "Lunch", "Rice"]) expect(await rightEdges(row(page, text).locator(".cell"))).toEqual(head);
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+    await row(page, "Oats").locator('.cell[data-key="fat"]').tap();
+    const field = page.locator(".cell-input");
+    await expect(field).toBeFocused();
+    const [width, fontSize] = await field.evaluate((element) => [element.getBoundingClientRect().width, parseFloat(getComputedStyle(element).fontSize)]);
+    expect(width).toBeGreaterThanOrEqual(4.6 * fontSize - 0.5);
+  });
+
+  test("eight columns take 55% of the screen and scroll inside it", async ({ page }) => {
+    await openDay(page, EIGHT_COLUMNS);
+    await expect(page.locator("#page")).toHaveClass(/columns-scroll/);
+    const [width, wanted] = await row(page, "Oats")
+      .locator(".cells")
+      .evaluate((element) => [element.getBoundingClientRect().width, Math.floor(innerWidth * 0.55)]);
+    expect(width).toBeCloseTo(wanted, 0);
+  });
+
+  test.describe("sideways drags on scrolling columns", () => {
+    test.skip(({ browserName }) => browserName !== "chromium", "real touch input is sent through the Chromium DevTools protocol");
+
+    test("a drag on the numbers scrolls every row and the head, and neither completes the row nor opens its menu", async ({ page }) => {
+      await openDay(page, EIGHT_COLUMNS);
+      const numbers = row(page, "Oats").locator(".cells");
+      const box = (await numbers.boundingBox())!;
+      const x = box.x + box.width - 30;
+      const y = box.y + box.height / 2;
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let step = 1; step <= 15; step++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x - step * 10, y }] });
+        await page.waitForTimeout(16);
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(250);
+
+      for (const cells of [numbers, page.locator("#columns-head .cells"), row(page, "Rice").locator(".cells")]) {
+        const right = Math.round((await cells.boundingBox())!.x + (await cells.boundingBox())!.width);
+        const last = (await rightEdges(cells.locator(".cell"))).at(-1);
+        expect(last).toBe(right);
+      }
+      await expect(row(page, "Oats").locator("xpath=..")).not.toHaveClass(/completed/);
+      await expect(page.locator("#item-menu")).toBeHidden();
+    });
+
+    test("a swipe right that starts on a title still completes the row", async ({ page }) => {
+      await openDay(page, EIGHT_COLUMNS);
+      const box = (await editor(page, "Oats").boundingBox())!;
+      const x = box.x + 30;
+      const y = box.y + box.height / 2;
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let step = 1; step <= 8; step++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + step * 15, y }] });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await expect(row(page, "Oats").locator("xpath=..")).toHaveClass(/completed/);
+    });
+  });
+});

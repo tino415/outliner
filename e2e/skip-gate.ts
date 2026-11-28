@@ -12,6 +12,7 @@ export const expectedSkips: { title: string; skippedIn: string[] }[] = [
   { title: "pasting an image in a note adds the child and a reference to it at the caret", skippedIn: notChromium },
   { title: "Mod+ArrowUp folds it to its file name and a reload keeps it folded", skippedIn: notChromium },
   { title: "a finger dragged sideways over a board card scrolls the board", skippedIn: ["desktop"] },
+  { title: "sideways drags on scrolling columns", skippedIn: ["iphone"] },
 ];
 
 export default class SkipGate implements Reporter {

@@ -6,6 +6,7 @@ import { savePrefs } from "./storage";
 import { refusedAsReadOnly } from "./bookmarking";
 import { problemWith } from "./checks";
 import { toast } from "./chrome";
+import { columnsScrollUnder, scrollCutCellIntoView, scrollingNumbersLeft } from "./columnFit";
 
 /** Switches the column view of the current page, remembering the choice for that page. */
 export function toggleColumnView(): void {
@@ -26,6 +27,7 @@ export function bindColumnCells(): void {
 
 function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   if (refusedAsReadOnly([id], "properties")) return;
+  scrollCutCellIntoView(cell);
   const shown = [...cell.childNodes];
   const input = Object.assign(document.createElement("input"), {
     className: "cell-input",
@@ -33,6 +35,7 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   });
   input.setAttribute("aria-label", key);
   cell.replaceChildren(input);
+  keepInsideScrollingNumbers(input);
   input.focus();
   input.select();
   let done = false;
@@ -56,6 +59,12 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
     event.stopPropagation();
   });
   input.addEventListener("blur", () => setTimeout(() => finish(true)));
+}
+
+function keepInsideScrollingNumbers(input: HTMLInputElement): void {
+  if (!columnsScrollUnder(input)) return;
+  const pastLeftEdge = scrollingNumbersLeft(input) - input.getBoundingClientRect().left;
+  if (pastLeftEdge > 0) input.style.right = `${-pastLeftEdge}px`;
 }
 
 /** Notes are edited without renders, so cells catch up when a note loses focus. */

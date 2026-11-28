@@ -13,6 +13,7 @@ import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
 import { columnViewShown, focusCaret, render, textEditorFor, treeEditors } from "./render";
 import { bindColumnCells, toggleColumnView } from "./columns";
+import { refitColumns } from "./columnFit";
 import { goToTargetCommands, openCapture, openGoToTarget } from "./capturing";
 import { bindBoard, boardShown, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, shownView, toggleBoard } from "./board";
 import { bindAgenda, openAgenda } from "./agenda";
@@ -530,6 +531,7 @@ export function applyAppearance(): void {
   else root.dataset.size = textSize;
   const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.querySelector('meta[name="theme-color"]')!.setAttribute("content", dark ? "#17181c" : "#f7f5f0");
+  refitColumns();
 }
 
 let toastTimer: number | undefined;

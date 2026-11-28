@@ -2372,7 +2372,62 @@ body.dragging {
     --toggle: 24px;
     --bullet-col: 22px;
     --text-base: 17px;
-    --cell: 4.6em;
+  }
+
+  .cells {
+    display: grid;
+    grid-template-columns: var(--column-widths);
+    column-gap: 2px;
+  }
+
+  .cell {
+    width: auto;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .columns-head .cells {
+    touch-action: pan-y;
+  }
+
+  .page.columns-scroll .cells {
+    box-sizing: border-box;
+    width: var(--columns-window);
+    overflow: hidden;
+  }
+
+  .page.columns-scroll .cell {
+    transform: translateX(calc(-1 * var(--columns-shift)));
+  }
+
+  .page.columns-more-right .cells {
+    mask-image: linear-gradient(to left, transparent, #000 24px);
+  }
+
+  .page.columns-more-left .cells {
+    mask-image: linear-gradient(to right, transparent 6px, #000 30px);
+  }
+
+  .page.columns-more-left.columns-more-right .cells {
+    mask-image: linear-gradient(to right, transparent 6px, #000 30px, #000 calc(100% - 24px), transparent);
+  }
+
+  .cell:has(> .cell-input) {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
+  }
+
+  .page.columns-more-left .cells:has(.cell-input) {
+    mask-image: none;
+  }
+
+  .cell-input {
+    position: absolute;
+    top: 3px;
+    right: 0;
+    z-index: 1;
+    width: max(100%, 4.6em);
   }
 
   .topbar {
