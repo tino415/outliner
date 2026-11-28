@@ -414,10 +414,13 @@ Meal
 
 `:capture:` is a path or an item id (`{date}` is today, `{tomorrow}` the day
 after, `{current-week}` and `{tomorrow-week}` their ISO weeks, like 2026-W48,
-so `Food/{current-week}/{date}` files under the week; missing pages are
-created), `:ask:` the properties to ask for, `:key:` the letter that picks
-the template, `:at: top` files at the top. The grams field opens holding 100,
-and `outline capture` writes it unless `--set` gives the key. Without templates, items go to
+so `Food/{current-week}/{date}` files under the week, and `{current-weekday}`
+and `{tomorrow-weekday}` their weekdays, like Friday, so
+`Food/{current-week}/{current-weekday}` files under the day of the week;
+missing pages are created), `:ask:` the properties to ask for, `:key:` the
+letter that picks the template, `:at: top` files at the top. The grams field
+opens holding 100, and `outline capture` writes it unless `--set` gives the
+key. Without templates, items go to
 `Inbox`. Settings / Capture templates is the home of templates, with an About
 item that explains them (doc/adr/0070); Settings also holds Bookmarks.
 

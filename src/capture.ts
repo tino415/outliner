@@ -1,4 +1,4 @@
-import { addDays, isoWeekOf } from "./dates";
+import { addDays, isoWeekOf, weekdayNameOf } from "./dates";
 import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemProperty } from "./model";
 
 /*
@@ -9,11 +9,13 @@ import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemPro
  * items (`:new: top`, or the bottom),
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
- * a page per day, `{tomorrow}` is the day after (doc/adr/0062), and
- * `{current-week}` and `{tomorrow-week}` their weeks (doc/adr/0074); missing
- * pages on the way are created. When the target page
- * itself is created, the template's children are copied into it (the
- * placeholders replaced as in the target) and the template's other properties go onto it
+ * a page per day, `{tomorrow}` is the day after (doc/adr/0062),
+ * `{current-week}` and `{tomorrow-week}` their weeks (doc/adr/0074), and
+ * `{current-weekday}` and `{tomorrow-weekday}` their weekdays, written like
+ * Friday (doc/adr/0079); missing pages on the way are created. When the
+ * target page itself is created, the template's children are copied into it
+ * (the placeholders replaced as in the target) and the template's other
+ * properties go onto it
  * (doc/adr/0063); a page that exists is left as it is.
  */
 
@@ -118,7 +120,9 @@ function withToday(text: string, today: Date): string {
     .replaceAll("{date}", date)
     .replaceAll("{tomorrow}", tomorrow)
     .replaceAll("{current-week}", isoWeekOf(date))
-    .replaceAll("{tomorrow-week}", isoWeekOf(tomorrow));
+    .replaceAll("{tomorrow-week}", isoWeekOf(tomorrow))
+    .replaceAll("{current-weekday}", weekdayNameOf(date))
+    .replaceAll("{tomorrow-weekday}", weekdayNameOf(tomorrow));
 }
 
 function placementOf(written: string | undefined): Template["at"] {

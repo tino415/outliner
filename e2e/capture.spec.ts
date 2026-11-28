@@ -136,6 +136,16 @@ test("Ctrl-J W on a {current-week} template opens the day under its week", async
   await expect(page.locator("#crumbs .crumb:not(.home)")).toHaveText(["Plan", "2026-W48"]);
 });
 
+test("Ctrl-J W on a {current-weekday} template opens the day under its week", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 27, 12));
+  await freshOutline(page, "Templates\n  Plan | :capture: Plan/{current-week}/{current-weekday}; :key: p\nPlan");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("w");
+  await page.keyboard.press("p");
+  await expect(page.locator("#title")).toHaveText("Friday");
+  await expect(page.locator("#crumbs .crumb:not(.home)")).toHaveText(["Plan", "2026-W48"]);
+});
+
 test("Go there in the Capture dialog opens the target without capturing", async ({ page }) => {
   await freshOutline(page, PLAN);
   await page.keyboard.press("ControlOrMeta+j");
