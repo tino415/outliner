@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Doc, ItemId, ROOT } from "../src/model";
+import { Doc, ItemId, ROOT, toggleCompleted } from "../src/model";
 import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
-import { columnCells, declaredColumns, inferredColumns } from "../src/properties";
+import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
-import { FORMULA_EXAMPLES } from "../src/formulaHelp";
+import { FORMULA_EXAMPLES, withExampleLinkingItsOwnItems } from "../src/formulaHelp";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -179,15 +179,137 @@ describe("the examples in the formula help", () => {
     expect(column(doc, "Example: Monday", "start").Lunch).toBe("11:15");
     expect(column(doc, "Example: Monday", "end").Lunch).toBe("12:15");
   });
+
+  it("links each added copy of the portions example to its own ingredient", () => {
+    const portions = FORMULA_EXAMPLES[3];
+    const first = withExampleLinkingItsOwnItems(parseIndentedText("Home"), portions, ROOT, 1);
+    const second = withExampleLinkingItsOwnItems(first.doc, portions, ROOT, 2);
+    const { items } = second.doc;
+    const named = (page: ItemId, text: string) => items[page].children.find((id) => items[id].text === text)!;
+    for (const page of [first.page, second.page]) {
+      expect(items[named(page, "Example porridge")].properties).toEqual({ food: `[[id:${named(page, "Example oats")}][Example oats]]`, grams: "60" });
+      expect(items[named(page, "Example half porridge")].properties.food).toBe(`[[id:${named(page, "Example porridge")}][Example porridge]]`);
+      expect(Object.keys(items[named(page, "Example porridge")].properties)).toEqual(["food", "grams"]);
+      expect(items[named(page, "Example oats")].properties).toEqual({ kcal: "379", grams: "100" });
+    }
+  });
+
+  it("follows the example portions to their ingredient", () => {
+    const doc = parseIndentedText(FORMULA_EXAMPLES[3].outline);
+    expect(column(doc, "Example: Portions", "kcal")).toMatchObject({ "Example porridge": "227.4", "Example half porridge": "113.7" });
+  });
+});
+
+describe("a formula that reads the item a link property points to", () => {
+  const KCAL = ":columns: kcal{=grams * food.kcal / food.grams}";
+  const FOOD = [
+    `Food | ${KCAL}`,
+    "  Skyr vanilla | :kcal: 74; :grams: 100",
+    "  Skyr cup | :food: [[Skyr vanilla]]; :grams: 140",
+    "  Half a cup | :food: [[Skyr cup]]; :grams: 70",
+  ];
+
+  function kcalCells(doc: Doc, page: string, filter = { showCompleted: true }): Record<string, Cell> {
+    const top = idOf(doc, page);
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!, filter);
+    return Object.fromEntries(Object.values(doc.items).flatMap((item) => (cells.get(item.id)?.get("kcal") ? [[item.text, cells.get(item.id)!.get("kcal")!]] : [])));
+  }
+
+  it("computes a portion from the ingredient it links", () => {
+    expect(column(outline(FOOD.join("\n")), "Food", "kcal")["Skyr cup"]).toBe("103.6");
+  });
+
+  it("follows a chain: an entry links a portion, which links an ingredient", () => {
+    expect(column(outline(FOOD.join("\n")), "Food", "kcal")["Half a cup"]).toBe("51.8");
+  });
+
+  it("names why a link leads nowhere", () => {
+    const doc = outline(
+      [
+        `Food | ${KCAL}`,
+        "  Rye bread | :food: Rye; :grams: 50",
+        "  Oats | :food: [[id:gone]]; :grams: 40",
+        "  Loop A | :food: [[Loop B]]; :grams: 10",
+        "  Loop B | :food: [[Loop A]]; :grams: 10",
+      ].join("\n"),
+    );
+    const errors = Object.fromEntries(Object.entries(kcalCells(doc, "Food")).map(([text, cell]) => [text, cell.error]));
+    expect(errors).toEqual({
+      "Rye bread": "food is not a link",
+      Oats: "food links an item that is not here",
+      "Loop A": "kcal depends on itself",
+      "Loop B": "kcal depends on itself",
+    });
+  });
+
+  it("leaves the cell of an item with no link empty", () => {
+    const doc = outline([...FOOD, "  A note to self"].join("\n"));
+    expect(kcalCells(doc, "Food")["A note to self"]).toBeUndefined();
+  });
+
+  it("does not compute a linked item outside the tree that declares the formula", () => {
+    const doc = outline(["Pantry", "  Skyr jar | :food: [[Skyr vanilla]]; :grams: 100", ...FOOD, "  Spoon | :food: [[Skyr jar]]; :grams: 10"].join("\n"));
+    expect(kcalCells(doc, "Food").Spoon).toBeUndefined();
+  });
+
+  it("reads a completed linked item while completed items are hidden", () => {
+    const shown = outline(FOOD.join("\n"));
+    const doc = toggleCompleted(shown, idOf(shown, "Skyr vanilla"));
+    expect(kcalCells(doc, "Food", { showCompleted: false })["Skyr cup"].text).toBe("103.6");
+  });
+
+  it("counts a hidden linked item from the shown sibling above it", () => {
+    const shown = outline(["Day | :columns: end{=previous.end + 1h} seen{=food.end}", "  First | :end: 9:00", "  Done", "  Later | :food: [[Done]]"].join("\n"));
+    const doc = toggleCompleted(shown, idOf(shown, "Done"));
+    const top = idOf(doc, "Day");
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!, { showCompleted: false });
+    expect(cells.get(idOf(doc, "Later"))!.get("seen")!.text).toBe("10:00");
+  });
+
+  it("reads a meal's grams as the sum of its lines", () => {
+    const doc = outline(["Day | :columns: weight{=food.grams}", "  Bowl", "    Skyr | :grams: 150", "    Oats | :grams: 250", "  Lunch | :food: [[Bowl]]"].join("\n"));
+    expect(column(doc, "Day", "weight").Lunch).toBe("400");
+  });
+
+  it("still reads parent. and previous.", () => {
+    const doc = outline(["Day | :start: 9:00; :columns: effort start{=parent.start} end{=start + effort} after{=previous.end}", "  A | :effort: 1h", "  B | :effort: 30m"].join("\n"));
+    expect(column(doc, "Day", "end")).toEqual({ A: "10:00", B: "9:30" });
+    expect(column(doc, "Day", "after")).toEqual({ B: "10:00" });
+  });
 });
 
 describe("parsing formulas", () => {
-  it.each(["parent.start + before(effort)", "clock(9:00 + 1h30m)", "-(a - b) * 2 / 3", "previous.end", "max(effort)", "350 kcal + a"])(
+  it.each(["parent.start + before(effort)", "clock(9:00 + 1h30m)", "-(a - b) * 2 / 3", "previous.end", "max(effort)", "350 kcal + a", "grams * food.kcal / food.grams"])(
     "reads %s",
     (source) => expect(() => parseFormula(source)).not.toThrow(),
   );
 
-  it.each(["a +", "sum(1h)", "nope(a)", "grand.parent", "(a", "a b"])("refuses %s", (source) => expect(() => parseFormula(source)).toThrow(FormulaError));
+  it.each(["a +", "sum(1h)", "nope(a)", "food.food.kcal", "(a", "a b"])("refuses %s", (source) => expect(() => parseFormula(source)).toThrow(FormulaError));
+});
+
+describe("a slip of parent or previous in a column", () => {
+  function cellOf(columns: string, note = ""): Cell | undefined {
+    const doc = outline([`Day | :start: 9:00; :columns: ${columns}`, note ? `  Task | ${note}` : "  Task", "Patent US1 | :number: 7"].join("\n"));
+    const top = idOf(doc, "Day");
+    return columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Task"))!.get(columns.split("{")[0]);
+  }
+
+  it.each([
+    ["begin{=parnet.start}", "parnet looks like parent: write parent.start"],
+    ["begin{=parents.start}", "parents looks like parent: write parent.start"],
+    ["begin{=prevous.end}", "prevous looks like previous: write previous.end"],
+    ["begin{=pervious.end}", "pervious looks like previous: write previous.end"],
+  ])("warns in the row's cell for %s instead of leaving it empty", (columns, warning) => {
+    expect(cellOf(columns)).toMatchObject({ text: "error", error: warning });
+  });
+
+  it("follows a link property whose name is a slip of parent when the row has it", () => {
+    expect(cellOf("number{=patent.number}", ":patent: [[Patent US1]]")?.text).toBe("7");
+  });
+
+  it("leaves the cell empty for a name far from parent and previous that the row lacks", () => {
+    expect(cellOf("begin{=prev.end}")).toBeUndefined();
+  });
 });
 
 describe("a formula as an item's own value", () => {

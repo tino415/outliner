@@ -1,6 +1,7 @@
-import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, shownChildren } from "./model";
+import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, childrenInOrder, isDescendant, isShown, shownChildren } from "./model";
 import { readWrittenDate } from "./dates";
-import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
+import { onlyReference, resolveReference } from "./references";
+import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula, positionMistypedAs } from "./formula";
 
 /*
  * Properties are an item's `key: value` pairs (doc/adr/0032). This module
@@ -66,7 +67,7 @@ export interface Column {
   /** A computed column (doc/adr/0022): what fills the rows below the page that have no value of their own. */
   formula?: Formula | FormulaError;
   formulaSource?: string;
-  /** The page whose `:columns:` holds the formula: it and what is above it keep their own values. */
+  /** The page whose `:columns:` holds the formula: only the items under it are filled. */
   declaredOn?: ItemId;
 }
 
@@ -127,7 +128,16 @@ export interface Cell {
   error?: string;
 }
 
-type Value = { amount: Amount | null; cell: Cell | null };
+type Value = { amount: Amount | null; cell: Cell | null; failure?: FormulaError };
+
+class DependsOnItself extends FormulaError {
+  constructor(
+    key: string,
+    readonly slot: string,
+  ) {
+    super(`${key} depends on itself`);
+  }
+}
 
 /** The cell of every column for `top` and everything under it, as `cellsUnder` computes them. */
 export function columnCells(doc: Doc, top: ItemId, columns: Column[], filter: ViewFilter = { showCompleted: true }): Map<ItemId, Map<string, Cell>> {
@@ -147,13 +157,14 @@ export function columnCells(doc: Doc, top: ItemId, columns: Column[], filter: Vi
 }
 
 /**
- * A lookup of the cell of any item under `top` for any key, computed when
- * first asked for, with what it reads. An item whose children have values
- * shows their summary, recursively; otherwise its own value, or the result of
- * its own "=…" formula. A computed column fills, below `top`, the items
- * without a value of their own from its formula; a key that is no column is
- * summed. Items the view hides (completed ones, when those are hidden) count
- * for nothing.
+ * A lookup of the cell of any item for any key, computed when first asked
+ * for, with what it reads, a linked item anywhere in the outline included.
+ * An item whose children have values shows their summary, recursively;
+ * otherwise its own value, or the result of its own "=…" formula. A computed
+ * column fills, below the item that declares it (`top` when none does), the
+ * items without a value of their own from its formula; a key that is no
+ * column is summed. Children the view hides (completed ones, when those are
+ * hidden) count for nothing.
  */
 export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: ViewFilter = { showCompleted: true }): (id: ItemId, key: string) => Cell | null {
   const byKey = new Map(columns.map((column) => [column.key, column]));
@@ -165,7 +176,7 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     const slot = `${id}\u0000${key}`;
     const found = known.get(slot);
     if (found) return found;
-    if (computing.has(slot)) throw new FormulaError(`${key} depends on itself`);
+    if (computing.has(slot)) throw new DependsOnItself(key, slot);
     computing.add(slot);
     try {
       const value = freshValue(id, key);
@@ -181,7 +192,7 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     const raw = doc.items[id].properties[key];
     const ownFormula = formulaIn(raw);
     if (ownFormula !== null) return computed(id, formulaOrError(ownFormula));
-    const formulaApplies = column.formula && raw === undefined && id !== (column.declaredOn ?? top) && !isAbove(id, column.declaredOn);
+    const formulaApplies = column.formula && raw === undefined && isDescendant(doc, id, column.declaredOn ?? top);
     if (formulaApplies) return computed(id, column.formula!);
     const fromChildren = () => children(id).flatMap((child) => valueOf(child, key).amount ?? []);
     const summary = column.formula ? null : summarize(fromChildren(), column.summary);
@@ -198,17 +209,34 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
       return { amount, cell: amount ? { text: formatAmount(amount), rolled: false, computed: true } : null };
     } catch (error) {
       if (!(error instanceof FormulaError)) throw error;
-      return { amount: null, cell: { text: "error", rolled: false, computed: true, error: error.message } };
+      return { amount: null, cell: { text: "error", rolled: false, computed: true, error: error.message }, failure: error };
     }
   };
 
-  const isAbove = (id: ItemId, page: ItemId | undefined) => page !== undefined && ancestors(doc, page).includes(id);
-
-  /** A value a formula reads; a dependency in error makes the formula an error too. */
+  /** A value a formula reads; a dependency in error makes the formula an error too, and one in a loop still being computed puts it in the loop. */
   const amountOf = (id: ItemId, key: string): Amount | null => {
     const value = valueOf(id, key);
+    if (value.failure instanceof DependsOnItself && computing.has(value.failure.slot)) throw value.failure;
     if (value.cell?.error) throw new FormulaError(`${key} is an error: ${value.cell.error}`);
     return value.amount;
+  };
+
+  const linkedBy = (id: ItemId, key: string, read: string): ItemId | null => {
+    const raw = doc.items[id].properties[key];
+    const meant = positionMistypedAs(key);
+    if (raw === undefined && meant) throw new FormulaError(`${key} looks like ${meant}: write ${meant}.${read}`);
+    if (raw === undefined) return null;
+    const reference = onlyReference(raw);
+    if (!reference) throw new FormulaError(`${key} is not a link`);
+    const target = resolved(reference.target);
+    if (!target) throw new FormulaError(`${key} links an item that is not here`);
+    return target;
+  };
+
+  const targets = new Map<string, ItemId | null>();
+  const resolved = (target: string): ItemId | null => {
+    if (!targets.has(target)) targets.set(target, resolveReference(doc, target));
+    return targets.get(target)!;
   };
 
   const previousOf = new Map<ItemId, ItemId | null>();
@@ -217,8 +245,15 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     if (!previousOf.has(id)) {
       const siblings = parent ? children(parent) : [id];
       siblings.forEach((sibling, index) => previousOf.set(sibling, siblings[index - 1] ?? null));
+      if (!previousOf.has(id)) previousOf.set(id, shownBefore(parent!, id));
     }
     return previousOf.get(id) ?? null;
+  };
+
+  /** A linked item the view hides follows the shown sibling above it. */
+  const shownBefore = (parent: ItemId, id: ItemId): ItemId | null => {
+    const siblings = childrenInOrder(doc, parent);
+    return siblings.slice(0, siblings.indexOf(id)).filter((sibling) => isShown(doc, sibling, filter)).at(-1) ?? null;
   };
 
   const totals = new Map<string, Amount>();
@@ -236,7 +271,7 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     const parent = doc.items[id].parent;
     return {
       value: (of, key) => {
-        const target = of === "self" ? id : of === "parent" ? parent : previousSibling(id);
+        const target = of === "self" ? id : of === "parent" ? parent : of === "previous" ? previousSibling(id) : linkedBy(id, of.link, key);
         return target ? amountOf(target, key) : null;
       },
       totalBefore: (key) => totalBefore(id, key),

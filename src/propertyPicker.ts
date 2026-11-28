@@ -5,7 +5,8 @@ import { checksFor, describeCheck, problemWith } from "./checks";
 import { isSealed, propertyKey, sealedKeyOf } from "./notes";
 import { PaletteOption, openPalette } from "./palette";
 import { declaredColumns } from "./properties";
-import { caretNow } from "./editing";
+import { caretNow, followReference } from "./editing";
+import { onlyReference } from "./references";
 import { choosePrivacy } from "./privateItems";
 import { toast } from "./chrome";
 import { refusedAsReadOnly } from "./bookmarking";
@@ -34,6 +35,8 @@ export function bindPropertyChips(): void {
   });
   document.addEventListener("click", (event) => {
     if ((event.target as Element).closest?.(".prop-chip a")) return;
+    const reference = (event.target as Element).closest?.<HTMLElement>(".prop-chip .ref");
+    if (reference) return followReference(reference.dataset.ref!);
     const button = (event.target as Element).closest?.<HTMLElement>(".prop-chip");
     const owner = button?.closest<HTMLElement>("[data-id]");
     if (!button || !owner) return;
@@ -94,7 +97,8 @@ export function chooseValue(id: ItemId, key: string): void {
     candidates: (query) => {
       const typed = query.trim();
       const known = (listed ?? valuesOf(key)).filter((value) => value.toLowerCase().includes(typed.toLowerCase()) && (listed !== null || value !== typed));
-      const open = current !== undefined && onlyUrl(current) ? [{ text: `Open ${current}`, path: [], value: OPEN }] : [];
+      const opened = current === undefined ? undefined : (onlyUrl(current) ?? onlyReference(current)?.label);
+      const open = opened ? [{ text: `Open ${opened}`, path: [], value: OPEN }] : [];
       const choices: Choice[] = [
         ...(typed && !listed ? [{ text: `Set to ${typed}`, path: [], value: typed }] : []),
         ...open,
@@ -103,10 +107,16 @@ export function chooseValue(id: ItemId, key: string): void {
       return current !== undefined ? [...choices, { text: `Remove ${key}`, path: [], value: "" }] : choices;
     },
     choose: ({ value }) => {
-      if (value === OPEN) window.open(current, "_blank", "noopener");
+      if (value === OPEN) openValue(current!);
       else writeChecked(id, key, value);
     },
   });
+}
+
+function openValue(value: string): void {
+  const reference = onlyReference(value);
+  if (reference) followReference(reference.target);
+  else window.open(value, "_blank", "noopener");
 }
 
 function writeChecked(id: ItemId, key: string, value: string): void {

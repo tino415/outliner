@@ -1222,6 +1222,10 @@ code {
   text-overflow: ellipsis;
 }
 
+.prop-chip.link-chip .prop-value.ref {
+  border-bottom: 0;
+}
+
 .prop-chip.link-chip:hover {
   background: var(--surface-2);
 }

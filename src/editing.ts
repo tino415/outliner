@@ -964,7 +964,7 @@ function kindChoices(query: string, current: string | null): KindChoice[] {
   return [...(isNew ? [choice(wanted, `New kind: ${wanted}`)] : []), ...inUse.map((kind) => choice(kind)), ...(current ? [choice("", "No kind")] : [])];
 }
 
-function followReference(target: string): void {
+export function followReference(target: string): void {
   const id = resolveReference(doc(), target);
   if (id) zoomTo(id);
   else if (privateHolderOf(doc(), target)) privateLinkExplained(privateHolderOf(doc(), target)!);

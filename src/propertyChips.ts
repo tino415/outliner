@@ -2,6 +2,7 @@ import { Item, SETTINGS, tagsProperty } from "./model";
 import { escape, onlyUrl } from "./inline";
 import { MIRROR } from "./mirrors";
 import { Cell } from "./properties";
+import { onlyReference } from "./references";
 import { DATE_PROPERTIES, dateLabel, inReaderZone, readWrittenDate, today } from "./dates";
 
 /* An item's properties as chips under its text (doc/adr/0032); a click on one edits it. */
@@ -33,20 +34,21 @@ function chipHtml(key: string, value: string, result: Cell | undefined, problem:
   const shown = result?.text ?? value;
   const title = result?.error ? `${key}: ${value} (${result.error})` : problem ? `${key}: ${value} (${problem})` : `${key}: ${value}`;
   const url = result ? undefined : onlyUrl(value);
-  if (url && opensUrl(key)) return linkChipHtml(key, url, classes, title);
+  if (url && opensLink(key)) return linkChipHtml(key, `<a class="link prop-value" href="${escape(url)}" target="_blank" rel="noopener" tabindex="-1">${escape(url)}</a>`, classes, title);
+  const reference = result ? null : onlyReference(value);
+  if (reference && opensLink(key)) return linkChipHtml(key, `<span class="prop-value ref" data-ref="${escape(reference.target)}">${escape(reference.label)}</span>`, classes, title);
   const label = key === "private" ? `🔒 ${escape(value)}` : `<span class="prop-key">${escape(key)}</span> ${valueHtml(shown)}`;
   return `<button type="button" tabindex="-1" class="${classes}" data-key="${escape(key)}" title="${escape(title)}">${label}</button>`;
 }
 
-function opensUrl(key: string): boolean {
+function opensLink(key: string): boolean {
   return key !== "private" && !SETTINGS.has(key) && !(DATE_PROPERTIES as readonly string[]).includes(key);
 }
 
-/** An <a> cannot sit inside a <button>, so the key is the button and the value the link. */
-function linkChipHtml(key: string, url: string, classes: string, title: string): string {
+/** An <a> cannot sit inside a <button>, nor can a second button, so the key is the button and the value follows its link. */
+function linkChipHtml(key: string, linkHtml: string, classes: string, title: string): string {
   const keyButton = `<button type="button" tabindex="-1" class="prop-key">${escape(key)}</button>`;
-  const link = `<a class="link prop-value" href="${escape(url)}" target="_blank" rel="noopener" tabindex="-1">${escape(url)}</a>`;
-  return `<span class="${classes} link-chip" data-key="${escape(key)}" title="${escape(title)}">${keyButton} ${link}</span>`;
+  return `<span class="${classes} link-chip" data-key="${escape(key)}" title="${escape(title)}">${keyButton} ${linkHtml}</span>`;
 }
 
 /** A date shows as a date chip does, "tomorrow" or "Tue 14 Oct", red once past (doc/adr/0036). */

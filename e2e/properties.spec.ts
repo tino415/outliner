@@ -120,6 +120,23 @@ test.describe("a property whose value is one URL", () => {
   });
 });
 
+test.describe("a property whose value is one item link", () => {
+  test("shows the label, opens the item from it and edits the value from the key", { tag: "@phone" }, async ({ page }) => {
+    await freshOutline(page, "Skyr vanilla | :kcal: 74\nSkyr vanilla, cup | :food: [[id:i0][Skyr vanilla]]");
+    const chip = row(page, "Skyr vanilla, cup").locator(".prop-chip");
+    await expect(chip).toHaveText("food Skyr vanilla");
+    await chip.locator(".prop-key").click();
+    await expect(page.locator("#palette input")).toHaveAttribute("placeholder", "food: [[id:i0][Skyr vanilla]]");
+    await expect(page.locator("#palette li").first()).toHaveText("Open Skyr vanilla");
+    await page.locator("#palette li").first().click();
+    await expect(page.locator("#title")).toHaveText("Skyr vanilla");
+    await page.goBack();
+    await chip.locator(".prop-value").click();
+    await expect(page.locator("#title")).toHaveText("Skyr vanilla");
+    await expect(page.locator("#palette")).toBeHidden();
+  });
+});
+
 test("typing a new value in a URL property's palette sets it instead of opening the old one", async ({ page }) => {
   await freshOutline(page, "Card | :pr: https://github.com/tino415/outliner/pull/1");
   await row(page, "Card").locator(".prop-key").click();

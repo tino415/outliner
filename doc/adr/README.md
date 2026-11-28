@@ -28,7 +28,7 @@ file that says so.
 19. [A longer left swipe opens the item menu](0019-a-longer-left-swipe-opens-the-item-menu.md) (supersedes part of 16; superseded by 48)
 20. [Properties written `:key: value`, as in org mode](0020-properties-written-as-org-drawer-lines.md) (supersedes part of 17) (superseded by 32)
 21. [Code blocks are ``` fenced lines in notes](0021-code-blocks-are-fenced-lines-in-notes.md)
-22. [Computed columns: a formula in the column spec](0022-computed-columns-with-formulas.md)
+22. [Computed columns: a formula in the column spec](0022-computed-columns-with-formulas.md) (references across pages superseded by 75)
 23. [Capture templates live in the outline; shortcuts reach them by URL](0023-capture-templates-live-in-the-outline.md)
 24. [References are org links by id; mirrors wait](0024-references-are-org-links-mirrors-wait.md)
 25. [A new version offers a reload](0025-a-new-version-offers-a-reload.md)
@@ -81,3 +81,4 @@ file that says so.
 72. [An attached file is a child item, not a line in the note](0072-an-attached-file-is-a-child-item.md) (supersedes part of 28; amends 56)
 73. [An html attachment opens in a sandboxed frame](0073-an-html-attachment-opens-in-a-sandboxed-frame.md) (amends 72)
 74. [`{current-week}` in a capture target is the ISO week of today](0074-current-week-in-a-capture-target-is-the-iso-week-of-today.md) (extends 23, 62, 63; supersedes part of 62)
+75. [A formula reads the item a link property points to](0075-a-formula-reads-the-item-a-link-property-points-to.md) (supersedes part of 22; extends 57)

@@ -1,4 +1,7 @@
 import { escape } from "./inline";
+import { Doc, ItemId, setFlags } from "./model";
+import { onlyReference, referenceTo } from "./references";
+import { graft, parseIndentedText } from "./transfer";
 
 /*
  * The formula reference shown in the app (⋯ → Formula help), and example
@@ -56,6 +59,23 @@ export const FORMULA_EXAMPLES: FormulaExample[] = [
       "    :effort: 45m",
     ].join("\n"),
   },
+  {
+    title: "Portions that follow their ingredient",
+    explanation: "An ingredient holds its kcal for 100 grams; a portion links it in food and gives its own grams, a half portion links the portion.",
+    outline: [
+      "- Example: Portions",
+      "  :columns: grams kcal{=grams * food.kcal / food.grams}",
+      "  - Example oats",
+      "    :kcal: 379",
+      "    :grams: 100",
+      "  - Example porridge",
+      "    :food: [[Example oats]]",
+      "    :grams: 60",
+      "  - Example half porridge",
+      "    :food: [[Example porridge]]",
+      "    :grams: 30",
+    ].join("\n"),
+  },
 ];
 
 const REFERENCE: [string, [string, string][]][] = [
@@ -74,6 +94,7 @@ const REFERENCE: [string, [string, string][]][] = [
       ["effort", "This row's effort"],
       ["parent.start", "The parent's start"],
       ["previous.end", "The end of the row just above, under the same parent"],
+      ["food.kcal", "The kcal of the item this row's food links"],
       ["time-spent", "A hyphen before a letter is part of the name; effort - 15m subtracts"],
     ],
   ],
@@ -95,6 +116,31 @@ const REFERENCE: [string, [string, string][]][] = [
     ],
   ],
 ];
+
+export function withExampleLinkingItsOwnItems(doc: Doc, example: FormulaExample, parent: ItemId, index: number): { doc: Doc; page: ItemId } {
+  const grafted = graft(doc, parseIndentedText(example.outline), parent, index);
+  const page = grafted.ids[0];
+  const own = itemsFrom(grafted.doc, page);
+  const byText = new Map(own.map((id) => [comparable(grafted.doc.items[id].text), id]));
+  const linkedById = (value: string): string => {
+    const reference = onlyReference(value);
+    const target = reference && byText.get(comparable(reference.target));
+    return target ? referenceTo(target, grafted.doc.items[target].text) : value;
+  };
+  const result = own.reduce((result, id) => {
+    const properties = Object.fromEntries(Object.entries(result.items[id].properties).map(([key, value]) => [key, linkedById(value)]));
+    return setFlags(result, id, { properties });
+  }, grafted.doc);
+  return { doc: result, page };
+}
+
+function comparable(text: string): string {
+  return text.trim().toLowerCase();
+}
+
+function itemsFrom(doc: Doc, top: ItemId): ItemId[] {
+  return [top, ...doc.items[top].children.flatMap((child) => itemsFrom(doc, child))];
+}
 
 export function formulaHelpHtml(): string {
   const sections = REFERENCE.map(
