@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { addDays, dateFilter, dateLabel, datesOf, inReaderZone, isOverdue, isoWeekOf, readTypedDate, readWrittenDate, weekdayOf } from "../src/dates";
+import { addDays, dateFilter, dateLabel, datesOf, inReaderZone, isOverdue, isoWeekOf, readTypedDate, readWrittenDate, weekdayNameOf, weekdayOf } from "../src/dates";
 import { Item, ROOT } from "../src/model";
 import { renderInline } from "../src/inline";
 import { parseAmount } from "../src/properties";
@@ -39,6 +39,18 @@ describe("written dates", () => {
     expect(addDays("2026-10-24", 2)).toBe("2026-10-26");
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(weekdayOf(MONDAY)).toBe(0);
+  });
+
+  it.each([
+    ["2026-11-23", "Monday"],
+    ["2026-11-24", "Tuesday"],
+    ["2026-11-25", "Wednesday"],
+    ["2026-11-26", "Thursday"],
+    ["2026-11-27", "Friday"],
+    ["2026-11-28", "Saturday"],
+    ["2026-11-29", "Sunday"],
+  ])("names the weekday of %s", (day, name) => {
+    expect(weekdayNameOf(day)).toBe(name);
   });
 });
 

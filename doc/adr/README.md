@@ -85,3 +85,4 @@ file that says so.
 76. [An asked property of a capture template takes a default value](0076-an-asked-property-of-a-capture-template-takes-a-default-value.md) (extends 23)
 77. [A computed column may roll up and round](0077-a-computed-column-may-roll-up-and-round.md) (extends 22)
 78. [Insert lists live under a \_settings child](0078-insert-lists-live-under-a-settings-child.md) (extends 44 and 71)
+79. [`{current-weekday}` in a capture target is the English name of today's weekday](0079-current-weekday-in-a-capture-target-is-the-english-name-of-todays-weekday.md) (extends 23, 62, 63, 74; supersedes part of 74)

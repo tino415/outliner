@@ -83,6 +83,7 @@ const KEPT_ITEMS: KeptItem[] = [
           text: "Properties you can use",
           children: [
             { text: "capture: where items go, a path or an item id; {date} is today, {tomorrow} the day after, {current-week} and {tomorrow-week} their weeks; missing pages are made" },
+            { text: "capture also takes {current-weekday} and {tomorrow-weekday}: the weekday of today and of the day after, written like Friday" },
             { text: "key: the letter that picks this template" },
             { text: "ask: the properties the Capture dialog asks for, separated by spaces; grams=100 opens grams with 100" },
             { text: "at: top files new items first; without it they go last" },

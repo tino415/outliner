@@ -69,6 +69,11 @@ export function isoWeekOf(day: Day): string {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
+export function weekdayNameOf(day: Day): string {
+  const name = WEEKDAY_NAMES[weekdayOf(day)];
+  return name[0].toUpperCase() + name.slice(1);
+}
+
 function utc(day: Day): Date {
   const [year, month, date] = day.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, date));

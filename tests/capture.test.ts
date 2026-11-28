@@ -280,3 +280,72 @@ describe("weeks in a target", () => {
     expect(subtreesAsText(result.doc, [idOf(result.doc, "Food")])).toBe("- Food\n  - Journal\n    - 2026-W48\n      - 2026-11-27\n        - Oats");
   });
 });
+
+describe("a weekday in a target", () => {
+  const FRIDAY = new Date(2026, 10, 27);
+  const SUNDAY = new Date(2026, 10, 29);
+  const WEEKDAY_TARGET = "Food/Journal/{current-week}/{current-weekday}";
+
+  function withTarget(target: string, outline = "Day"): Doc {
+    const doc = parseIndentedText(outline);
+    return setNote(doc, idOf(doc, "Day"), `:capture: ${target}`);
+  }
+
+  function goingTo(target: string, today: Date, outline?: string) {
+    const doc = withTarget(target, outline);
+    return goToTarget(doc, captureTemplates(doc)[0], today);
+  }
+
+  it("makes today's weekday under its week for {current-week}/{current-weekday}", () => {
+    const result = goingTo(WEEKDAY_TARGET, FRIDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Food")])).toBe("- Food\n  - Journal\n    - 2026-W48\n      - Friday");
+    expect(result.doc.items[result.target].text).toBe("Friday");
+  });
+
+  it("makes no second Friday when going there again on the same day", () => {
+    const first = goingTo(WEEKDAY_TARGET, FRIDAY);
+    const second = goToTarget(first.doc, captureTemplates(first.doc)[0], FRIDAY);
+    expect(second.doc).toBe(first.doc);
+    expect(second.target).toBe(first.target);
+  });
+
+  it("adds Saturday under the same week, after Friday", () => {
+    const first = goingTo(WEEKDAY_TARGET, FRIDAY);
+    const second = goToTarget(first.doc, captureTemplates(first.doc)[0], new Date(2026, 10, 28));
+    expect(subtreesAsText(second.doc, [idOf(second.doc, "Journal")])).toBe("- Journal\n  - 2026-W48\n    - Friday\n    - Saturday");
+  });
+
+  it("makes next Friday under next week and leaves last week's Friday as it is", () => {
+    const first = goingTo(WEEKDAY_TARGET, FRIDAY);
+    const second = goToTarget(first.doc, captureTemplates(first.doc)[0], new Date(2026, 11, 4));
+    expect(subtreesAsText(second.doc, [idOf(second.doc, "Journal")])).toBe("- Journal\n  - 2026-W48\n    - Friday\n  - 2026-W49\n    - Friday");
+    expect(second.target).not.toBe(first.target);
+  });
+
+  it("makes Monday under next week for {tomorrow-week}/{tomorrow-weekday} on a Sunday", () => {
+    const result = goingTo("Plan/{tomorrow-week}/{tomorrow-weekday}", SUNDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Plan")])).toBe("- Plan\n  - 2026-W49\n    - Monday");
+  });
+
+  it("resolves both weekdays in the children a template copies onto its page", () => {
+    const result = goingTo("Plan/{date}", SUNDAY, "Day\n  {current-weekday}, then {tomorrow-weekday}");
+    expect(subtreesAsText(result.doc, [result.target])).toBe("- 2026-11-29\n  - Sunday, then Monday");
+  });
+
+  it("resolves {current-weekday} in a property a template sets on its page", () => {
+    const result = goingTo("Plan/{date}\n:day: {current-weekday}", FRIDAY);
+    expect(result.doc.items[result.target].properties.day).toBe("Friday");
+  });
+
+  it("opens a page typed as friday and makes no Friday", () => {
+    const result = goingTo(WEEKDAY_TARGET, FRIDAY, "Day\nFood\n  Journal\n    2026-W48\n      friday");
+    expect(result.doc.items[result.target].text).toBe("friday");
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "2026-W48")])).toBe("- 2026-W48\n  - friday");
+  });
+
+  it("files a capture under today's weekday", () => {
+    const doc = withTarget(WEEKDAY_TARGET);
+    const result = capture(doc, captureTemplates(doc)[0], "Oats", {}, FRIDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "2026-W48")])).toBe("- 2026-W48\n  - Friday\n    - Oats");
+  });
+});
