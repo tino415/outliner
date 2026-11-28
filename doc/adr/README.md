@@ -86,3 +86,5 @@ file that says so.
 77. [A computed column may roll up and round](0077-a-computed-column-may-roll-up-and-round.md) (extends 22)
 78. [Insert lists live under a \_settings child](0078-insert-lists-live-under-a-settings-child.md) (extends 44 and 71)
 79. [`{current-weekday}` in a capture target is the English name of today's weekday](0079-current-weekday-in-a-capture-target-is-the-english-name-of-todays-weekday.md) (extends 23, 62, 63, 74; supersedes part of 74)
+80. [On a phone columns fit their content and scroll sideways](0080-on-a-phone-columns-fit-their-content-and-scroll-sideways.md) (amends 16 and 17)
+81. [A slash opens the commands of the item being edited](0081-slash-opens-the-commands-of-an-item.md)

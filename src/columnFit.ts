@@ -4,7 +4,7 @@ import { swallowNextClick } from "./clicks";
 
 /*
  * On a phone a column is as wide as its widest value, and columns that need more than 55% of the screen
- * scroll sideways under a fixed window (doc/adr/0074).
+ * scroll sideways under a fixed window (doc/adr/0080).
  */
 
 export interface WidthOf {
