@@ -123,7 +123,7 @@ Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
 (`parent.start`), the previous sibling (`previous.end`) or the item a
 property of the row links (`food.kcal`, where `food` is
-`[[id:…][Skyr vanilla]]`; doc/adr/0074), `before(key)`
+`[[id:…][Skyr vanilla]]`; doc/adr/0075), `before(key)`
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time. A hyphen followed by a letter is
 part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.

@@ -1,4 +1,4 @@
-# 74. A formula reads the item a link property points to
+# 75. A formula reads the item a link property points to
 
 - **Status:** accepted, 2026-11-28
 - **Supersedes:** in [0022](0022-computed-columns-with-formulas.md), "No
