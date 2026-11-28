@@ -1,6 +1,6 @@
 import { attachmentTitle } from "./attachmentTitle";
 import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./model";
-import { Cell, Column, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
+import { Cell, Column, Summary, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { isChecksItem, problemInCheckRow, problemsOfItem } from "./checks";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
@@ -128,7 +128,11 @@ function columnView(): ColumnView | null {
   return { columns: chosen, cells: columnCells(doc(), state.zoom, chosen, filter()) };
 }
 
-const SUMMARY_LABELS: Record<Column["summary"], string> = { sum: "total", min: "least", max: "most", mean: "average" };
+const SUMMARY_LABELS: Record<Summary, string> = { sum: "total", min: "least", max: "most", mean: "average" };
+
+function summaryTitle(column: Column, after = ""): string {
+  return column.summary ? ` title="${SUMMARY_LABELS[column.summary]}${after}"` : "";
+}
 
 function renderColumnsHead(): void {
   const head = ui.columnsHead;
@@ -147,7 +151,7 @@ function columnsHeadHtml(view: ColumnView): string {
       .map(
         (column) =>
           `<div class="cell head"><span class="column-name">${escape(column.key)}</span>` +
-          `<span class="column-total" title="${SUMMARY_LABELS[column.summary]}">${escape(totals.get(column.key)?.text ?? "")}</span></div>`,
+          `<span class="column-total"${summaryTitle(column)}>${escape(totals.get(column.key)?.text ?? "")}</span></div>`,
       )
       .join("") +
     `</div>`
@@ -193,7 +197,7 @@ function cellClasses(cell: Cell | undefined): string {
 function cellTitle(cell: Cell | undefined, column: Column, ownValue: string | undefined): string {
   if (cell?.error) return ` title="${escape(`${cell.error}. See ⋯ → Formula help`)}"`;
   if (cell?.computed) return ` title="Computed: ${escape(formulaIn(ownValue) !== null ? ownValue!.trim() : (column.formulaSource ?? ""))}"`;
-  if (cell?.rolled) return ` title="${SUMMARY_LABELS[column.summary]} of the items below"`;
+  if (cell?.rolled) return summaryTitle(column, " of the items below");
   return "";
 }
 

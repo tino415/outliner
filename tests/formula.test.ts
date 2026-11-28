@@ -278,6 +278,93 @@ describe("a formula that reads the item a link property points to", () => {
   });
 });
 
+describe("a computed column that sums and rounds", () => {
+  const day = (braces: string) =>
+    outline(
+      [
+        `Day | :columns: kcal{${braces}}`,
+        "  Breakfast",
+        "    Yoghurt | :grams: 150; :per100: 59",
+        "    Skyr | :grams: 150; :per100: 59",
+        "  Lunch",
+        "    Pizza | :kcal: 350.5",
+        "  Water",
+      ].join("\n"),
+    );
+
+  it("with sum round, every parent shows the whole total of its rows and computed rows show whole numbers", () => {
+    expect(column(day("sum round = grams * per100 / 100"), "Day", "kcal")).toEqual({
+      Day: "528",
+      Breakfast: "177",
+      Yoghurt: "89",
+      Skyr: "89",
+      Lunch: "351",
+      Pizza: "350.5",
+    });
+  });
+
+  it("marks a computed row as computed and a parent as rolled; a typed value is neither", () => {
+    const doc = day("sum round = grams * per100 / 100");
+    const top = idOf(doc, "Day");
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!);
+    const cellOf = (text: string) => cells.get(idOf(doc, text))!.get("kcal")!;
+    expect(cellOf("Yoghurt")).toMatchObject({ computed: true, rolled: false });
+    expect(cellOf("Breakfast")).toMatchObject({ rolled: true });
+    expect(cellOf("Breakfast").computed).toBeFalsy();
+    expect(cellOf("Pizza")).toMatchObject({ rolled: false });
+    expect(cellOf("Pizza").computed).toBeFalsy();
+  });
+
+  it("with sum, every parent shows the exact total", () => {
+    expect(column(day("sum = grams * per100 / 100"), "Day", "kcal")).toEqual({
+      Day: "527.5",
+      Breakfast: "177",
+      Yoghurt: "88.5",
+      Skyr: "88.5",
+      Lunch: "350.5",
+      Pizza: "350.5",
+    });
+  });
+
+  it("with only a formula, a parent computes it from the sums of its children's grams and per100", () => {
+    expect(column(day("= grams * per100 / 100"), "Day", "kcal")).toEqual({ Breakfast: "354", Yoghurt: "88.5", Skyr: "88.5", Pizza: "350.5" });
+  });
+
+  it("an unknown word before the formula is an error in the cells", () => {
+    const doc = day("total = grams");
+    const top = idOf(doc, "Day");
+    const cell = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Yoghurt"))!.get("kcal")!;
+    expect(cell.text).toBe("error");
+    expect(cell.error).toBe("unknown total: use sum, min, max, mean or round");
+  });
+
+  it("a total over a row in error is an error too, with that row's reason", () => {
+    const doc = outline(["Day | :columns: kcal{sum = grams * per100 / 100}", "  Breakfast", "    Yoghurt | :grams: 150; :per100: 59", "    Broken | :kcal: =grams +"].join("\n"));
+    const top = idOf(doc, "Day");
+    const cells = columnCells(doc, top, declaredColumns(doc, top)!);
+    expect(column(doc, "Day", "kcal")).toEqual({ Day: "error", Breakfast: "error", Yoghurt: "88.5", Broken: "error" });
+    expect(cells.get(top)!.get("kcal")!.error).toBe(cells.get(idOf(doc, "Broken"))!.get("kcal")!.error);
+  });
+
+  it("rounds a summary without a formula and keeps the typed values", () => {
+    const doc = outline(["Scores | :columns: score{mean round}", "  First | :score: 1", "  Second | :score: 2"].join("\n"));
+    expect(column(doc, "Scores", "score")).toEqual({ Scores: "2", First: "1", Second: "2" });
+  });
+
+  it("computes the recipe example", () => {
+    const recipe = FORMULA_EXAMPLES.find((example) => example.title === "Calories of a recipe")!;
+    expect(column(parseIndentedText(recipe.outline), "Example: Recipe", "kcal")).toEqual({
+      Flour: "910",
+      Butter: "896",
+      Dough: "1806",
+      Apples: "312",
+      Sugar: "200",
+      Filling: "512",
+      "Example: Recipe": "2318",
+    });
+  });
+});
+
 describe("parsing formulas", () => {
   it.each(["parent.start + before(effort)", "clock(9:00 + 1h30m)", "-(a - b) * 2 / 3", "previous.end", "max(effort)", "350 kcal + a", "grams * food.kcal / food.grams"])(
     "reads %s",

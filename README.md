@@ -149,6 +149,13 @@ the page that declares it; a linked item elsewhere shows what is written on
 it. A chip whose value is one link shows its label: a click on the label
 opens the item, a click on the key edits the value.
 
+A summary word before the formula makes the column roll up as well, as in
+`kcal{sum = grams * per100 / 100}` (doc/adr/0077). A parent then shows the
+sum of its children, a row with its own value and no values below keeps
+it, and any other row computes the formula. A row in error makes every
+total above it an error too. `round` after the summary word shows computed
+values and sums as whole numbers; a sum adds the exact values.
+
 ## Boards
 
 Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children

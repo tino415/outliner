@@ -83,3 +83,4 @@ file that says so.
 74. [`{current-week}` in a capture target is the ISO week of today](0074-current-week-in-a-capture-target-is-the-iso-week-of-today.md) (extends 23, 62, 63; supersedes part of 62)
 75. [A formula reads the item a link property points to](0075-a-formula-reads-the-item-a-link-property-points-to.md) (supersedes part of 22; extends 57)
 76. [An asked property of a capture template takes a default value](0076-an-asked-property-of-a-capture-template-takes-a-default-value.md) (extends 23)
+77. [A computed column may roll up and round](0077-a-computed-column-may-roll-up-and-round.md) (extends 22)

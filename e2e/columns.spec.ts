@@ -113,6 +113,27 @@ test("a computed column plans start times from the durations before each item", 
   await expect(cell(page, "Lunch", "start")).toHaveText("11:15");
 });
 
+test("a column with sum and round shows whole totals per meal and for the day", { tag: "@phone" }, async ({ page }, info) => {
+  await freshOutline(
+    page,
+    [
+      "Day | :columns: kcal{sum round = grams * per100 / 100}",
+      "  Breakfast",
+      "    Yoghurt | :grams: 150; :per100: 59",
+      "    Skyr | :grams: 150; :per100: 59",
+      "  Lunch",
+      "    Pizza | :kcal: 350.5",
+      "  Water",
+    ].join("\n"),
+  );
+  await row(page, "Day").locator(".bullet").click();
+  await expect(cell(page, "Yoghurt", "kcal")).toHaveText("89");
+  await expect(cell(page, "Breakfast", "kcal")).toHaveText("177");
+  await expect(page.locator("#columns-head .column-total")).toHaveText(["528"]);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: info.outputPath("formula-sum.png") });
+});
+
 test("a cell computed by the item's own formula shows that formula on hover", { tag: "@phone" }, async ({ page }) => {
   await freshOutline(page, "Shop | :columns: count price\n  Apples | :count: 3; :price: =count * 2");
   await page.locator(".row").filter({ hasText: "Shop" }).first().locator(".bullet").click();
