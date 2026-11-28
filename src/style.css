@@ -2414,7 +2414,12 @@ body.dragging {
 
   .cell:has(> .cell-input) {
     position: relative;
+    z-index: 1;
     overflow: visible;
+  }
+
+  .page.columns-more-left .cells:has(.cell-input) {
+    mask-image: none;
   }
 
   .cell-input {

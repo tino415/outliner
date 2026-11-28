@@ -29,6 +29,7 @@ const GAP = 2;
 const LEAD = 10;
 const SHARE_OF_SCREEN = 0.55;
 const SLOP = 10;
+const LINE_PIXELS = 16;
 
 interface ColumnsPlace {
   page: HTMLElement;
@@ -63,21 +64,25 @@ export function columnsScrollUnder(target: Element): boolean {
   return Boolean(place?.page.classList.contains("columns-scroll")) && target.closest(".cells") !== null;
 }
 
-/** Brings a cell that an edge of the scrolling numbers cuts fully into view. */
-export function scrollCellIntoView(cell: HTMLElement): void {
+export function scrollCutCellIntoView(cell: HTMLElement): void {
   if (!columnsScrollUnder(cell)) return;
-  const box = cell.closest(".cells")!;
-  const shown = box.getBoundingClientRect();
-  const left = shown.left + parseFloat(getComputedStyle(box).paddingLeft);
+  const left = scrollingNumbersLeft(cell);
+  const right = cell.closest(".cells")!.getBoundingClientRect().right;
   const { left: cellLeft, right: cellRight } = cell.getBoundingClientRect();
   if (cellLeft < left) shiftColumnsTo(shift - (left - cellLeft));
-  else if (cellRight > shown.right) shiftColumnsTo(shift + (cellRight - shown.right));
+  else if (cellRight > right) shiftColumnsTo(shift + (cellRight - right));
+}
+
+export function scrollingNumbersLeft(inside: Element): number {
+  const box = inside.closest(".cells")!;
+  return box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).paddingLeft);
 }
 
 export function enableColumnScroll(page: HTMLElement, head: HTMLElement): void {
   place = { page, head };
   page.addEventListener("pointerdown", (event) => {
-    if (event.pointerType !== "touch" || !event.isPrimary || !columnsScrollUnder(event.target as Element)) return;
+    const target = event.target as Element;
+    if (event.pointerType !== "touch" || !event.isPrimary || target.closest(".cell-input") || !columnsScrollUnder(target)) return;
     followDrag(event);
   });
   page.addEventListener(
@@ -85,11 +90,16 @@ export function enableColumnScroll(page: HTMLElement, head: HTMLElement): void {
     (event) => {
       if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) || !columnsScrollUnder(event.target as Element)) return;
       event.preventDefault();
-      shiftColumnsTo(shift + event.deltaX);
+      shiftColumnsTo(shift + event.deltaX * wheelPixels(event));
     },
     { passive: false },
   );
-  window.addEventListener("resize", refitColumns);
+  let fittedWidth = window.innerWidth;
+  window.addEventListener("resize", () => {
+    if (window.innerWidth === fittedWidth) return;
+    fittedWidth = window.innerWidth;
+    refitColumns();
+  });
 }
 
 export function fittedWidths(columns: Pick<Column, "key">[], cells: Map<ItemId, Map<string, Pick<Cell, "text">>>, widthOf: WidthOf): number[] {
@@ -150,9 +160,14 @@ function shiftColumnsTo(wanted: number): void {
   page.classList.toggle("columns-more-right", shift < range);
 }
 
+function wheelPixels(event: WheelEvent): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return LINE_PIXELS;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return window.innerWidth;
+  return 1;
+}
+
 function unfit(page: HTMLElement): void {
   range = 0;
-  shift = 0;
   for (const property of ["--column-widths", "--columns-window", "--columns-shift"]) page.style.removeProperty(property);
   page.classList.remove("columns-scroll", "columns-more-left", "columns-more-right");
 }

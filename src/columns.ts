@@ -6,7 +6,7 @@ import { savePrefs } from "./storage";
 import { refusedAsReadOnly } from "./bookmarking";
 import { problemWith } from "./checks";
 import { toast } from "./chrome";
-import { columnsScrollUnder, scrollCellIntoView } from "./columnFit";
+import { columnsScrollUnder, scrollCutCellIntoView, scrollingNumbersLeft } from "./columnFit";
 
 /** Switches the column view of the current page, remembering the choice for that page. */
 export function toggleColumnView(): void {
@@ -27,7 +27,7 @@ export function bindColumnCells(): void {
 
 function editCell(cell: HTMLElement, id: ItemId, key: string): void {
   if (refusedAsReadOnly([id], "properties")) return;
-  scrollCellIntoView(cell);
+  scrollCutCellIntoView(cell);
   const shown = [...cell.childNodes];
   const input = Object.assign(document.createElement("input"), {
     className: "cell-input",
@@ -63,7 +63,7 @@ function editCell(cell: HTMLElement, id: ItemId, key: string): void {
 
 function keepInsideScrollingNumbers(input: HTMLInputElement): void {
   if (!columnsScrollUnder(input)) return;
-  const pastLeftEdge = input.closest(".cells")!.getBoundingClientRect().left - input.getBoundingClientRect().left;
+  const pastLeftEdge = scrollingNumbersLeft(input) - input.getBoundingClientRect().left;
   if (pastLeftEdge > 0) input.style.right = `${-pastLeftEdge}px`;
 }
 
