@@ -24,6 +24,7 @@ export const COMMAND_NAMES = [
   "up-to-parent",
   "zoom-in",
   "zoom-out",
+  "show-path",
   "delete-item",
   "duplicate",
   "move-to",

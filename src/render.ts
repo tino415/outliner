@@ -1,5 +1,5 @@
 import { attachmentTitle } from "./attachmentTitle";
-import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./model";
+import { Item, ItemId, ROOT, isDescendant, shownChildren } from "./model";
 import { Cell, Column, Summary, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { isChecksItem, problemInCheckRow, problemsOfItem } from "./checks";
@@ -22,6 +22,7 @@ import { queryViewShown, renderQueryView } from "./queryView";
 import { followShortcutSettings } from "./keys";
 import { isMirror, liveMirrorTarget, mirrorBulletTitle, mirrorTextHtml, mirroredChildrenHtml } from "./mirrors";
 import { fitColumns } from "./columnFit";
+import { renderCrumbs } from "./crumbs";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -69,21 +70,6 @@ export function render(request: FocusRequest): void {
   const focus = candidates.find((candidate) => editorFor(candidate.id, candidate.inNote ? "note" : "text"));
   if (focus) focusCaret(focus);
   performance.measure("render", { start: started });
-}
-
-function renderCrumbs(): void {
-  const trail = agendaShown() ? [ROOT] : ancestors(doc(), state.zoom);
-  ui.crumbs.classList.toggle("at-home", trail.length === 0);
-  if (trail.length === 0) {
-    ui.crumbs.innerHTML = `<span class="brand"><span class="brand-dot"></span>Outliner</span>`;
-    return;
-  }
-  const parts = trail.map((id) =>
-    id === ROOT
-      ? `<a class="crumb home" href="#/" aria-label="Home"><svg viewBox="0 0 20 20"><path d="M3.5 9.5L10 4l6.5 5.5M5.5 8v7.5h9V8" /></svg></a>`
-      : `<a class="crumb" href="#/${encodeURIComponent(id)}">${escape(itemLabel(doc().items[id].text, 28))}</a>`,
-  );
-  ui.crumbs.innerHTML = parts.join(`<span class="crumb-sep" aria-hidden="true">/</span>`);
 }
 
 function renderHead(): void {

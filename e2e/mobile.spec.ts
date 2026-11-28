@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { caret, editor, expectOutline, freshOutline, row } from "./helpers";
+import { caret, editor, expectOutline, freshOutline, row, shownCrumbs, zoomIntoClothes } from "./helpers";
 
 async function virtualKey(page: import("@playwright/test").Page, inputType: string) {
   await page.evaluate((type) => {
@@ -273,6 +273,28 @@ test("tapping a bullet zooms in and the home crumb zooms out", { tag: "@touch" }
   await expect(page.locator("#title")).toHaveText("projects");
   await page.locator(".crumb.home").tap();
   await expect(page.locator("#title")).toHaveText("Test");
+});
+
+test.describe("the path of a deep page", { tag: "@touch" }, () => {
+  test.beforeEach(async ({ page }) => zoomIntoClothes(page));
+
+  test("the breadcrumbs keep Home and the whole parent, with the levels between behind a button", async ({ page }) => {
+    await expect.poll(() => shownCrumbs(page)).toEqual(["Home", "Whole path", "Packing"]);
+    const parent = page.locator("#crumbs .crumb", { hasText: "Packing" });
+    expect(await parent.evaluate((crumb) => crumb.scrollWidth <= crumb.clientWidth)).toBe(true);
+  });
+
+  test("the button lists the whole path, this page last", async ({ page }) => {
+    await page.getByRole("button", { name: "Whole path" }).tap();
+    await expect(page.locator("#path-menu .path-level > span:first-of-type")).toHaveText(["Home", "Projects", "Travel", "Weekend in Vienna", "Packing", "Clothes"]);
+  });
+
+  test("a tap on a level in the list shows its page, whose path fits", async ({ page }) => {
+    await page.getByRole("button", { name: "Whole path" }).tap();
+    await page.locator("#path-menu").getByRole("button", { name: "Travel" }).tap();
+    await expect(page.locator("#title")).toHaveText("Travel");
+    await expect.poll(() => shownCrumbs(page)).toEqual(["Home", "Projects"]);
+  });
 });
 
 test("capture from the menu files into the Inbox", { tag: "@touch" }, async ({ page }) => {

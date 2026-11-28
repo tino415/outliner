@@ -173,6 +173,21 @@ export async function removeStored(page: Page, key: StoredKey): Promise<void> {
   );
 }
 
+export const TRIP = "Projects\n  Travel\n    Weekend in Vienna\n      Packing\n        Clothes\n          Rain jacket";
+
+export async function zoomIntoClothes(page: Page) {
+  await freshOutline(page, TRIP);
+  await page.evaluate(() => (location.hash = "#/i4"));
+  await expect(page.locator("#title")).toHaveText("Clothes");
+}
+
+/** The breadcrumbs a reader sees, Home and the path button by their labels. */
+export async function shownCrumbs(page: Page): Promise<string[]> {
+  return page
+    .locator("#crumbs")
+    .evaluate((crumbs) => [...crumbs.querySelectorAll("a, button")].filter((crumb) => crumb.checkVisibility()).map((crumb) => crumb.getAttribute("aria-label") ?? crumb.textContent!));
+}
+
 /** A tap on a touch device, a click elsewhere. */
 export async function choose(option: Locator, isMobile: boolean) {
   if (isMobile) await option.tap();
