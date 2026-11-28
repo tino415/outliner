@@ -60,7 +60,7 @@ test.describe("Insert from a list", { tag: "@phone" }, () => {
     await choose(page.locator("#palette li[data-index]").first(), isMobile);
     const line = row(page, "Breakfast").locator("xpath=..").locator(".children .row");
     await expect(line.locator(".text")).toHaveText(["Greek yoghurt, cup"]);
-    await expect(line.locator(".prop-chip")).toHaveText(["food [[id:i7][Greek yoghurt, cup]]", "grams 120"]);
+    await expect(line.locator(".prop-chip")).toHaveText(["food Greek yoghurt, cup", "grams 120"]);
     await page.keyboard.press("ControlOrMeta+z");
     await expect(row(page, "Breakfast").locator("xpath=..").locator(".children .row")).toHaveCount(0);
   });
