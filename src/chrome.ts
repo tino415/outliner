@@ -2,7 +2,7 @@ import { ItemId, ROOT, foldableInside, isFoldable, insertShownChild, newChildInd
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
 import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
-import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml, withExample } from "./formulaHelp";
+import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml, withExampleLinkingItsOwnItems } from "./formulaHelp";
 import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlone, isPrefix, keyCommands, keysAfter, prettySequence, sequenceContinues, extendSequence } from "./keys";
 import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
@@ -343,7 +343,7 @@ function bindFormulaHelp(): void {
 
 function addFormulaExample(example: FormulaExample): void {
   formulaHelp().close();
-  const result = withExample(doc(), example, state.zoom, newChildIndex(doc(), state.zoom));
+  const result = withExampleLinkingItsOwnItems(doc(), example, state.zoom, newChildIndex(doc(), state.zoom));
   commitAndRender(result.doc, null);
   zoomTo(result.page);
 }

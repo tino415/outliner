@@ -1,7 +1,7 @@
 import { Doc, ItemId, SETTINGS, ViewFilter, ancestors, childrenInOrder, isDescendant, isShown, shownChildren } from "./model";
 import { readWrittenDate } from "./dates";
 import { onlyReference, resolveReference } from "./references";
-import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula } from "./formula";
+import { Formula, FormulaError, PLAIN_ZERO, Scope, add, evaluate, parseFormula, positionMistypedAs } from "./formula";
 
 /*
  * Properties are an item's `key: value` pairs (doc/adr/0032). This module
@@ -221,8 +221,10 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     return value.amount;
   };
 
-  const linkedBy = (id: ItemId, key: string): ItemId | null => {
+  const linkedBy = (id: ItemId, key: string, read: string): ItemId | null => {
     const raw = doc.items[id].properties[key];
+    const meant = positionMistypedAs(key);
+    if (raw === undefined && meant) throw new FormulaError(`${key} looks like ${meant}: write ${meant}.${read}`);
     if (raw === undefined) return null;
     const reference = onlyReference(raw);
     if (!reference) throw new FormulaError(`${key} is not a link`);
@@ -269,7 +271,7 @@ export function cellsUnder(doc: Doc, top: ItemId, columns: Column[], filter: Vie
     const parent = doc.items[id].parent;
     return {
       value: (of, key) => {
-        const target = of === "self" ? id : of === "parent" ? parent : of === "previous" ? previousSibling(id) : linkedBy(id, of.link);
+        const target = of === "self" ? id : of === "parent" ? parent : of === "previous" ? previousSibling(id) : linkedBy(id, of.link, key);
         return target ? amountOf(target, key) : null;
       },
       totalBefore: (key) => totalBefore(id, key),

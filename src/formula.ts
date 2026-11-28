@@ -73,8 +73,6 @@ export function parseFormula(source: string): Formula {
     const [first, second] = token.toLowerCase().split(".");
     if (second === undefined) return { kind: "value", of: "self", key: first };
     if (first === "parent" || first === "previous") return { kind: "value", of: first, key: second };
-    const meant = POSITIONS.find((position) => isOneSlipFrom(first, position));
-    if (meant) throw new FormulaError(`${first} looks like ${meant}: write ${meant}.${second}`);
     return { kind: "value", of: { link: first }, key: second };
   };
   const call = (name: string): Formula => {
@@ -93,7 +91,10 @@ export function parseFormula(source: string): Formula {
 
 const POSITIONS = ["parent", "previous"] as const;
 
-/** One letter added, dropped or changed, or two neighbours swapped. */
+export function positionMistypedAs(name: string): (typeof POSITIONS)[number] | undefined {
+  return POSITIONS.find((position) => isOneSlipFrom(name, position));
+}
+
 function isOneSlipFrom(typed: string, name: string): boolean {
   if (typed === name || Math.abs(typed.length - name.length) > 1) return false;
   let start = 0;

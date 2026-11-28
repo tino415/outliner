@@ -4,7 +4,7 @@ import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
-import { FORMULA_EXAMPLES, withExample } from "../src/formulaHelp";
+import { FORMULA_EXAMPLES, withExampleLinkingItsOwnItems } from "../src/formulaHelp";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -182,12 +182,16 @@ describe("the examples in the formula help", () => {
 
   it("links each added copy of the portions example to its own ingredient", () => {
     const portions = FORMULA_EXAMPLES[3];
-    const first = withExample(parseIndentedText("Home"), portions, ROOT, 1);
-    const second = withExample(first.doc, portions, ROOT, 2);
-    const oatsOf = (page: ItemId) => second.doc.items[page].children.find((id) => second.doc.items[id].text === "Example oats")!;
-    const porridgeOf = (page: ItemId) => second.doc.items[page].children.find((id) => second.doc.items[id].text === "Example porridge")!;
-    expect(second.doc.items[porridgeOf(first.page)].properties.food).toBe(`[[id:${oatsOf(first.page)}][Example oats]]`);
-    expect(second.doc.items[porridgeOf(second.page)].properties.food).toBe(`[[id:${oatsOf(second.page)}][Example oats]]`);
+    const first = withExampleLinkingItsOwnItems(parseIndentedText("Home"), portions, ROOT, 1);
+    const second = withExampleLinkingItsOwnItems(first.doc, portions, ROOT, 2);
+    const { items } = second.doc;
+    const named = (page: ItemId, text: string) => items[page].children.find((id) => items[id].text === text)!;
+    for (const page of [first.page, second.page]) {
+      expect(items[named(page, "Example porridge")].properties).toEqual({ food: `[[id:${named(page, "Example oats")}][Example oats]]`, grams: "60" });
+      expect(items[named(page, "Example half porridge")].properties.food).toBe(`[[id:${named(page, "Example porridge")}][Example porridge]]`);
+      expect(Object.keys(items[named(page, "Example porridge")].properties)).toEqual(["food", "grams"]);
+      expect(items[named(page, "Example oats")].properties).toEqual({ kcal: "379", grams: "100" });
+    }
   });
 
   it("follows the example portions to their ingredient", () => {
@@ -281,23 +285,30 @@ describe("parsing formulas", () => {
   );
 
   it.each(["a +", "sum(1h)", "nope(a)", "food.food.kcal", "(a", "a b"])("refuses %s", (source) => expect(() => parseFormula(source)).toThrow(FormulaError));
-
-  it.each([
-    ["parnet.start", "parnet looks like parent: write parent.start"],
-    ["parents.start", "parents looks like parent: write parent.start"],
-    ["prevous.end", "prevous looks like previous: write previous.end"],
-    ["pervious.end", "pervious looks like previous: write previous.end"],
-  ])("warns that %s is a slip of parent or previous", (source, warning) => expect(() => parseFormula(source)).toThrow(new FormulaError(warning)));
-
-  it.each(["food.kcal", "parcel.grams", "prev.end"])("reads %s as a link property", (source) => expect(parseFormula(source)).toMatchObject({ kind: "value", of: { link: source.split(".")[0] } }));
 });
 
-describe("a slip of parent in a column", () => {
-  it("shows the warning in every row instead of empty cells", () => {
-    const doc = outline("Day | :start: 9:00; :columns: begin{=parnet.start}\n  Task");
+describe("a slip of parent or previous in a column", () => {
+  function cellOf(columns: string, note = ""): Cell | undefined {
+    const doc = outline([`Day | :start: 9:00; :columns: ${columns}`, note ? `  Task | ${note}` : "  Task", "Patent US1 | :number: 7"].join("\n"));
     const top = idOf(doc, "Day");
-    const cell = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Task"))!.get("begin")!;
-    expect(cell).toMatchObject({ text: "error", error: "parnet looks like parent: write parent.start" });
+    return columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Task"))!.get(columns.split("{")[0]);
+  }
+
+  it.each([
+    ["begin{=parnet.start}", "parnet looks like parent: write parent.start"],
+    ["begin{=parents.start}", "parents looks like parent: write parent.start"],
+    ["begin{=prevous.end}", "prevous looks like previous: write previous.end"],
+    ["begin{=pervious.end}", "pervious looks like previous: write previous.end"],
+  ])("warns in the row's cell for %s instead of leaving it empty", (columns, warning) => {
+    expect(cellOf(columns)).toMatchObject({ text: "error", error: warning });
+  });
+
+  it("follows a link property whose name is a slip of parent when the row has it", () => {
+    expect(cellOf("number{=patent.number}", ":patent: [[Patent US1]]")?.text).toBe("7");
+  });
+
+  it("leaves the cell empty for a name far from parent and previous that the row lacks", () => {
+    expect(cellOf("begin{=prev.end}")).toBeUndefined();
   });
 });
 

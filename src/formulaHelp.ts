@@ -1,5 +1,5 @@
 import { escape } from "./inline";
-import { Doc, ItemId, setItemProperty } from "./model";
+import { Doc, ItemId, setFlags } from "./model";
 import { onlyReference, referenceTo } from "./references";
 import { graft, parseIndentedText } from "./transfer";
 
@@ -117,20 +117,25 @@ const REFERENCE: [string, [string, string][]][] = [
   ],
 ];
 
-/** Adds the example's page under `parent`, its links by text pointed at its own items by id, so a second copy does not read the first. */
-export function withExample(doc: Doc, example: FormulaExample, parent: ItemId, index: number): { doc: Doc; page: ItemId } {
+export function withExampleLinkingItsOwnItems(doc: Doc, example: FormulaExample, parent: ItemId, index: number): { doc: Doc; page: ItemId } {
   const grafted = graft(doc, parseIndentedText(example.outline), parent, index);
   const page = grafted.ids[0];
   const own = itemsFrom(grafted.doc, page);
-  const byText = new Map(own.map((id) => [grafted.doc.items[id].text, id]));
-  let result = grafted.doc;
-  for (const id of own) {
-    for (const [key, value] of Object.entries(result.items[id].properties)) {
-      const target = byText.get(onlyReference(value)?.target ?? "");
-      if (target) result = setItemProperty(result, id, key, referenceTo(target, result.items[target].text));
-    }
-  }
+  const byText = new Map(own.map((id) => [comparable(grafted.doc.items[id].text), id]));
+  const linkedById = (value: string): string => {
+    const reference = onlyReference(value);
+    const target = reference && byText.get(comparable(reference.target));
+    return target ? referenceTo(target, grafted.doc.items[target].text) : value;
+  };
+  const result = own.reduce((result, id) => {
+    const properties = Object.fromEntries(Object.entries(result.items[id].properties).map(([key, value]) => [key, linkedById(value)]));
+    return setFlags(result, id, { properties });
+  }, grafted.doc);
   return { doc: result, page };
+}
+
+function comparable(text: string): string {
+  return text.trim().toLowerCase();
 }
 
 function itemsFrom(doc: Doc, top: ItemId): ItemId[] {

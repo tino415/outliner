@@ -23,8 +23,9 @@ ingredient left them wrong.
   name before the dot other than `parent` and `previous` names a property of
   the item. One dot only: `food.food.kcal` does not parse.
 - A name one slip from `parent` or `previous` (a letter added, dropped or
-  changed, or two swapped) does not parse either: `parnet.start` is an error,
-  `parnet looks like parent: write parent.start`, not an empty cell.
+  changed, or two swapped) that the row has no property of is an error,
+  `parnet looks like parent: write parent.start`, not an empty cell. A row
+  whose `patent` links an item still reads it.
 - An example the formula help adds has its text links rewritten to its own
   items by id, so a second copy does not read the first.
 - A link is a whole value written `[[id:…][label]]` or `[[Some text]]`,
