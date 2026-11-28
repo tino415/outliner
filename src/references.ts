@@ -14,6 +14,19 @@ export function referenceTo(id: ItemId, text: string): string {
   return `[[id:${id}][${label}]]`;
 }
 
+export interface Reference {
+  target: string;
+  label: string;
+}
+
+/** The link a value is made of, when it is nothing else; `[[Oats]]` is labelled Oats, `[[id:…]]` its target. */
+export function onlyReference(value: string): Reference | null {
+  const match = WHOLE_REFERENCE.exec(value.trim());
+  return match ? { target: match[1], label: match[2] ?? match[1] } : null;
+}
+
+const WHOLE_REFERENCE = new RegExp(`^${REFERENCE.source}$`);
+
 export function resolveReference(doc: Doc, target: string): ItemId | null {
   if (target.startsWith("id:")) return doc.items[target.slice(3)] ? target.slice(3) : null;
   const wanted = target.trim().toLowerCase();

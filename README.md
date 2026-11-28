@@ -121,12 +121,30 @@ A formula that cannot be computed shows `error`, the reason on hover.
 example pages it adds to the current page.
 Formulas take amounts (`350 kcal`, `1h30m`, `9:00`),
 `+ - * /`, another column of the row (`effort`), of the parent
-(`parent.start`) or the previous sibling (`previous.end`), `before(key)`
+(`parent.start`), the previous sibling (`previous.end`) or the item a
+property of the row links (`food.kcal`, where `food` is
+`[[id:…][Skyr vanilla]]`; doc/adr/0074), `before(key)`
 over the siblings above, `sum`, `min`, `max`, `mean` over the children, and
 `clock(…)` to show a duration as a time. A hyphen followed by a letter is
 part of a key (`time-spent`); write `effort - 15m` or `effort-15m` to subtract.
 A time plus a duration is a time, a time minus a time a duration; numbers
 in different units do not add.
+
+A linked read takes what the outline shows for the linked item, its own
+value or what its formula computes, so one column serves ingredients,
+portions and meals:
+
+```
+Food
+  :columns: kcal{=grams * food.kcal / food.grams}
+```
+
+An ingredient types its `kcal` and `grams: 100`; a portion links it in
+`food` and gives its own `grams`; an entry that links the portion follows
+through to the ingredient. A column's formula fills only the items under
+the page that declares it; a linked item elsewhere shows what is written on
+it. A chip whose value is one link shows its label: a click on the label
+opens the item, a click on the key edits the value.
 
 ## Boards
 

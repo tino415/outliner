@@ -56,6 +56,23 @@ export const FORMULA_EXAMPLES: FormulaExample[] = [
       "    :effort: 45m",
     ].join("\n"),
   },
+  {
+    title: "Portions that follow their ingredient",
+    explanation: "An ingredient holds its kcal for 100 grams; a portion links it in food and gives its own grams, a half portion links the portion.",
+    outline: [
+      "- Example: Portions",
+      "  :columns: grams kcal{=grams * food.kcal / food.grams}",
+      "  - Example oats",
+      "    :kcal: 379",
+      "    :grams: 100",
+      "  - Example porridge",
+      "    :food: [[Example oats]]",
+      "    :grams: 60",
+      "  - Example half porridge",
+      "    :food: [[Example porridge]]",
+      "    :grams: 30",
+    ].join("\n"),
+  },
 ];
 
 const REFERENCE: [string, [string, string][]][] = [
@@ -74,6 +91,7 @@ const REFERENCE: [string, [string, string][]][] = [
       ["effort", "This row's effort"],
       ["parent.start", "The parent's start"],
       ["previous.end", "The end of the row just above, under the same parent"],
+      ["food.kcal", "The kcal of the item this row's food links"],
       ["time-spent", "A hyphen before a letter is part of the name; effort - 15m subtracts"],
     ],
   ],

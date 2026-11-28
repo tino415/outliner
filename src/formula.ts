@@ -2,19 +2,24 @@ import { Amount, parseAmount } from "./properties";
 
 /*
  * Formulas of computed columns (doc/adr/0022): arithmetic on amounts, the
- * values of other columns on this item, its parent and its previous sibling,
- * and sums over siblings before it or over its children.
+ * values of other columns on this item, its parent, its previous sibling and
+ * the item a link property of its own points to, and sums over siblings
+ * before it or over its children.
  *
  *   parent.start + before(effort)        clock(parent.start + before(effort))
  *   calories * 4.184                     sum(effort) - effort
+ *   grams * food.kcal / food.grams
  */
 
 export type Formula =
   | { kind: "amount"; amount: Amount }
-  | { kind: "value"; of: "self" | "parent" | "previous"; key: string }
+  | { kind: "value"; of: ValueOf; key: string }
   | { kind: "call"; name: FunctionName; argument: Formula | string }
   | { kind: "binary"; operator: "+" | "-" | "*" | "/"; left: Formula; right: Formula }
   | { kind: "negate"; operand: Formula };
+
+/** Whose value a name reads: `kcal` this item's, `parent.kcal`, `previous.kcal`, or `food.kcal` the item this one's `food` links. */
+export type ValueOf = "self" | "parent" | "previous" | { link: string };
 
 type FunctionName = "before" | "sum" | "min" | "max" | "mean" | "clock";
 
@@ -22,7 +27,7 @@ const OVER_ITEMS: FunctionName[] = ["before", "sum", "min", "max", "mean"];
 
 /** What a formula can ask about the item it is computed for. */
 export interface Scope {
-  value(of: "self" | "parent" | "previous", key: string): Amount | null;
+  value(of: ValueOf, key: string): Amount | null;
   totalBefore(key: string): Amount;
   children(key: string): Amount[];
 }
@@ -68,7 +73,7 @@ export function parseFormula(source: string): Formula {
     const [first, second] = token.toLowerCase().split(".");
     if (second === undefined) return { kind: "value", of: "self", key: first };
     if (first === "parent" || first === "previous") return { kind: "value", of: first, key: second };
-    throw new FormulaError(`unknown ${first}: use parent.${second} or previous.${second}`);
+    return { kind: "value", of: { link: first }, key: second };
   };
   const call = (name: string): Formula => {
     const fn = name.toLowerCase() as FunctionName;
