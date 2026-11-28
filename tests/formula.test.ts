@@ -4,7 +4,7 @@ import { setNoteAsTyped as setNote } from "./typed";
 import { parseIndentedText } from "../src/transfer";
 import { Cell, columnCells, declaredColumns, inferredColumns } from "../src/properties";
 import { FormulaError, parseFormula } from "../src/formula";
-import { FORMULA_EXAMPLES } from "../src/formulaHelp";
+import { FORMULA_EXAMPLES, withExample } from "../src/formulaHelp";
 
 function idOf(doc: Doc, text: string): ItemId {
   return Object.values(doc.items).find((item) => item.text === text)!.id;
@@ -178,6 +178,16 @@ describe("the examples in the formula help", () => {
     const doc = parseIndentedText(FORMULA_EXAMPLES[0].outline);
     expect(column(doc, "Example: Monday", "start").Lunch).toBe("11:15");
     expect(column(doc, "Example: Monday", "end").Lunch).toBe("12:15");
+  });
+
+  it("links each added copy of the portions example to its own ingredient", () => {
+    const portions = FORMULA_EXAMPLES[3];
+    const first = withExample(parseIndentedText("Home"), portions, ROOT, 1);
+    const second = withExample(first.doc, portions, ROOT, 2);
+    const oatsOf = (page: ItemId) => second.doc.items[page].children.find((id) => second.doc.items[id].text === "Example oats")!;
+    const porridgeOf = (page: ItemId) => second.doc.items[page].children.find((id) => second.doc.items[id].text === "Example porridge")!;
+    expect(second.doc.items[porridgeOf(first.page)].properties.food).toBe(`[[id:${oatsOf(first.page)}][Example oats]]`);
+    expect(second.doc.items[porridgeOf(second.page)].properties.food).toBe(`[[id:${oatsOf(second.page)}][Example oats]]`);
   });
 
   it("follows the example portions to their ingredient", () => {

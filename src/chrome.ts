@@ -1,8 +1,8 @@
 import { ItemId, ROOT, foldableInside, isFoldable, insertShownChild, newChildIndex, removeCompleted, setCollapsed, setCollapsedEverywhere } from "./model";
 import { AppearancePref, Prefs, savePrefs } from "./storage";
 import { escape, itemLabel, slug } from "./inline";
-import { download, exportJson, exportMarkdown, exportOpml, graft, importText, parseIndentedText } from "./transfer";
-import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml } from "./formulaHelp";
+import { download, exportJson, exportMarkdown, exportOpml, graft, importText } from "./transfer";
+import { FORMULA_EXAMPLES, FormulaExample, formulaHelpHtml, withExample } from "./formulaHelp";
 import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlone, isPrefix, keyCommands, keysAfter, prettySequence, sequenceContinues, extendSequence } from "./keys";
 import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
@@ -343,9 +343,9 @@ function bindFormulaHelp(): void {
 
 function addFormulaExample(example: FormulaExample): void {
   formulaHelp().close();
-  const result = graft(doc(), parseIndentedText(example.outline), state.zoom, newChildIndex(doc(), state.zoom));
+  const result = withExample(doc(), example, state.zoom, newChildIndex(doc(), state.zoom));
   commitAndRender(result.doc, null);
-  zoomTo(result.ids[0]);
+  zoomTo(result.page);
 }
 
 function pageSlug(): string {

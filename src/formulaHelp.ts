@@ -1,4 +1,7 @@
 import { escape } from "./inline";
+import { Doc, ItemId, setItemProperty } from "./model";
+import { onlyReference, referenceTo } from "./references";
+import { graft, parseIndentedText } from "./transfer";
 
 /*
  * The formula reference shown in the app (⋯ → Formula help), and example
@@ -113,6 +116,26 @@ const REFERENCE: [string, [string, string][]][] = [
     ],
   ],
 ];
+
+/** Adds the example's page under `parent`, its links by text pointed at its own items by id, so a second copy does not read the first. */
+export function withExample(doc: Doc, example: FormulaExample, parent: ItemId, index: number): { doc: Doc; page: ItemId } {
+  const grafted = graft(doc, parseIndentedText(example.outline), parent, index);
+  const page = grafted.ids[0];
+  const own = itemsFrom(grafted.doc, page);
+  const byText = new Map(own.map((id) => [grafted.doc.items[id].text, id]));
+  let result = grafted.doc;
+  for (const id of own) {
+    for (const [key, value] of Object.entries(result.items[id].properties)) {
+      const target = byText.get(onlyReference(value)?.target ?? "");
+      if (target) result = setItemProperty(result, id, key, referenceTo(target, result.items[target].text));
+    }
+  }
+  return { doc: result, page };
+}
+
+function itemsFrom(doc: Doc, top: ItemId): ItemId[] {
+  return [top, ...doc.items[top].children.flatMap((child) => itemsFrom(doc, child))];
+}
 
 export function formulaHelpHtml(): string {
   const sections = REFERENCE.map(
