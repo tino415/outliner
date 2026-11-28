@@ -26,8 +26,14 @@ export type Across = "up" | "down" | "left" | "right";
 export function nodeAcross(doc: Doc, page: ItemId, from: ItemId, way: Across, shownUnder: (id: ItemId) => ItemId[]): ItemId | null {
   if (way === "left") return from === page ? null : (doc.items[from].parent ?? null);
   if (way === "right") return shownUnder(from)[0] ?? null;
-  const level = nodesAtDepth(page, depthBelow(doc, page, from), shownUnder);
-  return level[level.indexOf(from) + (way === "down" ? 1 : -1)] ?? null;
+  if (from === page) return way === "down" ? (shownUnder(page)[0] ?? null) : null;
+  const depth = depthBelow(doc, page, from);
+  const level = nodesAtDepth(page, depth, shownUnder);
+  const at = level.indexOf(from);
+  if (at === -1) return null;
+  const neighbour = level[at + (way === "down" ? 1 : -1)];
+  if (neighbour) return neighbour;
+  return way === "up" && depth === 1 ? page : null;
 }
 
 function depthBelow(doc: Doc, page: ItemId, id: ItemId): number {

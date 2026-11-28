@@ -281,7 +281,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
   const mirror = isMirror(doc(), id) ? mirrorTextHtml(doc(), id) + mirroredChildrenHtml(doc(), id, filter()) : null;
-  const foldedCount = hasChildren && !expanded && mirror === null ? foldedCountLabel(item) : "";
+  const foldedCount = hasChildren && !expanded && mirror === null ? foldedCountLabel(item, shown) : "";
   const breaking = problemsOfItem(doc(), id);
   const rowProblem = problemInCheckRow(doc(), id);
   const displayState = `${dayRendered} ${hasChildren} ${expanded} ${foldedCount} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""} ${[...breaking].join("|")} ${rowProblem}`;
@@ -328,8 +328,8 @@ function renderItem(id: ItemId): HTMLLIElement {
 }
 
 /** A node of the tree view shows the count in its round fold button, which has room for a number only. */
-function foldedCountLabel(item: Item): string {
-  return sidewaysShown() ? String(item.children.length) : countLabel(doc(), item.children);
+function foldedCountLabel(item: Item, shown: ItemId[]): string {
+  return sidewaysShown() ? String(shown.length) : countLabel(doc(), item.children);
 }
 
 function createItemElement(id: ItemId): HTMLLIElement {

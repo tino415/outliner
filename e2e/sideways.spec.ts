@@ -93,6 +93,11 @@ test.describe("the tree view", { tag: "@keys" }, () => {
     await page.keyboard.press("End");
     await page.keyboard.press("ArrowRight");
     expect(await caret(page)).toEqual({ text: "d", offset: 0 });
+    await page.locator("#title").click();
+    await page.keyboard.press("ArrowDown");
+    expect((await caret(page)).text).toBe("Pro: one");
+    await page.keyboard.press("ArrowUp");
+    expect((await caret(page)).text).toBe("Plan");
   });
 
   test("a drag onto a node's right third makes the item its last child, and onto its upper half puts it before", async ({ page }) => {

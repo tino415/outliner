@@ -16,10 +16,11 @@ import { bindColumnCells, toggleColumnView } from "./columns";
 import { refitColumns } from "./columnFit";
 import { goToTargetCommands, openCapture, openGoToTarget } from "./capturing";
 import { View, bindBoard, foldShows, isCard, isColumn, moveSideways, otherColumns, pageAbove, showPageAs, shownView } from "./board";
-import { bindAgenda, openAgenda } from "./agenda";
+import { agendaShown, bindAgenda, openAgenda } from "./agenda";
 import { bookmarkThisPage, openBookmarkList } from "./bookmarking";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindAddMenu } from "./addMenu";
+import { queryViewShown } from "./queryView";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
@@ -422,7 +423,7 @@ function keepToolbarAboveKeyboard(): void {
   if (!viewport) return;
   const place = () => {
     const keyboard = window.innerHeight - viewport.height - viewport.offsetTop;
-    ui.toolbar.style.setProperty("--keyboard", `${Math.max(0, keyboard)}px`);
+    document.documentElement.style.setProperty("--keyboard", `${Math.max(0, keyboard)}px`);
   };
   viewport.addEventListener("resize", place);
   viewport.addEventListener("scroll", place);
@@ -532,6 +533,7 @@ export function renderMenuState(): void {
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
   const view = shownView();
+  $("view-section").hidden = agendaShown() || queryViewShown();
   for (const button of $("view-choice").querySelectorAll<HTMLElement>("[data-view]")) button.setAttribute("aria-checked", String(button.dataset.view === view));
   for (const entry of ui.menu.querySelectorAll<HTMLElement>("[data-where]")) entry.hidden = !entry.dataset.where!.split(" ").includes(view);
 }

@@ -33,7 +33,8 @@ list, where the shape has to be read line by line.
   fold, so the outline shows the same branches folded, and shows the count of
   children while folded.
 - The arrows go across the drawing: up and down among the shown nodes of one
-  level, left to the parent, right to the first child.
+  level, left to the parent, right to the first child. Down from the title
+  goes to the first node, and up from the first node back to the title.
 - A drag on a node's upper half puts the item before it, on its lower half
   after it, and on its right third makes it the node's last child.
 - The page scrolls both ways under the top bar and opens with the title at

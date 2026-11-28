@@ -39,7 +39,19 @@ describe("nodeAcross", () => {
   it("stays in a level, and stops at its ends", () => {
     expect(across(outline, "a", "down")).toBe("b");
     expect(across(outline, "d", "down")).toBeNull();
-    expect(across(outline, "a", "up")).toBeNull();
+    expect(across(outline, "a1", "up")).toBeNull();
+  });
+
+  it("goes down from the page to its first node, and up from that node to the page", () => {
+    expect(across(outline, "Page", "down")).toBe("a");
+    expect(across(outline, "a", "up")).toBe("Page");
+    expect(across(outline, "Page", "up")).toBeNull();
+  });
+
+  it("goes nowhere from a node that is not shown", () => {
+    const folded = setCollapsed(outline, idOf(outline, "c"), true);
+    expect(across(folded, "c1", "down")).toBeNull();
+    expect(across(folded, "c1", "up")).toBeNull();
   });
 
   it("goes left to the parent, and from a top-level node to the page", () => {
