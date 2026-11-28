@@ -1,4 +1,4 @@
-import { addDays } from "./dates";
+import { addDays, isoWeekOf } from "./dates";
 import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemProperty } from "./model";
 
 /*
@@ -8,10 +8,11 @@ import { Doc, ItemId, ROOT, copyChildren, insertChild, newChildIndex, setItemPro
  * target page files new items (`:new: top`, or the bottom),
  * `:key:` is a letter that picks the template. The template's own text is
  * its name. `{date}` in the target is today, so `Journal/{date}` files into
- * a page per day, and `{tomorrow}` is the day after (doc/adr/0062); missing
- * pages on the way are created. When the target page itself is created, the
- * template's children are copied into it (`{date}` and `{tomorrow}` replaced
- * as in the target) and the template's other properties go onto it
+ * a page per day, `{tomorrow}` is the day after (doc/adr/0062), and
+ * `{current-week}` and `{tomorrow-week}` their weeks (doc/adr/0074); missing
+ * pages on the way are created. When the target page
+ * itself is created, the template's children are copied into it (the
+ * placeholders replaced as in the target) and the template's other properties go onto it
  * (doc/adr/0063); a page that exists is left as it is.
  */
 
@@ -91,7 +92,12 @@ function indexFor(doc: Doc, parent: ItemId, template: Template): number {
 
 function withToday(text: string, today: Date): string {
   const date = isoDate(today);
-  return text.replaceAll("{date}", date).replaceAll("{tomorrow}", addDays(date, 1));
+  const tomorrow = addDays(date, 1);
+  return text
+    .replaceAll("{date}", date)
+    .replaceAll("{tomorrow}", tomorrow)
+    .replaceAll("{current-week}", isoWeekOf(date))
+    .replaceAll("{tomorrow-week}", isoWeekOf(tomorrow));
 }
 
 function placementOf(written: string | undefined): Template["at"] {

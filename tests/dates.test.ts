@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { addDays, dateFilter, dateLabel, datesOf, inReaderZone, isOverdue, readTypedDate, readWrittenDate, weekdayOf } from "../src/dates";
+import { addDays, dateFilter, dateLabel, datesOf, inReaderZone, isOverdue, isoWeekOf, readTypedDate, readWrittenDate, weekdayOf } from "../src/dates";
 import { Item, ROOT } from "../src/model";
 import { renderInline } from "../src/inline";
 import { parseAmount } from "../src/properties";
@@ -39,6 +39,23 @@ describe("written dates", () => {
     expect(addDays("2026-10-24", 2)).toBe("2026-10-26");
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(weekdayOf(MONDAY)).toBe(0);
+  });
+});
+
+describe("ISO weeks", () => {
+  it.each([
+    ["2026-11-27", "2026-W48"],
+    ["2026-11-29", "2026-W48"],
+    ["2026-11-30", "2026-W49"],
+    ["2026-12-31", "2026-W53"],
+    ["2027-01-01", "2026-W53"],
+    ["2027-01-03", "2026-W53"],
+    ["2027-01-04", "2027-W01"],
+    ["2024-12-30", "2025-W01"],
+    ["2026-01-01", "2026-W01"],
+    ["2026-01-05", "2026-W02"],
+  ])("%s is in %s", (day, week) => {
+    expect(isoWeekOf(day)).toBe(week);
   });
 });
 

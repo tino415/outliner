@@ -209,3 +209,61 @@ describe("a template's children fill the page its target creates", () => {
     expect(subtreesAsText(result.doc, [result.target])).toMatch(/^- 2026-10-09\n {2}:view: board\n {2}- mood note\n {2}- Plan 2026-10-09/);
   });
 });
+
+describe("weeks in a target", () => {
+  const FRIDAY = new Date(2026, 10, 27);
+  const SATURDAY = new Date(2026, 10, 28);
+  const SUNDAY = new Date(2026, 10, 29);
+
+  function withTarget(target: string): Doc {
+    const doc = parseIndentedText("Day");
+    return setNote(doc, idOf(doc, "Day"), `:capture: ${target}`);
+  }
+
+  it("makes the week of today and the day under it for {current-week}/{date}", () => {
+    const doc = withTarget("Food/Journal/{current-week}/{date}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], FRIDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Food")])).toBe("- Food\n  - Journal\n    - 2026-W48\n      - 2026-11-27");
+  });
+
+  it("adds the next day under the same week and makes no second week", () => {
+    const doc = withTarget("Food/Journal/{current-week}/{date}");
+    const template = captureTemplates(doc)[0];
+    const friday = goToTarget(doc, template, FRIDAY).doc;
+    const result = goToTarget(friday, template, SATURDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Food")])).toBe("- Food\n  - Journal\n    - 2026-W48\n      - 2026-11-27\n      - 2026-11-28");
+  });
+
+  it("files tomorrow under tomorrow's week on a Sunday with {tomorrow-week}/{tomorrow}", () => {
+    const doc = withTarget("Plan/{tomorrow-week}/{tomorrow}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], SUNDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Plan")])).toBe("- Plan\n  - 2026-W49\n    - 2026-11-30");
+  });
+
+  it("files today under this week on a Sunday with {current-week}/{date}", () => {
+    const doc = withTarget("Plan/{current-week}/{date}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], SUNDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Plan")])).toBe("- Plan\n  - 2026-W48\n    - 2026-11-29");
+  });
+
+  it("replaces both weeks in the children a template copies onto a new page", () => {
+    let doc = parseIndentedText("Day\n  Week {current-week}, then {tomorrow-week}");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plan/{current-week}/{date}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], SUNDAY);
+    expect(subtreesAsText(result.doc, [result.target])).toBe("- 2026-11-29\n  - Week 2026-W48, then 2026-W49");
+  });
+
+  it("gives the week page it makes the day as its only child", () => {
+    let doc = parseIndentedText("Day\n  Breakfast\n  Lunch");
+    doc = setNote(doc, idOf(doc, "Day"), ":capture: Plan/{current-week}/{date}");
+    const result = goToTarget(doc, captureTemplates(doc)[0], FRIDAY);
+    const week = result.doc.items[idOf(result.doc, "2026-W48")];
+    expect(week.children).toEqual([result.target]);
+  });
+
+  it("captures into the day under its week", () => {
+    const doc = withTarget("Food/Journal/{current-week}/{date}");
+    const result = capture(doc, captureTemplates(doc)[0], "Oats", {}, FRIDAY);
+    expect(subtreesAsText(result.doc, [idOf(result.doc, "Food")])).toBe("- Food\n  - Journal\n    - 2026-W48\n      - 2026-11-27\n        - Oats");
+  });
+});
