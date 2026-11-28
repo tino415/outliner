@@ -80,3 +80,4 @@ file that says so.
 71. [A Checks: child types the properties under its parent](0071-a-checks-child-types-the-properties-under-its-parent.md) (extends 32)
 72. [An attached file is a child item, not a line in the note](0072-an-attached-file-is-a-child-item.md) (supersedes part of 28; amends 56)
 73. [An html attachment opens in a sandboxed frame](0073-an-html-attachment-opens-in-a-sandboxed-frame.md) (amends 72)
+74. [`{current-week}` in a capture target is the ISO week of today](0074-current-week-in-a-capture-target-is-the-iso-week-of-today.md) (extends 23, 62, 63; supersedes part of 62)

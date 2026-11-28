@@ -62,6 +62,13 @@ export function weekdayOf(day: Day): number {
   return (utc(day).getUTCDay() + 6) % 7;
 }
 
+export function isoWeekOf(day: Day): string {
+  const thursday = addDays(day, 3 - weekdayOf(day));
+  const year = thursday.slice(0, 4);
+  const week = Math.floor(daysBetween(`${year}-01-01`, thursday) / 7) + 1;
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
 function utc(day: Day): Date {
   const [year, month, date] = day.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, date));
