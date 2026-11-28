@@ -187,7 +187,7 @@ match first. Ctrl-K, Edit Insert lists of this page, zooms into the page's
 
 ## Boards
 
-Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children
+Ctrl-J B (or Board in the View row of the ⋯ menu) shows the page as a Kanban board: its children
 are the columns, theirs the cards (doc/adr/0031). It sets the page's `view`
 property to `board`, so the page is a board on every device and the CLI
 still sees an ordinary outline. Cards are edited in place like any item.
@@ -208,6 +208,22 @@ and column titles as on rows. The buttons add cards and columns
 ("+ Add a card" puts it first in a column with `:new: top`), and so does
 the thin line between two columns: click or tap it for an empty column
 there, with the caret in its name.
+
+## Tree view
+
+Tree in the View row of the ⋯ menu, or "Show this page as a tree" in the
+palette, draws the page sideways: the title at the left, each level of
+children to the right of its parent, joined by lines (doc/adr/0082). It sets
+the page's `view` property to `tree`; Outline in the View row clears it. The
+nodes are the outline's rows, so typing, Enter, Tab, Shift-Tab, folding and
+selection work as in the outline. A node shows its title, chips and up to
+three lines of its note, without columns. The round button at a node's right
+edge folds its branch and shows how many children it hides. The arrows go
+across the drawing: up and down in a level, left to the parent, right to the
+first child. Drag a bullet onto a node's upper or lower half to put the item
+before or after it, or onto its right third to make it the last child. The
+page scrolls both ways; on a phone a finger scrolls it and rows take no
+swipes.
 
 ## Kinds
 

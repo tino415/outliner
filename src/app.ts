@@ -7,7 +7,8 @@ import { onSaveFailed, onStorageNearlyFull } from "./stateStore";
 import { flushSave, loadDoc, loadPrefs, onDocChangedInAnotherTab, saveDocSoon } from "./storage";
 import { SearchResult } from "./search";
 import { welcomeDoc } from "./welcome";
-import { enableBulletHandles } from "./bullets";
+import { DropPlaces, enableBulletHandles, treeDrops } from "./bullets";
+import { sidewaysDrops, sidewaysShown } from "./sideways";
 import { bindEditorEvents, caretNow } from "./editing";
 import { leaveLinkToMissingItem, zoomFromHash, zoomTo } from "./navigation";
 import { FocusRequest, flashRow, isMirroredOnScreen, render, rowShowsTypedText } from "./render";
@@ -79,7 +80,7 @@ export function start(): void {
     },
     openMenu: openItemMenu,
   };
-  enableBulletHandles(ui.tree, bullets);
+  enableBulletHandles(ui.tree, bullets, dropsOfShownView(treeDrops(ui.tree)));
   enableBulletHandles(ui.board, bullets, boardDrops);
   enableRowSwipes(ui.tree);
   enableColumnScroll(ui.page, ui.columnsHead);
@@ -107,6 +108,15 @@ export function start(): void {
   onChangeHere(pluginsMayHaveChanged);
   bindCapture();
   captureFromAddress();
+}
+
+/** The tree's rows land by the outline's rules, or by the node's when the page is drawn as a tree. */
+function dropsOfShownView(outline: DropPlaces): DropPlaces {
+  const shown = () => (sidewaysShown() ? sidewaysDrops : outline);
+  return {
+    dropAt: (x, y, dragged, doc) => shown().dropAt(x, y, dragged, doc),
+    scrollToward: (x, y) => shown().scrollToward(x, y),
+  };
 }
 
 let dayShown = today();

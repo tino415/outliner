@@ -65,6 +65,7 @@ import { END, editorFor, focusCaret, itemElementFor, replayAnimation, rowShowsOp
 import { toast, toastWithUndo } from "./chrome";
 import { refreshAfterNoteEdit } from "./columns";
 import { boardShown, foldShows, isColumn, isCard, joinStaysInColumn, moveSideways, otherColumns, pageAbove } from "./board";
+import { Across, nodeAcross, nodesShownUnder, sidewaysShown } from "./sideways";
 
 const notesEdited = new Set<ItemId>();
 
@@ -610,6 +611,7 @@ export const actions = {
 
   arrowUp(c: EditorContext): boolean | void {
     if (c.inNote || !isCaretOnFirstLine(c.editor)) return false;
+    if (sidewaysShown()) return focusNodeAcross(c, "up");
     const previous = neighbourEditor(c.editor, -1);
     if (!previous) return false;
     focusAtX(previous, caretX(c.editor), "bottom");
@@ -617,6 +619,7 @@ export const actions = {
 
   arrowDown(c: EditorContext): boolean | void {
     if (c.inNote || !isCaretOnLastLine(c.editor)) return false;
+    if (sidewaysShown()) return focusNodeAcross(c, "down");
     const next = neighbourEditor(c.editor, 1);
     if (!next) return false;
     focusAtX(next, caretX(c.editor), "top");
@@ -654,6 +657,7 @@ export const actions = {
 
   arrowLeft(c: EditorContext): boolean | void {
     if (c.inNote || !c.atStart) return false;
+    if (sidewaysShown()) return focusNodeAcross(c, "left");
     const previous = neighbourEditor(c.editor, -1);
     if (!previous) return false;
     focusCaret({ id: previous.dataset.id!, offset: END });
@@ -661,6 +665,7 @@ export const actions = {
 
   arrowRight(c: EditorContext): boolean | void {
     if (c.inNote || !c.atEnd) return false;
+    if (sidewaysShown()) return focusNodeAcross(c, "right");
     const next = neighbourEditor(c.editor, 1);
     if (!next) return false;
     focusCaret(startOf(next.dataset.id!));
@@ -1135,6 +1140,16 @@ function neighbourEditor(editor: HTMLElement, direction: -1 | 1): HTMLElement | 
   const editors = ui.agenda.contains(editor) ? treeEditors() : [ui.title, ...treeEditors()];
   const textEditor = isNoteEditor(editor) ? (textEditorFor(editor.dataset.id!) ?? editor) : editor;
   return editors[editors.indexOf(textEditor) + direction] ?? null;
+}
+
+/** On a Tree page the arrows follow the drawing; with no node that way the key does nothing. */
+function focusNodeAcross(c: EditorContext, way: Across): void {
+  const next = nodeAcross(doc(), state.zoom, c.id, way, nodesShownUnder);
+  const editor = next && textEditorFor(next);
+  if (!editor) return;
+  if (way === "up") focusAtX(editor, caretX(c.editor), "bottom");
+  else if (way === "down") focusAtX(editor, caretX(c.editor), "top");
+  else focusCaret({ id: next, offset: way === "right" ? 0 : END });
 }
 
 function caretX(editor: HTMLElement): number {

@@ -267,10 +267,10 @@ test("on a board the help, the palette and the menu offer what works there, and 
   await page.locator("#help-close").click();
 
   await page.locator("#menu-button").click();
-  await expect(page.locator("#menu").getByText("Board", { exact: true })).toBeVisible();
+  await expect(page.locator("#view-choice").getByRole("radio", { name: "Board" })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("#menu").getByText("Columns", { exact: true })).toBeHidden();
   await expect(page.locator("#menu").getByText("Collapse all", { exact: true })).toBeVisible();
-  await page.locator("#menu").getByText("Board", { exact: true }).click();
+  await page.locator("#view-choice").getByRole("radio", { name: "Outline" }).click();
   await expect(page.locator("#tree")).toBeVisible();
   await expect(page.locator("#menu").getByText("Columns", { exact: true })).toBeVisible();
   await expect(page.locator("#menu").getByText("Collapse all", { exact: true })).toBeVisible();
@@ -537,7 +537,7 @@ test("Mod-J O lists the other columns, narrows as you type and sends the card wh
 test("Send to column is not offered in the outline or from the title", { tag: "@phone" }, async ({ page }) => {
   await openBoard(page, twoColumns);
   await page.locator("#menu-button").click();
-  await page.locator("#menu").getByText("Board", { exact: true }).click();
+  await page.locator("#view-choice").getByRole("radio", { name: "Outline" }).click();
   await page.keyboard.press("Escape");
   await row(page, "write").locator(".text").click();
   await page.keyboard.press("ControlOrMeta+j");

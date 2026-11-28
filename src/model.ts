@@ -653,6 +653,11 @@ export function isBoard(item: Item): boolean {
   return item.properties.view?.toLowerCase() === "board";
 }
 
+/** An item shown as a tree laid sideways: the title at the left, each level of children to the right of its parent. */
+export function isSidewaysTree(item: Item): boolean {
+  return item.properties.view?.toLowerCase() === "tree";
+}
+
 export function setCollapsed(doc: Doc, id: ItemId, collapsed: boolean): Doc {
   if (doc.items[id].collapsed === collapsed) return doc;
   return edit(doc, (d) => {

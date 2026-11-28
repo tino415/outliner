@@ -56,6 +56,14 @@
     </main>
 
     <div class="menu" id="menu" popover>
+      <div class="menu-section" id="view-section">
+        <div class="menu-label">View</div>
+        <div class="segmented" id="view-choice" role="radiogroup" aria-label="View">
+          <button type="button" data-view="tree" role="radio">Outline</button>
+          <button type="button" data-view="board" role="radio">Board</button>
+          <button type="button" data-view="sideways" role="radio">Tree</button>
+        </div>
+      </div>
       <div class="menu-section">
         <div class="menu-label">Theme</div>
         <div class="segmented" data-pref="theme" role="radiogroup" aria-label="Theme">
@@ -78,9 +86,6 @@
         </button>
         <button type="button" class="menu-item" data-action="toggle-columns" data-where="tree">
           <span>Columns</span><span class="switch" id="columns-switch" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="menu-item" data-action="toggle-board">
-          <span>Board</span><span class="switch" id="board-switch" aria-hidden="true"></span>
         </button>
         <button type="button" class="menu-item" data-action="expand-all"><span>Expand all</span></button>
         <button type="button" class="menu-item" data-action="collapse-all"><span>Collapse all</span></button>

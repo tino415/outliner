@@ -13,6 +13,7 @@ export const expectedSkips: { title: string; skippedIn: string[] }[] = [
   { title: "Mod+ArrowUp folds it to its file name and a reload keeps it folded", skippedIn: notChromium },
   { title: "a finger dragged sideways over a board card scrolls the board", skippedIn: ["desktop"] },
   { title: "sideways drags on scrolling columns", skippedIn: ["iphone"] },
+  { title: "a finger dragged sideways across a node scrolls the page and completes nothing", skippedIn: ["iphone"] },
 ];
 
 export default class SkipGate implements Reporter {

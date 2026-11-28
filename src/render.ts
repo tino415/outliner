@@ -22,6 +22,7 @@ import { queryViewShown, renderQueryView } from "./queryView";
 import { followShortcutSettings } from "./keys";
 import { isMirror, liveMirrorTarget, mirrorBulletTitle, mirrorTextHtml, mirroredChildrenHtml } from "./mirrors";
 import { fitColumns } from "./columnFit";
+import { placeSidewaysPage, sidewaysShown } from "./sideways";
 
 /** Caret offset meaning "the end of the text, whatever its length". */
 export const END = Number.POSITIVE_INFINITY;
@@ -48,11 +49,14 @@ export function render(request: FocusRequest): void {
   const queryView = !agenda && queryViewShown();
   const listing = agenda || queryView;
   const board = !listing && boardShown();
+  const sideways = !listing && !board && sidewaysShown();
   ui.agenda.hidden = !listing;
   ui.board.hidden = !board;
   ui.page.classList.toggle("with-agenda", agenda);
   ui.page.classList.toggle("with-query", queryView);
   ui.page.classList.toggle("with-board", board);
+  ui.page.classList.toggle("with-sideways", sideways);
+  ui.tree.classList.toggle("sideways", sideways);
   ui.page.classList.toggle("with-searching", board && Boolean(state.results));
   ui.tree.hidden = board || listing;
   if (agenda) renderAgenda();
@@ -66,6 +70,7 @@ export function render(request: FocusRequest): void {
   renderMenuState();
   highlightMatches();
   paintSelection();
+  placeSidewaysPage(sideways);
   const focus = candidates.find((candidate) => editorFor(candidate.id, candidate.inNote ? "note" : "text"));
   if (focus) focusCaret(focus);
   performance.measure("render", { start: started });
@@ -119,6 +124,7 @@ interface ColumnView {
 let columns: ColumnView | null = null;
 
 export function columnViewShown(): boolean {
+  if (sidewaysShown()) return false;
   const declared = declaredColumns(doc(), state.zoom);
   return state.prefs.columnPages[state.zoom] ?? declared !== null;
 }
@@ -249,7 +255,7 @@ function renderTree(): void {
   for (const id of renderedRows.keys()) if (!rowsSeen.has(id)) renderedRows.delete(id);
   ui.tree.classList.toggle("searching", Boolean(state.results));
   const isEmpty = top.length === 0;
-  ui.addItem.hidden = Boolean(state.results);
+  ui.addItem.hidden = Boolean(state.results) || (sidewaysShown() && !isEmpty);
   ui.addItem.classList.toggle("prominent", isEmpty);
 }
 
@@ -275,7 +281,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   const cells = cellsOf(id);
   const results = ownFormulaResults(id);
   const mirror = isMirror(doc(), id) ? mirrorTextHtml(doc(), id) + mirroredChildrenHtml(doc(), id, filter()) : null;
-  const foldedCount = hasChildren && !expanded && mirror === null ? countLabel(doc(), item.children) : "";
+  const foldedCount = hasChildren && !expanded && mirror === null ? foldedCountLabel(item, shown) : "";
   const breaking = problemsOfItem(doc(), id);
   const rowProblem = problemInCheckRow(doc(), id);
   const displayState = `${dayRendered} ${hasChildren} ${expanded} ${foldedCount} ${cells} ${[...results].map(([key, cell]) => `${key}=${cell.text}${cell.error ?? ""}`).join(" ")} ${mirror ?? ""} ${[...breaking].join("|")} ${rowProblem}`;
@@ -319,6 +325,11 @@ function renderItem(id: ItemId): HTMLLIElement {
     list?.remove();
   }
   return li;
+}
+
+/** A node of the tree view shows the count in its round fold button, which has room for a number only. */
+function foldedCountLabel(item: Item, shown: ItemId[]): string {
+  return sidewaysShown() ? String(shown.length) : countLabel(doc(), item.children);
 }
 
 function createItemElement(id: ItemId): HTMLLIElement {
