@@ -37,6 +37,7 @@ export const COMMAND_NAMES = [
   "kind",
   "link",
   "mirror",
+  "insert-from-list",
   "date",
   "attach",
   "make-private",
@@ -67,6 +68,7 @@ export const COMMAND_NAMES = [
   "open-bookmarks",
   "bookmark-page",
   "edit-checks",
+  "edit-insert-lists",
 ] as const;
 
 export type CommandName = (typeof COMMAND_NAMES)[number];

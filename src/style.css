@@ -1248,7 +1248,8 @@ code {
   color: light-dark(#b3261e, #ff8a80);
 }
 
-.item.checks > .row .text {
+.item.checks > .row .text,
+.item.settings-item > .row .text {
   color: var(--muted);
 }
 

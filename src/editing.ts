@@ -51,6 +51,7 @@ import { privateHolderOf, referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
 import { isChecksItem, problemWith, refusedInNote, startsAValidType, typePartOf } from "./checks";
 import { liveMirrorTarget, mirrorHere } from "./mirrors";
+import { InsertList, detailOf, ensureInsertLists, inSettings, insertListsFor, insertPick, listProblem, picksOf } from "./insertLists";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, noteListsToChildren, parseIndentedText } from "./transfer";
 import { MAX_TITLE_LENGTH, TITLE_COUNTER_FROM } from "./writingRules";
@@ -784,6 +785,11 @@ export const actions = {
     });
   }),
 
+  insertFromList(c: EditorContext): void {
+    if (c.inAgenda || queryViewShown()) return;
+    insertFromListOn(c.isTitle ? state.zoom : c.id);
+  },
+
   insertDate(c: EditorContext): void {
     pickDateAt(c, 0);
   },
@@ -898,6 +904,52 @@ function pickReference(c: EditorContext, typed: number): void {
       insertText(referenceTo(target.id, plainText(target.text)));
     },
   });
+}
+
+interface ListPick extends PaletteOption {
+  id: ItemId;
+}
+
+/** Opens the picker over the Insert lists above `at`; a pick adds under `at` what its list says. */
+export function insertFromListOn(at: ItemId): void {
+  const lists = insertListsFor(doc(), at);
+  if (!lists) return void toast("No Insert lists above this item");
+  if (refusedAsReadOnly([at], "children")) return;
+  const tabs = lists.map((list) => itemLabel(list.title, 40));
+  const listIn = (mode: string) => lists[Math.max(0, tabs.indexOf(mode))];
+  const label = itemLabel(doc().items[at].text, 30);
+  openPalette<ListPick>({
+    placeholder: `Insert under “${label}”…`,
+    hint: (mode) => insertHint(listIn(mode), label),
+    modes: lists.length > 1 ? tabs : undefined,
+    empty: (mode) => listProblem(listIn(mode)) ?? "Nothing found",
+    candidates: (typed, mode) => {
+      const list = listIn(mode);
+      return picksOf(doc(), list, at, typed).map((id) => ({ id, text: doc().items[id].text, path: [], detail: detailOf(doc(), list, id) }));
+    },
+    choose: (pick, mode) => {
+      const { how } = listIn(mode);
+      if ("problem" in how) return;
+      const added = insertPick(doc(), how, at, pick.id, plainText);
+      if (added) commitAndRender(added.doc, startOf(added.id));
+      else toast(`Nothing in “${itemLabel(pick.text, 30)}” to copy`);
+    },
+  });
+}
+
+function insertHint({ how }: InsertList, label: string): string {
+  if ("problem" in how) return "";
+  if (how.kind === "link") return `Adds a line under “${label}” that links it`;
+  if (how.kind === "copy") return `Adds a copy under “${label}”, with everything in it`;
+  return `Adds copies of what is in it under “${label}”`;
+}
+
+/** Zooms into the page's `_settings` > `Insert`, making them when missing. */
+export function editInsertListsOfPage(): void {
+  if (inSettings(doc(), state.zoom)) return;
+  const lists = ensureInsertLists(doc(), state.zoom);
+  if (lists.doc !== doc()) commitAndRender(lists.doc, null);
+  zoomTo(lists.id);
 }
 
 function startsAWord(before: string): boolean {

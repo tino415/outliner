@@ -7,7 +7,8 @@ import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlo
 import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
-import { EditorContext, actions, caretNow, editorContext, editorOf, sendToColumn } from "./editing";
+import { EditorContext, actions, caretNow, editorContext, editorOf, insertFromListOn, sendToColumn } from "./editing";
+import { insertListsFor } from "./insertLists";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
 import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
@@ -96,7 +97,7 @@ function paletteCommands(): Command[] {
   return [...keyCommands(editing), ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "insert","toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -269,6 +270,10 @@ const menuActions: Record<string, () => void> = {
     ui.menu.hidePopover();
     openCapture();
   },
+  insert: () => {
+    ui.menu.hidePopover();
+    insertFromListOn(state.zoom);
+  },
   "bookmark-page": () => {
     ui.menu.hidePopover();
     bookmarkThisPage();
@@ -438,6 +443,7 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   const holdsFolds = !state.results && (foldShows(id) || isColumn(id)) && foldableInside(doc(), id).length > 0;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action$="-inside"]')) entry.hidden = !holdsFolds;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action^="column-"]')) entry.hidden = !isCard(id);
+  menu.querySelector<HTMLElement>('[data-item-action="insert"]')!.hidden = insertListsFor(doc(), id) === null;
   fillSendToColumns(menu, id);
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
@@ -465,6 +471,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   "expand-inside": (c) => actions.expandInside(c),
   note: (c) => actions.toggleNote(c),
   complete: (c) => actions.complete(c),
+  insert: (c) => insertFromListOn(c.id),
   duplicate: (c) => actions.duplicate(c),
   move: (c) => actions.moveToPicker(c),
   "column-right": (c) => moveSideways(c.id, 1, caretNow()),
@@ -480,7 +487,7 @@ const itemActions: Record<string, (c: EditorContext) => void> = {
   delete: (c) => actions.deleteItem(c),
 };
 
-const itemActionsThatType = new Set(["note", "move", "property"]);
+const itemActionsThatType = new Set(["note", "move", "property", "insert"]);
 
 function bindItemMenu(): void {
   $("item-menu").addEventListener("click", (event) => {
@@ -516,6 +523,7 @@ export function renderMenuState(): void {
     }
   }
   ui.menu.querySelector<HTMLElement>('[data-action="copy-link"]')!.hidden = state.zoom === ROOT;
+  ui.menu.querySelector<HTMLElement>('[data-action="insert"]')!.hidden = insertListsFor(doc(), state.zoom) === null;
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
   $("board-switch").classList.toggle("on", boardShown());
