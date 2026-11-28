@@ -37,8 +37,8 @@ Ctrl-K (⌘K on a Mac) searches items and commands at once, each command
 with its keys; Tab narrows it to Items or Commands, and Ctrl-Shift-K opens
 it on Commands. Ctrl-J (⌘J) is a prefix, as C-x in Emacs: then T tag,
 P property, K kind, L link, R mirror, ; date, A attach, X private, M move to,
-D duplicate, B board, G agenda, C columns, N capture, W go to a capture target, Y copy a link, and J again to jump
-to an item. Pausing after it shows what can follow; ? lists every shortcut.
+D duplicate, B board, G agenda, C columns, N capture, W go to a capture target, Y copy a link, U the path of the page,
+and J again to jump to an item. Pausing after it shows what can follow; ? lists every shortcut.
 Item pickers (jump, Move to, Mirror, Link to) match paths written with
 slashes, as `ID/IEx` for `PayoutID > IEx` (doc/adr/0064).
 Alt-Shift with a letter is left to typing, as many layouts need it.
@@ -52,6 +52,10 @@ Ctrl-. folds the item; Ctrl-Shift-. collapses everything inside it, or
 expands it all once nothing inside is open, as the item menu's Collapse
 everything inside and Expand everything inside do (doc/adr/0054). On a
 board it works on a card, and on a column's cards.
+
+The breadcrumbs keep Home and the nearest levels that fit, the parent
+first; the rest go behind a button that opens the whole path, as Ctrl-J U
+does (doc/adr/0082). Ctrl-[ zooms out to the parent page.
 
 Shortcuts can be changed in the outline (doc/adr/0040), so the change
 reaches every device. Give any item the property `shortcuts: on`; each

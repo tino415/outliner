@@ -93,6 +93,16 @@ describe("the Ctrl-J prefix", () => {
   });
 });
 
+describe("the path of the page", () => {
+  it("shows the path on Mod+j u", () => {
+    expect(bindingForKeys("Mod+j u", "global")?.name).toBe("show-path");
+  });
+
+  it("offers Zoom out as a command with no item being edited", () => {
+    expect(keyCommands(null).map((command) => command.label)).toContain("Zoom out");
+  });
+});
+
 describe("bookmark keys", () => {
   it("opens bookmark 1..9 on the prefix and a digit, and the list on 0", () => {
     expect(extendSequence("Mod+j", press({ key: "3" }))).toBe("Mod+j 3");

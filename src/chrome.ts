@@ -20,6 +20,7 @@ import { bindAgenda, openAgenda } from "./agenda";
 import { bookmarkThisPage, openBookmarkList } from "./bookmarking";
 import { bindPropertyChips } from "./propertyPicker";
 import { bindAddMenu } from "./addMenu";
+import { bindCrumbs, showPath } from "./crumbs";
 import { bindPrivateKeys, openPrivateKeys } from "./privateItems";
 import { bindPlugins, openPlugins, pluginCommands, pluginTarget } from "./pluginHost";
 
@@ -35,6 +36,7 @@ export function bindChrome(): void {
   bindAgenda();
   bindPropertyChips();
   bindAddMenu();
+  bindCrumbs();
 
   window.addEventListener("hashchange", showZoomOfNewHash);
   window.addEventListener("scroll", () => document.body.classList.toggle("scrolled", window.scrollY > 4), { passive: true });
@@ -83,6 +85,7 @@ export const globalActions = {
   zoomOut: () => {
     if (state.zoom !== ROOT) zoomTo(pageAbove(state.zoom));
   },
+  showPath: () => showPath(),
 };
 
 function showHelp(): void {

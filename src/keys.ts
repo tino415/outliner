@@ -200,7 +200,8 @@ const defaultBindings: Binding[] = [
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),
   global(undefined, ["Enter", "ArrowDown"], "Start editing", "onPage", () => globalActions.startEditing(), true),
-  global("zoom-out", ["Ctrl+["], "Zoom out", "outsideFields", () => globalActions.zoomOut(), true),
+  global("zoom-out", ["Ctrl+["], "Zoom out", "outsideFields", () => globalActions.zoomOut()),
+  global("show-path", ["Mod+j u"], "Show the path", "anywhere", () => globalActions.showPath()),
 ];
 
 let bindings: Binding[] = defaultBindings;
@@ -402,7 +403,7 @@ function describeCommands(): string {
   for (const binding of bindingsHere().filter((binding) => !binding.hidden && binding.label && (binding.name || usableKeys(binding).length))) {
     const row = shown.get(binding.label) ?? { name: binding.name, keys: [] };
     row.name ??= binding.name;
-    row.keys.push(...usableKeys(binding));
+    row.keys.push(...usableKeys(binding).filter((keys) => !row.keys.includes(keys)));
     shown.set(binding.label, row);
   }
   return [...shown].map(([label, { name, keys }]) => `<div class="help-label">${escape(label)}${name ? nameAndLostKeys(name) : ""}</div><div class="help-keys">${keysShown(keys)}</div>`).join("");
