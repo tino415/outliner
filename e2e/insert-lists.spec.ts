@@ -103,6 +103,17 @@ test("Ctrl-J I I on Breakfast opens the picker, and Enter adds the first match",
   await expect(page.locator(":focus")).toHaveText("Rye bread, 2 slices");
 });
 
+test("two lists with one title get tabs told apart", async ({ page }) => {
+  await freshOutline(page, food.replace("Earlier days", "Foods"));
+  await clickEnd(page, "Breakfast");
+  await page.keyboard.press("ControlOrMeta+j");
+  await page.keyboard.press("i");
+  await page.keyboard.press("i");
+  await expect(page.locator("#palette .palette-modes button")).toHaveText(["Foods", "Foods 2"]);
+  await page.locator("#palette .palette-modes button", { hasText: "Foods 2" }).click();
+  await expect(page.locator("#palette .palette-hint")).toHaveText("Adds copies of what is in it under “Breakfast”");
+});
+
 test("a list with no query keeps its tab and says so", async ({ page }) => {
   await freshOutline(page, food.replace(":query: under:\"Food/Journal\" -has:grams; ", ""));
   await clickEnd(page, "Breakfast");

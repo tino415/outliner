@@ -51,6 +51,7 @@ import { privateHolderOf, referenceTo, resolveReference } from "./references";
 import { isInCode } from "./notes";
 import { isChecksItem, problemWith, refusedInNote, startsAValidType, typePartOf } from "./checks";
 import { liveMirrorTarget, mirrorHere } from "./mirrors";
+import { agendaShown } from "./agenda";
 import { InsertList, detailOf, ensureInsertLists, inSettings, insertListsFor, insertPick, listProblem, picksOf } from "./insertLists";
 import { isCaretOnFirstLine, isCaretOnLastLine, caretRect, offsetAtPoint, select, selectionIn } from "./caret";
 import { graft, noteListsToChildren, parseIndentedText } from "./transfer";
@@ -786,8 +787,7 @@ export const actions = {
   }),
 
   insertFromList(c: EditorContext): void {
-    if (c.inAgenda || queryViewShown()) return;
-    insertFromListOn(c.isTitle ? state.zoom : c.id);
+    if (!c.inAgenda) insertFromListOn(c.isTitle ? state.zoom : c.id);
   },
 
   insertDate(c: EditorContext): void {
@@ -910,12 +910,22 @@ interface ListPick extends PaletteOption {
   id: ItemId;
 }
 
+/** The agenda and a query view show items from all over, where what is added under one would not show. */
+function showsItemsFromAllOver(): boolean {
+  return agendaShown() || queryViewShown();
+}
+
+export function canInsertFromList(at: ItemId): boolean {
+  return !showsItemsFromAllOver() && insertListsFor(doc(), at) !== null;
+}
+
 /** Opens the picker over the Insert lists above `at`; a pick adds under `at` what its list says. */
 export function insertFromListOn(at: ItemId): void {
+  if (showsItemsFromAllOver()) return;
   const lists = insertListsFor(doc(), at);
   if (!lists) return void toast("No Insert lists above this item");
   if (refusedAsReadOnly([at], "children")) return;
-  const tabs = lists.map((list) => itemLabel(list.title, 40));
+  const tabs = distinct(lists.map((list) => itemLabel(list.title, 40)));
   const listIn = (mode: string) => lists[Math.max(0, tabs.indexOf(mode))];
   const label = itemLabel(doc().items[at].text, 30);
   openPalette<ListPick>({
@@ -944,9 +954,17 @@ function insertHint({ how }: InsertList, label: string): string {
   return `Adds copies of what is in it under “${label}”`;
 }
 
+/** Tab labels a tab can be told apart by: a second "Foods" becomes "Foods 2". */
+function distinct(labels: string[]): string[] {
+  return labels.map((label, index) => {
+    const before = labels.slice(0, index).filter((other) => other === label).length;
+    return before === 0 ? label : `${label} ${before + 1}`;
+  });
+}
+
 /** Zooms into the page's `_settings` > `Insert`, making them when missing. */
 export function editInsertListsOfPage(): void {
-  if (inSettings(doc(), state.zoom)) return;
+  if (inSettings(doc(), state.zoom) || refusedAsReadOnly([state.zoom], "children")) return;
   const lists = ensureInsertLists(doc(), state.zoom);
   if (lists.doc !== doc()) commitAndRender(lists.doc, null);
   zoomTo(lists.id);

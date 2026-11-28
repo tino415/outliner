@@ -7,8 +7,7 @@ import { Command, Reach, bindingFor, bindingForKeys, describeKeys, isModifierAlo
 import { PREFIX } from "./shortcuts";
 import { isMac } from "./platform";
 import { $, commitAndRender, doc, redo, state, ui, undo } from "./app";
-import { EditorContext, actions, caretNow, editorContext, editorOf, insertFromListOn, sendToColumn } from "./editing";
-import { insertListsFor } from "./insertLists";
+import { EditorContext, actions, canInsertFromList, caretNow, editorContext, editorOf, insertFromListOn, sendToColumn } from "./editing";
 import { clearSelection, copyItems, deleteItems, endSelectionWhenSomethingTakesFocus } from "./selection";
 import { copyLink, copyLinkToPage } from "./links";
 import { searchEverything, setQuery, showZoomOfNewHash, zoomTo } from "./navigation";
@@ -94,10 +93,12 @@ function showHelp(): void {
 function paletteCommands(): Command[] {
   const editor = editorOf(document.activeElement);
   const editing = editor ? editorContext(editor) : null;
-  return [...keyCommands(editing), ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands()];
+  const keyed = keyCommands(editing);
+  const labels = new Set(keyed.map((command) => command.label));
+  return [...keyed, ...goToTargetCommands(), ...pluginCommands(pluginTarget(editing?.id ?? null)), ...menuCommands().filter((command) => !labels.has(command.label))];
 }
 
-const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "insert","toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
+const menuEntriesWithShortcuts = new Set(["jump", "agenda", "capture", "toggle-completed", "toggle-columns", "toggle-board", "copy-link", "bookmark-page", "open-bookmarks", "help"]);
 
 function menuCommands(): Command[] {
   return [...ui.menu.querySelectorAll<HTMLElement>(".menu-item[data-action]")]
@@ -443,7 +444,7 @@ export function openItemMenu(id: ItemId, anchor: HTMLElement, byTouch: boolean):
   const holdsFolds = !state.results && (foldShows(id) || isColumn(id)) && foldableInside(doc(), id).length > 0;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action$="-inside"]')) entry.hidden = !holdsFolds;
   for (const entry of menu.querySelectorAll<HTMLElement>('[data-item-action^="column-"]')) entry.hidden = !isCard(id);
-  menu.querySelector<HTMLElement>('[data-item-action="insert"]')!.hidden = insertListsFor(doc(), id) === null;
+  menu.querySelector<HTMLElement>('[data-item-action="insert"]')!.hidden = !canInsertFromList(id);
   fillSendToColumns(menu, id);
   menu.showPopover();
   const rect = anchor.getBoundingClientRect();
@@ -523,7 +524,7 @@ export function renderMenuState(): void {
     }
   }
   ui.menu.querySelector<HTMLElement>('[data-action="copy-link"]')!.hidden = state.zoom === ROOT;
-  ui.menu.querySelector<HTMLElement>('[data-action="insert"]')!.hidden = insertListsFor(doc(), state.zoom) === null;
+  ui.menu.querySelector<HTMLElement>('[data-action="insert"]')!.hidden = !canInsertFromList(state.zoom);
   ui.completedSwitch.classList.toggle("on", state.prefs.showCompleted);
   $("columns-switch").classList.toggle("on", columnViewShown());
   $("board-switch").classList.toggle("on", boardShown());

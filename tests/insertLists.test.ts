@@ -61,6 +61,11 @@ describe("readInsert", () => {
     expect(readInsert("copy contents, last first")).toEqual({ kind: "contents", lastFirst: true });
   });
 
+  it("refuses a link into a key that sets up the line", () => {
+    expect(readInsert("link into private")).toEqual({ problem: NOT_READ });
+    expect(readInsert("link into food with query")).toEqual({ problem: NOT_READ });
+  });
+
   it("gives the problem text for anything else", () => {
     expect(readInsert("mirror")).toEqual({ problem: NOT_READ });
     expect(NOT_READ).toBe("insert is not “link into KEY”, “copy” or “copy contents”");
@@ -75,6 +80,12 @@ describe("insertListsFor", () => {
     outline.add(insert, "Recent", { query: "#recent", insert: "copy" });
     expect(listsAt(outline.doc, breakfast).map((list) => list.title)).toEqual(["Recent"]);
     expect(listsAt(outline.doc, day).map((list) => list.title)).toEqual(["Recent"]);
+  });
+
+  it("looks past an Insert that lists nothing", () => {
+    const { outline, day, breakfast } = food();
+    outline.doc = ensureInsertLists(outline.doc, day).doc;
+    expect(listsAt(outline.doc, breakfast).map((list) => list.title)).toEqual(["Foods", "Earlier days"]);
   });
 
   it("gives an item outside Food none", () => {
@@ -143,6 +154,15 @@ describe("picksOf", () => {
     outline.add(secret, "Hidden stew", { grams: "300" });
     const [foods] = listsAt(outline.doc, breakfast);
     expect(picksOf(outline.doc, foods, breakfast, "stew")).toEqual([]);
+  });
+
+  it("leaves out a private item whose values a line would start from", () => {
+    const { outline, database, breakfast } = food();
+    const secret = outline.add(database, "Secret stew", { private: "home", grams: "300" });
+    outline.add(secret, "Beans", { grams: "300" });
+    const [foods] = listsAt(outline.doc, breakfast);
+    expect(picksOf(outline.doc, foods, breakfast, "stew")).toEqual([]);
+    expect(picksOf(outline.doc, { ...foods, how: readInsert("copy") }, breakfast, "stew")).toEqual([secret]);
   });
 });
 

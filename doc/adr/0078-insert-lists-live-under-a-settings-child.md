@@ -24,9 +24,10 @@ a line under an item from a set of candidates the outline itself defines.
 - A list is a child of `Insert`, titled as its tab, with a `query` over the
   whole outline, completed items included, and an `insert`: `link into KEY`,
   `link into KEY with KEY KEY`, `copy` or `copy contents`, each maybe followed
-  by `, last first`. `insert` is a setting property: muted, never a column.
-- The lists of the nearest item at or above with `_settings` > `Insert` apply;
-  lists set further up are not added to them.
+  by `, last first`. A KEY may not be a setting such as `private` or `query`.
+  `insert` is a setting property: muted, never a column.
+- The lists of the nearest item at or above whose `_settings` > `Insert` lists
+  any apply; lists set further up are not added to them.
 - Insert from a list… opens the palette with a tab per list. A row shows its
   parent's title, a date as its chip, then each `with` key and each declared
   column as the column view shows them. The item Insert runs on, the items

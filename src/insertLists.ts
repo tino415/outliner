@@ -1,4 +1,4 @@
-import { Doc, Item, ItemId, ROOT, ancestors, appendChild, copyUnder, insertChild, isDescendant, isPrivateItem, newChildIndex, privateRootAbove, setCollapsed, setItemProperty } from "./model";
+import { Doc, Item, ItemId, ROOT, SETTINGS, ancestors, appendChild, copyUnder, insertChild, isDescendant, isPrivateItem, newChildIndex, privateRootAbove, setCollapsed, setItemProperty } from "./model";
 import { isSealed, propertyKey } from "./notes";
 import { parseQuery, queryMatches } from "./query";
 import { Column, cellsUnder, declaredColumns, formulaIn } from "./properties";
@@ -39,14 +39,13 @@ export function inSettings(doc: Doc, id: ItemId): boolean {
   return [...ancestors(doc, id), id].some((each) => isSettingsItem(doc.items[each]));
 }
 
-/** The lists of the nearest `_settings` > `Insert` at or above `id`; null when there is none, or it lists nothing. */
+/** The lists of the nearest `_settings` > `Insert` at or above `id` that lists any; null when none does. */
 export function insertListsFor(doc: Doc, id: ItemId): InsertList[] | null {
   if (!doc.items[id]) return null;
   for (const holder of [id, ...ancestors(doc, id).reverse()]) {
     const insert = insertItemOf(doc, holder);
-    if (insert === null) continue;
-    const lists = doc.items[insert].children.map((list) => readList(doc.items[list]));
-    return lists.length > 0 ? lists : null;
+    const lists = insert === null ? [] : doc.items[insert].children.map((list) => readList(doc.items[list]));
+    if (lists.length > 0) return lists;
   }
   return null;
 }
@@ -76,11 +75,15 @@ function formOf(words: string[]): InsertForm | null {
   if (words.join(" ") === "copy") return { kind: "copy" };
   if (words.join(" ") === "copy contents") return { kind: "contents" };
   const [link, into, key, withWord, ...withKeys] = words;
-  if (link !== "link" || into !== "into" || !key || !propertyKey(key)) return null;
+  if (link !== "link" || into !== "into" || !isValueKey(key)) return null;
   if (withWord === undefined) return { kind: "link", into: key, with: [] };
-  const keys = withKeys.map(propertyKey);
-  if (withWord !== "with" || keys.length === 0 || keys.some((each) => each === null)) return null;
-  return { kind: "link", into: key, with: keys as string[] };
+  if (withWord !== "with" || withKeys.length === 0 || !withKeys.every(isValueKey)) return null;
+  return { kind: "link", into: key, with: withKeys };
+}
+
+/** A key a line may hold a value in: a setting such as `private` or `query` would change what the line is. */
+function isValueKey(key: string | undefined): key is string {
+  return key !== undefined && propertyKey(key) === key && !SETTINGS.has(key) && key !== "query";
 }
 
 /** Why the list offers nothing, shown in place of its rows; null when it reads. */
@@ -109,9 +112,13 @@ export function picksOf(doc: Doc, list: InsertList, at: ItemId, typed: string): 
   return (how.lastFirst ? offered.reverse() : offered).slice(0, MOST_PICKS);
 }
 
-/** What is under a private item is sealed on the way to the server; a pick may not carry it out in plain. */
+/**
+ * What is under a private item is sealed on the way to the server; a pick may
+ * not carry it out in plain. A copy of a private item stays private, but a
+ * line's values or the copies of its contents would not.
+ */
 function takesOutOfPrivate(doc: Doc, pick: ItemId, at: ItemId, how: InsertHow): boolean {
-  const holder = how.kind === "contents" && isPrivateItem(doc, pick) ? pick : privateRootAbove(doc, pick);
+  const holder = how.kind !== "copy" && isPrivateItem(doc, pick) ? pick : privateRootAbove(doc, pick);
   return holder !== null && at !== holder && !isDescendant(doc, at, holder);
 }
 
@@ -198,12 +205,13 @@ function isSealedItem(item: Item): boolean {
 
 // ---- editing the lists --------------------------------------------------------------------
 
-/** The page's `_settings` > `Insert`, made when missing. */
+/** The page's `_settings` > `Insert`, made when missing; refused, it answers with the page. */
 export function ensureInsertLists(doc: Doc, page: ItemId): { doc: Doc; id: ItemId } {
   const present = insertItemOf(doc, page);
   if (present !== null) return { doc, id: present };
   const settings = settingsItemOf(doc, page);
-  const holder = settings === null ? appendChild(doc, page, SETTINGS_TITLE) : { doc, id: settings };
-  const collapsed = settings === null ? setCollapsed(holder.doc, holder.id, true) : holder.doc;
-  return appendChild(collapsed, holder.id, INSERT_TITLE);
+  if (settings !== null) return appendChild(doc, settings, INSERT_TITLE);
+  const made = appendChild(doc, page, SETTINGS_TITLE);
+  if (made.id === page) return { doc, id: page };
+  return appendChild(setCollapsed(made.doc, made.id, true), made.id, INSERT_TITLE);
 }

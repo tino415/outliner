@@ -1,9 +1,8 @@
 import { commitAndRender, doc } from "./app";
 import { ItemId, insertShownChild, newChildIndex } from "./model";
 import { refusedAsReadOnly } from "./bookmarking";
-import { attachFilesTo, insertFromListOn, pickFiles } from "./editing";
+import { attachFilesTo, canInsertFromList, insertFromListOn, pickFiles } from "./editing";
 import { chooseProperty, chooseTag } from "./propertyPicker";
-import { insertListsFor } from "./insertLists";
 
 const menu = () => document.getElementById("add-menu")!;
 
@@ -45,7 +44,7 @@ export function bindAddMenu(): void {
 
 function openAddMenu(id: ItemId, anchor: HTMLElement): void {
   menuItem = id;
-  menu().querySelector<HTMLElement>('[data-add-action="list"]')!.hidden = insertListsFor(doc(), id) === null;
+  menu().querySelector<HTMLElement>('[data-add-action="list"]')!.hidden = !canInsertFromList(id);
   menu().showPopover();
   const rect = anchor.getBoundingClientRect();
   const height = menu().offsetHeight;
