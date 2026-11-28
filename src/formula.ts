@@ -73,6 +73,8 @@ export function parseFormula(source: string): Formula {
     const [first, second] = token.toLowerCase().split(".");
     if (second === undefined) return { kind: "value", of: "self", key: first };
     if (first === "parent" || first === "previous") return { kind: "value", of: first, key: second };
+    const meant = POSITIONS.find((position) => isOneSlipFrom(first, position));
+    if (meant) throw new FormulaError(`${first} looks like ${meant}: write ${meant}.${second}`);
     return { kind: "value", of: { link: first }, key: second };
   };
   const call = (name: string): Formula => {
@@ -87,6 +89,18 @@ export function parseFormula(source: string): Formula {
   const formula = sum();
   if (at < tokens.length) throw new FormulaError(`unexpected ${peek()}`);
   return formula;
+}
+
+const POSITIONS = ["parent", "previous"] as const;
+
+/** One letter added, dropped or changed, or two neighbours swapped. */
+function isOneSlipFrom(typed: string, name: string): boolean {
+  if (typed === name || Math.abs(typed.length - name.length) > 1) return false;
+  let start = 0;
+  while (typed[start] === name[start]) start++;
+  const [rest, wanted] = [typed.slice(start), name.slice(start)];
+  const swapped = rest[0] === wanted[1] && rest[1] === wanted[0] && rest.slice(2) === wanted.slice(2);
+  return rest.slice(1) === wanted.slice(1) || rest.slice(1) === wanted || rest === wanted.slice(1) || swapped;
 }
 
 function keyArgument(token: string | undefined): string {

@@ -271,6 +271,24 @@ describe("parsing formulas", () => {
   );
 
   it.each(["a +", "sum(1h)", "nope(a)", "food.food.kcal", "(a", "a b"])("refuses %s", (source) => expect(() => parseFormula(source)).toThrow(FormulaError));
+
+  it.each([
+    ["parnet.start", "parnet looks like parent: write parent.start"],
+    ["parents.start", "parents looks like parent: write parent.start"],
+    ["prevous.end", "prevous looks like previous: write previous.end"],
+    ["pervious.end", "pervious looks like previous: write previous.end"],
+  ])("warns that %s is a slip of parent or previous", (source, warning) => expect(() => parseFormula(source)).toThrow(new FormulaError(warning)));
+
+  it.each(["food.kcal", "parcel.grams", "prev.end"])("reads %s as a link property", (source) => expect(parseFormula(source)).toMatchObject({ kind: "value", of: { link: source.split(".")[0] } }));
+});
+
+describe("a slip of parent in a column", () => {
+  it("shows the warning in every row instead of empty cells", () => {
+    const doc = outline("Day | :start: 9:00; :columns: begin{=parnet.start}\n  Task");
+    const top = idOf(doc, "Day");
+    const cell = columnCells(doc, top, declaredColumns(doc, top)!).get(idOf(doc, "Task"))!.get("begin")!;
+    expect(cell).toMatchObject({ text: "error", error: "parnet looks like parent: write parent.start" });
+  });
 });
 
 describe("a formula as an item's own value", () => {
