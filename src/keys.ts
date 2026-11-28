@@ -1,4 +1,4 @@
-import { EditorContext, actions } from "./editing";
+import { EditorContext, actions, editInsertListsOfPage } from "./editing";
 import { selectionActions } from "./selection";
 import { globalActions } from "./chrome";
 import { escape } from "./inline";
@@ -138,6 +138,7 @@ const defaultBindings: Binding[] = [
   editor("kind", ["Mod+j k"], "Set the kind (Question:, Needs you: …)", (c) => actions.setKind(c)),
   editor("link", ["Mod+j l"], "Link to an item", (c) => actions.insertReference(c)),
   editor("mirror", ["Mod+j r"], "Mirror here", (c) => actions.mirrorHere(c)),
+  editor("insert-from-list", ["Mod+j i i"], "Insert from a list…", (c) => actions.insertFromList(c)),
   { ...editor("date", ["Mod+j i d"], "Insert a date…", (c) => actions.insertDate(c)), typed: "!!" },
   editor("attach", ["Mod+j a"], "Attach a file…", (c) => actions.attachFile(c)),
   editor("make-private", ["Mod+j x"], "Make private…", (c) => actions.makePrivate(c)),
@@ -194,6 +195,7 @@ const defaultBindings: Binding[] = [
   global("open-bookmarks", ["Mod+j 0"], "Open Bookmarks", "anywhere", () => openBookmarkList()),
   global("bookmark-page", [], "Bookmark this page", "anywhere", () => bookmarkThisPage()),
   global("edit-checks", [], "Edit checks of this page", "anywhere", () => editChecksOfPage()),
+  global("edit-insert-lists", [], "Edit Insert lists of this page", "anywhere", () => editInsertListsOfPage()),
   global("undo", ["Mod+z"], "Undo", "outsideFields", () => globalActions.undo(), true),
   global("redo", ["Mod+Shift+z", "Mod+y"], "Redo", "outsideFields", () => globalActions.redo(), true),
   global(undefined, ["Escape"], "Clear search", "outsideFields", () => globalActions.clearSearch(), true),

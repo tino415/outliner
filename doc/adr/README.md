@@ -84,3 +84,4 @@ file that says so.
 75. [A formula reads the item a link property points to](0075-a-formula-reads-the-item-a-link-property-points-to.md) (supersedes part of 22; extends 57)
 76. [An asked property of a capture template takes a default value](0076-an-asked-property-of-a-capture-template-takes-a-default-value.md) (extends 23)
 77. [A computed column may roll up and round](0077-a-computed-column-may-roll-up-and-round.md) (extends 22)
+78. [Insert lists live under a \_settings child](0078-insert-lists-live-under-a-settings-child.md) (extends 44 and 71)

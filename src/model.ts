@@ -552,7 +552,7 @@ export function setNote(doc: Doc, id: ItemId, note: string): Doc {
 // ---- properties (doc/adr/0032) ---------------------------------------------------------
 
 /** Properties that set up the app rather than describe the item: shown muted, never offered as columns. */
-export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved", "shortcuts", "mirror", "link-base"]);
+export const SETTINGS = new Set(["columns", "capture", "ask", "key", "at", "completed", "new", "view", "private", "plugin", "approved", "shortcuts", "mirror", "link-base", "insert"]);
 
 /** Sets `key` to `value` on the item; an empty value removes it, and a key the sync server would refuse changes nothing. */
 export function setItemProperty(doc: Doc, id: ItemId, key: string, value: string): Doc {
@@ -806,18 +806,23 @@ export function moveTo(doc: Doc, id: ItemId, parent: ItemId, index: number): Doc
 
 export function duplicate(doc: Doc, id: ItemId): { doc: Doc; id: ItemId } {
   const parent = doc.items[id].parent;
-  if (isKept(id) || (parent && isReadOnly(parent, "children"))) return { doc, id };
+  if (isKept(id) || !parent || isReadOnly(parent, "children")) return { doc, id };
+  return copyUnder(doc, id, parent, indexInParent(doc, id) + 1);
+}
+
+/** A copy of `source` and everything under it at `index` among `parent`'s children, leaving out the items `leftOut` names; refused, it answers with `parent`. */
+export function copyUnder(doc: Doc, source: ItemId, parent: ItemId, index: number, leftOut: (item: Item) => boolean = () => false): { doc: Doc; id: ItemId } {
+  if (isReadOnly(parent, "children")) return { doc, id: parent };
   let copyId = "";
   const next = edit(doc, (d) => {
     const copy = (sourceId: ItemId, parent: ItemId, index: number): ItemId => {
-      const source = d.read(sourceId);
-      const created = d.create(parent, index, source.text);
-      Object.assign(created, { note: source.note, properties: source.properties, completed: source.completed, collapsed: source.collapsed });
-      source.children.forEach((child, i) => copy(child, created.id, i));
+      const original = d.read(sourceId);
+      const created = d.create(parent, index, original.text);
+      Object.assign(created, { note: original.note, properties: original.properties, completed: original.completed, collapsed: original.collapsed });
+      original.children.filter((child) => !leftOut(d.read(child))).forEach((child, i) => copy(child, created.id, i));
       return created.id;
     };
-    const original = d.read(id);
-    copyId = copy(id, original.parent!, d.read(original.parent!).children.indexOf(id) + 1);
+    copyId = copy(source, parent, index);
   });
   return { doc: next, id: copyId };
 }

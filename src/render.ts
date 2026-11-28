@@ -3,6 +3,7 @@ import { Item, ItemId, ROOT, ancestors, isDescendant, shownChildren } from "./mo
 import { Cell, Column, Summary, cellsUnder, columnCells, declaredColumns, formulaIn, inferredColumns } from "./properties";
 import { propertyChipsHtml } from "./propertyChips";
 import { isChecksItem, problemInCheckRow, problemsOfItem } from "./checks";
+import { isSettingsItem } from "./insertLists";
 import { escape, itemLabel, renderItemText, renderNote, shortLabel } from "./inline";
 import { isSealed } from "./notes";
 import { countLabel } from "./counts";
@@ -293,6 +294,7 @@ function renderItem(id: ItemId): HTMLLIElement {
   li.classList.toggle("completed", item.completed);
   li.classList.toggle("mirror", mirror !== null);
   li.classList.toggle("checks", isChecksItem(item));
+  li.classList.toggle("settings-item", isSettingsItem(item));
   li.classList.toggle("check-bad", rowProblem !== "");
   li.classList.toggle("has-children", hasChildren);
   li.classList.toggle("folded", hasChildren && !expanded);

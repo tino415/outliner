@@ -4,15 +4,19 @@ import { select, selectionIn } from "./caret";
 export interface PaletteOption {
   text: string;
   path: string[];
+  /** Drawn where the path is, in its place. */
+  detail?: string;
   shortcut?: string;
 }
 
 export interface PaletteRequest<O extends PaletteOption> {
   placeholder: string;
-  hint: string;
+  hint: string | ((mode: string) => string);
+  /** What shows in place of rows when there are none; "Nothing found" by default. */
+  empty?: (mode: string) => string;
   /** `mode` is one of `modes`, which Tab cycles through; "" when there are none. */
   candidates: (query: string, mode: string) => O[];
-  choose: (option: O) => void;
+  choose: (option: O, mode: string) => void;
   modes?: string[];
   mode?: string;
 }
@@ -34,7 +38,6 @@ export function openPalette<O extends PaletteOption>(request: PaletteRequest<O>)
   caretToRestore = caretInFocusedEditor();
   input.value = "";
   input.placeholder = request.placeholder;
-  hint.textContent = request.hint;
   refresh();
   dialog.showModal();
   input.focus();
@@ -107,14 +110,18 @@ function refresh(): void {
   modeTabs.hidden = !current?.modes;
   modeTabs.innerHTML = (current?.modes ?? []).map((each) => `<button type="button" tabindex="-1" data-mode="${escape(each)}"${each === mode ? ` class="active"` : ""}>${escape(each)}</button>`).join("");
   active = 0;
-  list.innerHTML = shown.map(optionHtml).join("") || `<li class="palette-empty">Nothing found</li>`;
+  const written = current?.hint ?? "";
+  hint.textContent = typeof written === "function" ? written(mode) : written;
+  const empty = current?.empty?.(mode) ?? "Nothing found";
+  list.innerHTML = shown.map(optionHtml).join("") || `<li class="palette-empty">${escape(empty)}</li>`;
   paintActive();
 }
 
 function optionHtml(option: PaletteOption, index: number): string {
   const isCommand = option.shortcut !== undefined;
   const text = `<span class="palette-text">${renderItemText(option.text) || "<em>Untitled</em>"}</span>`;
-  const path = option.path.length ? `<span class="palette-path">${option.path.map((step) => escape(plainText(step))).join(" / ")}</span>` : "";
+  const under = option.detail !== undefined ? escape(plainText(option.detail)) : option.path.map((step) => escape(plainText(step))).join(" / ");
+  const path = under ? `<span class="palette-path">${under}</span>` : "";
   const shortcut = isCommand ? `<span class="palette-shortcut">${option.shortcut}</span>` : "";
   return `<li role="option" data-index="${index}"${isCommand ? ` class="palette-command"` : ""}>${text}${path}${shortcut}</li>`;
 }
@@ -132,7 +139,7 @@ function choose(index: number): void {
   const request = current;
   dialog.close();
   restoreCaret();
-  request.choose(option);
+  request.choose(option, mode);
 }
 
 /*

@@ -11,6 +11,7 @@ import { Drop, DropPlaces, scrollPageToward } from "./bullets";
 import { agendaShown } from "./agenda";
 import { queryViewShown } from "./queryView";
 import { ensureChecks, inChecks, isChecksItem, problemsOfItem } from "./checks";
+import { isSettingsItem } from "./insertLists";
 import { zoomTo } from "./navigation";
 
 /*
@@ -77,9 +78,9 @@ export function renderBoard(): void {
     `<button type="button" class="board-checks" data-board-checks title="The checks that type the properties of this board">Checks</button>`;
 }
 
-/** A Checks: child types the properties under its parent, so it is neither a column nor a card. */
+/** A Checks: or a _settings child sets up what is under its parent, so it is neither a column nor a card. */
 function shownOnBoard(parent: ItemId): ItemId[] {
-  return inResults(shownChildren(doc(), parent, filter())).filter((id) => !isChecksItem(doc().items[id]));
+  return inResults(shownChildren(doc(), parent, filter())).filter((id) => !isChecksItem(doc().items[id]) && !isSettingsItem(doc().items[id]));
 }
 
 function columnGapHtml(nextColumn: ItemId): string {

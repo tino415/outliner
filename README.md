@@ -156,6 +156,35 @@ it, and any other row computes the formula. A row in error makes every
 total above it an error too. `round` after the summary word shows computed
 values and sums as whole numbers; a sum adds the exact values.
 
+## Insert from a list
+
+A child titled `_settings` holds an item's settings, and its child `Insert`
+holds lists to insert from (doc/adr/0078). Each list is a child of `Insert`,
+titled as its tab, with a `query` in the language of query views and an
+`insert` saying what a pick adds:
+
+```
+Food
+  _settings
+    Insert
+      Foods
+        :query: under:"Food/Database" has:grams
+        :insert: link into food with grams
+      Earlier days
+        :query: under:"Food/Journal" -has:grams
+        :insert: copy contents, last first
+```
+
+The lists apply to everything under the item, the item included; a nearer
+`Insert` replaces them. Insert from a list… (Ctrl-J I I, the item menu, From
+a list… in the + menu, the ⋯ menu for the page) opens a picker over the first
+list's matches, a tab per list. `link into KEY with KEY KEY` adds a line
+titled as the pick, with KEY linking it and each `with` key starting at the
+pick's value; `copy` adds a copy of the pick with everything in it;
+`copy contents` adds copies of its children. `, last first` lists the last
+match first. Ctrl-K, Edit Insert lists of this page, zooms into the page's
+`_settings` > `Insert`, making them when they are missing.
+
 ## Boards
 
 Ctrl-J B (or ⋯ → Board) shows the page as a Kanban board: its children

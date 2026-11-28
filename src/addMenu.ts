@@ -1,7 +1,7 @@
 import { commitAndRender, doc } from "./app";
 import { ItemId, insertShownChild, newChildIndex } from "./model";
 import { refusedAsReadOnly } from "./bookmarking";
-import { attachFilesTo, pickFiles } from "./editing";
+import { attachFilesTo, canInsertFromList, insertFromListOn, pickFiles } from "./editing";
 import { chooseProperty, chooseTag } from "./propertyPicker";
 
 const menu = () => document.getElementById("add-menu")!;
@@ -10,6 +10,7 @@ let menuItem: ItemId | null = null;
 
 const additions: Record<string, (id: ItemId) => void> = {
   child: addChild,
+  list: insertFromListOn,
   attachment: attach,
   tag: chooseTag,
   property: chooseProperty,
@@ -34,7 +35,7 @@ export function bindAddMenu(): void {
     const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
     if (step === 0) return;
     event.preventDefault();
-    const entries = [...menu().querySelectorAll<HTMLElement>("[data-add-action]")];
+    const entries = [...menu().querySelectorAll<HTMLElement>("[data-add-action]:not([hidden])")];
     const at = entries.indexOf(document.activeElement as HTMLElement);
     const next = at < 0 ? (step > 0 ? 0 : entries.length - 1) : (at + step + entries.length) % entries.length;
     entries[next].focus();
@@ -43,6 +44,7 @@ export function bindAddMenu(): void {
 
 function openAddMenu(id: ItemId, anchor: HTMLElement): void {
   menuItem = id;
+  menu().querySelector<HTMLElement>('[data-add-action="list"]')!.hidden = !canInsertFromList(id);
   menu().showPopover();
   const rect = anchor.getBoundingClientRect();
   const height = menu().offsetHeight;
